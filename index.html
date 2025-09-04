@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GreenHive - Gerenciador Financeiro</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    // --- ESTADO GLOBAL DA APLICAÇÃO ---
+    let state = {
+      user: null,
+      family: null,
+      transactions: [
+        // Dados de meses diferentes para teste
+        { id: 1, date: '2025-09-15', description: 'Salário', amount: 3500.00, type: 'income', category: 'Salário' },
+        { id: 2, date: '2025-09-15', description: 'Salgado', amount: 8.00, type: 'expense', category: 'Alimentação' },
+        { id: 3, date: '2025-09-15', description: 'Ônibus', amount: 6.00, type: 'expense', category: 'Transporte' },
+        { id: 4, date: '2025-09-14', description: 'Internet', amount: 120.00, type: 'expense', category: 'Moradia' },
+        { id: 5, date: '2025-08-30', description: 'Projeto Freelance', amount: 800.00, type: 'income', category: 'Freelance' },
+        { id: 6, date: '2025-08-25', description: 'Mercado (Agosto)', amount: 950.00, type: 'expense', category: 'Alimentação' },
+        { id: 7, date: '2025-09-12', description: 'Cinema', amount: 50.00, type: 'expense', category: 'Lazer' },
+        { id: 8, date: '2025-07-05', description: 'Salário (Julho)', amount: 3400.00, type: 'income', category: 'Salário' },
+        { id: 9, date: '2025-07-20', description: 'Conta de Luz', amount: 250.00, type: 'expense', category: 'Moradia' },
+      ],
+      authView: 'login',
+      currentView: 'auth', // 'auth', 'onboarding', 'dashboard', 'details'
+      detailsFilterType: 'all', // 'all', 'income', 'expense'
+      displayedMonth: new Date(), // Começa no mês atual
+      isModalOpen: false,
+      modalTransactionType: 'expense',
+    };
+    
+    const CATEGORIES = {
+      expense: ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde', 'Outros'],
+      income: ['Salário', 'Freelance', 'Investimentos', 'Outros']
+    };
+
+    const root = document.getElementById('root');
+    let monthlyChartInstance = null;
+    let annualChartInstance = null;
+
+    // --- LÓGICA / HANDLERS ---
+    function handleLogin(event) { event.preventDefault(); const email = event.target.email.value; if(!email) { alert('Por favor, preencha o e-mail.'); return; } state.user = { name: 'Usuário Teste', email: email }; state.currentView = 'onboarding'; renderApp(); }
+    function handleSignup(event) { event.preventDefault(); const name = event.target.name.value; if(!name) { alert('Por favor, preencha o nome.'); return; } state.user = { name: name }; state.currentView = 'onboarding'; renderApp(); }
+    function handleLogout() { state.user = null; state.family = null; state.currentView = 'auth'; renderApp(); }
+    function handleCreateFamily(event) { event.preventDefault(); const familyName = event.target.familyName.value; if(!familyName) return; state.family = {name: familyName}; state.currentView = 'dashboard'; renderApp(); }
+    function handleJoinFamily(event, isDemo = false) { event.preventDefault(); let familyName; if(isDemo){ familyName = event.target.dataset.familyName; } else { const code = event.target.inviteCode.value; if(!code) return; familyName = `Família do código ${code}`; } state.family = {name: familyName}; state.currentView = 'dashboard'; renderApp(); }
+    function handleLeaveFamily() { state.family = null; state.currentView = 'onboarding'; renderApp(); }
+    function handleAddTransaction(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const description = formData.get('description');
+        const amount = parseFloat(formData.get('amount'));
+        const date = formData.get('date');
+        const category = formData.get('category');
+        const installments = parseInt(formData.get('installments'), 10);
+        const type = state.modalTransactionType;
+
+        if (!description || !amount || !date || !category) { alert('Preencha todos os campos!'); return; }
+
+        if (type === 'expense' && installments > 1) {
+            const installmentAmount = amount / installments;
+            const originalDate = new Date(date + 'T12:00:00');
+            for (let i = 0; i < installments; i++) {
+                const installmentDate = new Date(originalDate);
+                installmentDate.setMonth(originalDate.getMonth() + i);
+                state.transactions.push({ id: Date.now() + i, description: `${description} (${i + 1}/${installments})`, amount: installmentAmount, date: installmentDate.toISOString().slice(0, 10), type, category });
+            }
+        } else {
+            state.transactions.push({ id: Date.now(), description, amount, date, type, category });
+        }
+        
+        state.transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        state.isModalOpen = false;
+        renderApp();
+    }
+    function handleChangeMonth(direction) {
+        state.displayedMonth.setMonth(state.displayedMonth.getMonth() + direction);
+        renderApp();
+    }
+
+
+    // --- FUNÇÕES DE RENDERIZAÇÃO DE HTML ---
+    const iconHTML = `<img src="Logo.png" alt="GreenHive Logo" width="32" height="32" />`;
+
+    function renderHeader() {
+      if (!state.user) return '';
+      return `
+        <header class="bg-white shadow-md w-full sticky top-0 z-10">
+          <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">${iconHTML}<h1 class="text-xl font-bold text-gray-800">GreenHive</h1></div>
+            <div class="relative">
+              <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </button>
+              <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2">
+                <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sair da Conta</button>
+              </div>
+            </div>
+          </div>
+        </header>
+      `;
+    }
+
+    function renderLoginFormHTML() { /* ...código minificado... */ return `<h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Acessar minha conta</h2><form id="login-form" novalidate><div class="space-y-6"><div><label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="email" name="email" type="email" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="voce@exemplo.com" /></div><div><div class="flex items-center justify-between"><label for="password" class="block text-sm font-medium text-gray-700">Senha</label><a href="#" class="text-sm font-medium text-green-600 hover:text-green-500 transition">Esqueceu a senha?</a></div><input id="password" name="password" type="password" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Sua senha" /></div><div><button type="submit" class="w-full flex justify-center py-3 px-4 border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700">Entrar</button></div></div></form><p class="mt-8 text-center text-sm text-gray-600">Não tem uma conta?<button id="switch-to-signup" class="font-medium text-green-600 hover:text-green-500">Cadastre-se</button></p>`;}
+    function renderSignupFormHTML() { /* ...código minificado... */ return `<h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Criar nova conta</h2><form id="signup-form" novalidate><div class="space-y-6"><div><label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label><input id="name" name="name" type="text" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Seu nome" /></div><div><label for="email-signup" class="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="email-signup" name="email" type="email" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="voce@exemplo.com" /></div><div><label for="password-signup" class="block text-sm font-medium text-gray-700 mb-1">Senha</label><input id="password-signup" name="password" type="password" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Crie uma senha forte" /></div><div><button type="submit" class="w-full flex justify-center py-3 px-4 border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700">Criar Conta</button></div></div></form><p class="mt-8 text-center text-sm text-gray-600">Já tem uma conta?<button id="switch-to-login" class="font-medium text-green-600 hover:text-green-500">Faça login</button></p>`;}
+
+    function renderAuthPage() {
+      return `
+        <div class="min-h-screen flex items-center justify-center p-4">
+          <div class="bg-white p-8 rounded-2xl shadow-lg w-full animate-fade-in max-w-md mx-auto">
+            <div class="text-center mb-8"><div class="flex justify-center items-center gap-3 mb-2">${iconHTML}<h1 class="text-3xl font-bold text-gray-800">GreenHive</h1></div><p class="text-gray-600">Sua colmeia financeira familiar.</p></div>
+            <div id="auth-form-container">${state.authView === 'login' ? renderLoginFormHTML() : renderSignupFormHTML()}</div>
+          </div>
+        </div>`;
+    }
+
+    function renderFamilyOnboardingPage() { /* ...código minificado... */ const f=[{n:'Família Souza (Demo)',d:'Organizando as contas do dia a dia.'},{n:'República Jupira (Demo)',d:'Dividindo as despesas da faculdade.'},{n:'Projeto Viagem (Demo)',d:'Juntando dinheiro para as férias.'}];return `<div class="w-full max-w-4xl animate-fade-in p-4 mx-auto my-8"><h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Bem-vindo(a), ${state.user.name}!</h1><div class="grid md:grid-cols-2 gap-8"><div class="bg-white p-8 rounded-2xl shadow-lg"><h2 class="text-xl font-semibold text-gray-700 mb-4">Crie uma nova família</h2><form id="create-family-form"><label for="familyName" class="block text-sm font-medium text-gray-700 mb-1">Nome da Família</label><input id="familyName" name="familyName" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Ex: Família Silva" /><button type="submit" class="mt-4 w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700">Criar e gerar código</button></form><div id="create-family-feedback"></div></div><div class="bg-white p-8 rounded-2xl shadow-lg"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ingresse em uma família</h2><form id="join-family-form"><label for="inviteCode" class="block text-sm font-medium text-gray-700 mb-1">Código de Convite</label><input id="inviteCode" name="inviteCode" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="INSIRA O CÓDIGO" /><button type="submit" class="mt-4 w-full py-3 px-4 rounded-lg font-medium text-white bg-gray-700 hover:bg-gray-800">Entrar com código</button></form><div id="join-family-feedback"></div></div></div><div class="mt-8 bg-white p-8 rounded-2xl shadow-lg"><h2 class="text-xl font-semibold text-gray-700 mb-4">Ou entre em uma família de demonstração</h2><div class="space-y-4">${f.map(a=>`<div class="flex items-center justify-between p-4 border rounded-lg"><div><p class="font-semibold text-gray-800">${a.n}</p><p class="text-sm text-gray-500">${a.d}</p></div><button data-family-name="${a.n}" class="explore-family-button px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg">Explorar</button></div>`).join('')}</div></div></div>`;}
+
+    function renderFamilyDashboard() {
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+
+        const monthlyTransactions = state.transactions.filter(t => {
+            const transactionDate = new Date(t.date + 'T12:00:00');
+            return transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
+        });
+        
+        const summary = monthlyTransactions.reduce((acc, t) => {
+            if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount;
+            return acc;
+        }, { income: 0, expenses: 0 });
+        summary.balance = summary.income - summary.expenses;
+
+        return `
+            <div class="w-full max-w-6xl mx-auto px-4 py-8">
+                <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+                    <div><h1 class="text-2xl font-bold text-gray-800">${state.family.name}</h1><p class="text-sm text-gray-500">Bem-vindo(a), ${state.user.name}!</p></div>
+                    <button id="leave-family-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-red-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg">Voltar</button>
+                </header>
+                <main class="animate-fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-2xl shadow-lg"><div><p class="text-sm text-gray-500">Receita do Mês</p><p class="text-2xl font-bold text-gray-800 text-green-600">R$ ${summary.income.toFixed(2)}</p></div></div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg"><div><p class="text-sm text-gray-500">Despesa do Mês</p><p class="text-2xl font-bold text-gray-800 text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div></div>
+                        <button id="details-button" class="bg-white p-6 rounded-2xl shadow-lg text-left hover:ring-2 hover:ring-blue-500 transition"><div><p class="text-sm text-gray-500">Saldo do Mês</p><p class="text-2xl font-bold text-gray-800 text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div></button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">Despesas do Mês por Categoria</h3>
+                            <div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${currentYear})</h3>
+                            <div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div>
+                        </div>
+                    </div>
+                </main>
+                <button id="open-modal-button" class="fixed bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-110"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+            </div>`;
+    }
+
+    function renderDetailsPage() {
+        const month = state.displayedMonth.getMonth();
+        const year = state.displayedMonth.getFullYear();
+        const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+
+        const filtered = state.transactions.filter(t => {
+            const transactionDate = new Date(t.date + 'T12:00:00');
+            const typeMatch = state.detailsFilterType === 'all' || t.type === state.detailsFilterType;
+            return typeMatch && transactionDate.getMonth() === month && transactionDate.getFullYear() === year;
+        });
+
+        const groupedByDate = filtered.reduce((acc, t) => {
+            const day = new Date(t.date + 'T12:00:00').getDate();
+            if (!acc[day]) acc[day] = [];
+            acc[day].push(t);
+            return acc;
+        }, {});
+
+        const sortedDays = Object.keys(groupedByDate).sort((a,b) => b - a);
+
+        let transactionsHTML = '<p class="text-center text-gray-500">Nenhuma transação para este mês.</p>';
+        if (sortedDays.length > 0) {
+            transactionsHTML = sortedDays.map(day => {
+                const transactionsForDay = groupedByDate[day].map(t => `
+                    <li class="flex justify-between items-center py-2">
+                        <div><p class="font-medium text-gray-800">${t.description}</p><p class="text-sm text-gray-500"><span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">${t.category}</span></p></div>
+                        <p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p>
+                    </li>`).join('');
+                return `<div class="mb-4"><p class="font-bold text-gray-700 pb-2 border-b">${day} de ${monthName}</p><ul class="divide-y">${transactionsForDay}</ul></div>`;
+            }).join('');
+        }
+
+        return `
+            <div class="w-full max-w-4xl mx-auto px-4 py-8 animate-fade-in">
+                 <header class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Registro Detalhado</h2>
+                    <button id="back-to-dashboard-button" class="text-sm font-medium text-green-600 hover:underline">Voltar ao Painel</button>
+                </header>
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <div class="flex justify-between items-center">
+                        <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200">&lt; Anterior</button>
+                        <h3 class="text-lg font-semibold capitalize">${monthName} de ${year}</h3>
+                        <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200">Próximo &gt;</button>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                    <div class="flex items-center justify-center gap-4">
+                        <button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}">Tudo</button>
+                        <button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200'}">Receitas</button>
+                        <button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200'}">Despesas</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    ${transactionsHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderAddTransactionModal() { /* ...código minificado... */ if(!state.isModalOpen)return'';const t=state.modalTransactionType==='expense'?CATEGORIES.expense:CATEGORIES.income,e=t.map(a=>`<option value="${a}">${a}</option>`).join('');return `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4"><div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-semibold text-gray-700">Nova Transação</h2><button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><form id="add-transaction-form"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label><div class="flex gap-4"><button type="button" id="modal-type-expense" class="w-full py-2 rounded-lg ${state.modalTransactionType==='expense'?'bg-red-500 text-white':'bg-gray-200'}">Despesa</button><button type="button" id="modal-type-income" class="w-full py-2 rounded-lg ${state.modalTransactionType==='income'?'bg-green-500 text-white':'bg-gray-200'}">Receita</button></div></div><div><label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label><input id="description" name="description" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="Ex: Compras no mercado" required /></div><div><label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label><select id="category" name="category" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">${e}</select></div><div class="grid grid-cols-2 gap-4"><div><label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label><input id="amount" name="amount" type="number" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="0,00" required /></div><div><label for="installments" class="block text-sm font-medium text-gray-700 mb-1">Parcelas</label><input id="installments" name="installments" type="number" min="1" value="1" class="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100" ${state.modalTransactionType==='income'?'disabled':''} /></div></div><div><label for="date" class="block text-sm font-medium text-gray-700 mb-1">Data</label><input id="date" name="date" type="date" value="${new Date().toISOString().slice(0,10)}" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required /></div></div><div class="mt-8"><button type="submit" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700">Adicionar Transação</button></div></form></div></div>`;}
+
+    // --- FUNÇÃO CENTRAL DE CONTROLE ---
+    function renderApp() {
+      let content = '';
+      if (state.currentView === 'auth') content = renderAuthPage();
+      else if (state.currentView === 'onboarding') content = renderFamilyOnboardingPage();
+      else if (state.currentView === 'dashboard') content = renderFamilyDashboard();
+      else if (state.currentView === 'details') content = renderDetailsPage();
+      
+      root.innerHTML = renderHeader() + `<main>${content}</main>` + renderAddTransactionModal();
+      attachEventListeners();
+    }
+    
+    function attachEventListeners() {
+      // Auth
+      const loginForm = document.getElementById('login-form'); if (loginForm) loginForm.addEventListener('submit', handleLogin);
+      const signupForm = document.getElementById('signup-form'); if (signupForm) signupForm.addEventListener('submit', handleSignup);
+      const switchToSignup = document.getElementById('switch-to-signup'); if(switchToSignup) switchToSignup.addEventListener('click', () => { state.authView = 'signup'; renderApp(); });
+      const switchToLogin = document.getElementById('switch-to-login'); if(switchToLogin) switchToLogin.addEventListener('click', () => { state.authView = 'login'; renderApp(); });
+      
+      // Header
+      const userMenuButton = document.getElementById('user-menu-button'); if(userMenuButton) userMenuButton.addEventListener('click', () => document.getElementById('user-menu').classList.toggle('hidden'));
+      const logoutButton = document.getElementById('logout-button'); if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+
+      // Family Onboarding
+      const createFamilyForm = document.getElementById('create-family-form'); if(createFamilyForm) createFamilyForm.addEventListener('submit', handleCreateFamily);
+      const joinFamilyForm = document.getElementById('join-family-form'); if(joinFamilyForm) joinFamilyForm.addEventListener('submit', handleJoinFamily);
+      document.querySelectorAll('.explore-family-button').forEach(button => button.addEventListener('click', (e) => handleJoinFamily(e, true)));
+      
+      // Dashboard
+      const leaveFamilyButton = document.getElementById('leave-family-button'); if(leaveFamilyButton) leaveFamilyButton.addEventListener('click', handleLeaveFamily);
+      const detailsButton = document.getElementById('details-button'); if(detailsButton) detailsButton.addEventListener('click', (e) => {
+          state.detailsFilterType = 'all'; state.currentView = 'details'; state.displayedMonth = new Date(); renderApp();
+      });
+      const openModalButton = document.getElementById('open-modal-button'); if(openModalButton) openModalButton.addEventListener('click', () => { state.isModalOpen = true; state.modalTransactionType = 'expense'; renderApp(); });
+
+      // Details Page
+      const backToDashboardButton = document.getElementById('back-to-dashboard-button'); if(backToDashboardButton) backToDashboardButton.addEventListener('click', () => { state.currentView = 'dashboard'; renderApp(); });
+      const prevMonthButton = document.getElementById('prev-month-button'); if(prevMonthButton) prevMonthButton.addEventListener('click', () => handleChangeMonth(-1));
+      const nextMonthButton = document.getElementById('next-month-button'); if(nextMonthButton) nextMonthButton.addEventListener('click', () => handleChangeMonth(1));
+      document.querySelectorAll('.filter-button').forEach(button => button.addEventListener('click', (e) => {
+          state.detailsFilterType = e.currentTarget.dataset.filter;
+          renderApp();
+      }));
+
+      // Modal
+      const closeModalButton = document.getElementById('close-modal-button'); if(closeModalButton) closeModalButton.addEventListener('click', () => { state.isModalOpen = false; renderApp(); });
+      const addTransactionForm = document.getElementById('add-transaction-form'); if(addTransactionForm) addTransactionForm.addEventListener('submit', handleAddTransaction);
+      const modalTypeExpense = document.getElementById('modal-type-expense'); if (modalTypeExpense) modalTypeExpense.addEventListener('click', () => { state.modalTransactionType = 'expense'; renderApp(); });
+      const modalTypeIncome = document.getElementById('modal-type-income'); if (modalTypeIncome) modalTypeIncome.addEventListener('click', () => { state.modalTransactionType = 'income'; renderApp(); });
+
+      // Render Charts
+      if(state.currentView === 'dashboard') {
+          renderMonthlyChart();
+          renderAnnualChart();
+      }
+    }
+
+    function renderMonthlyChart() {
+        const chartCanvas = document.getElementById('monthly-expenses-chart');
+        if (chartCanvas) {
+            if (monthlyChartInstance) monthlyChartInstance.destroy();
+            
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const monthlyTransactions = state.transactions.filter(t => {
+                const transactionDate = new Date(t.date + 'T12:00:00');
+                return t.type === 'expense' && transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
+            });
+
+            const expenseData = monthlyTransactions.reduce((acc, t) => { const category = t.category || 'Outros'; acc[category] = (acc[category] || 0) + t.amount; return acc; }, {});
+            
+            monthlyChartInstance = new Chart(chartCanvas.getContext('2d'), { type: 'doughnut', data: { labels: Object.keys(expenseData), datasets: [{ data: Object.values(expenseData), backgroundColor: ['#10B981', '#EF4444', '#3B82F6', '#F97316', '#6B7280', '#8B5CF6'], borderColor: '#f9fafb', borderWidth: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+        }
+    }
+
+    function renderAnnualChart() {
+        const chartCanvas = document.getElementById('annual-balance-chart');
+        if (chartCanvas) {
+            if (annualChartInstance) annualChartInstance.destroy();
+            
+            const currentYear = new Date().getFullYear();
+            const annualData = { income: Array(12).fill(0), expense: Array(12).fill(0) };
+            
+            state.transactions.forEach(t => {
+                const transactionDate = new Date(t.date + 'T12:00:00');
+                if (transactionDate.getFullYear() === currentYear) {
+                    const month = transactionDate.getMonth();
+                    if (t.type === 'income') annualData.income[month] += t.amount;
+                    else annualData.expense[month] += t.amount;
+                }
+            });
+
+            annualChartInstance = new Chart(chartCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                    datasets: [
+                        { label: 'Receitas', data: annualData.income, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                        { label: 'Despesas', data: annualData.expense, backgroundColor: 'rgba(239, 68, 68, 0.6)' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: false }, y: { stacked: false } } }
+            });
+        }
+    }
+
+    // --- PONTO DE PARTIDA ---
+    window.addEventListener('DOMContentLoaded', () => { renderApp(); });
+
+  </script>
+</body>
+</html>
+
