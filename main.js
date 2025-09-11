@@ -111,7 +111,21 @@ function attachEventListeners() {
     const prevMonthButton = document.getElementById('prev-month-button'); if (prevMonthButton) prevMonthButton.onclick = () => handleChangeMonth(-1);
     const nextMonthButton = document.getElementById('next-month-button'); if (nextMonthButton) nextMonthButton.onclick = () => handleChangeMonth(1);
     document.querySelectorAll('.filter-button').forEach(button => button.onclick = (e) => { state.detailsFilterType = e.currentTarget.dataset.filter; state.selectedDate = null; renderApp(); });
-    document.querySelectorAll('.calendar-day').forEach(day => day.onclick = e => { const recordsList = document.getElementById('records-list-wrapper'); const dayNumber = parseInt(e.currentTarget.dataset.day); if (recordsList) { recordsList.classList.add('content-fade-out'); setTimeout(() => { state.selectedDate = dayNumber; renderApp(); }, 150); } });
+    
+    // CORREÇÃO: Lógica de clique no dia do calendário para limpar o filtro
+    document.querySelectorAll('.calendar-day').forEach(day => day.onclick = e => {
+        const recordsList = document.getElementById('records-list-wrapper');
+        const dayNumber = parseInt(e.currentTarget.dataset.day);
+        if (recordsList) {
+            recordsList.classList.add('content-fade-out');
+            setTimeout(() => {
+                // Se o dia clicado já está selecionado, ele limpa o filtro (null)
+                state.selectedDate = (state.selectedDate === dayNumber) ? null : dayNumber;
+                renderApp();
+            }, 150);
+        }
+    });
+
     const clearDateFilterButton = document.getElementById('clear-date-filter'); if (clearDateFilterButton) clearDateFilterButton.onclick = () => { state.selectedDate = null; renderApp(); };
     
     // Handler para abrir a edição de transação

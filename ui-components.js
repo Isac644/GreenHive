@@ -195,7 +195,7 @@ export function renderTransactionModal() {
     <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
 </div>` : '';
         const typeSelectorHTML = `<div class="flex gap-2 mb-6"><button type="button" data-type="expense" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}">Despesa</button><button type="button" data-type="income" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}">Receita</button></div>`;
-        
+
         contentHTML = `
             <form id="${isEditing ? 'edit' : 'add'}-transaction-form">
                 ${typeSelectorHTML}
@@ -350,7 +350,7 @@ export function renderFamilyDashboard() {
     const incomeBudget = state.budgets.find(b => b.type === 'income' && new Date(b.appliesFrom) <= state.displayedMonth);
     const incomeGoal = incomeBudget ? incomeBudget.value : 0;
     const incomePercentage = incomeGoal > 0 ? (summary.income / incomeGoal) * 100 : 0;
-    
+
     // Calcule o total dos orçamentos de despesa
     const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
     const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
@@ -442,20 +442,55 @@ export function renderFamilyDashboard() {
 </div>`;
 }
 
+// ... dentro de ui-components.js
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const daysWithTransactions = new Set(state.transactions
+        .filter(t => {
+            const tDate = new Date(t.date + 'T12:00:00');
+            return tDate.getMonth() === month && tDate.getFullYear() === year;
+        })
+        .map(t => new Date(t.date + 'T12:00:00').getDate())
+    );
+
     let calendarDaysHTML = Array(firstDay).fill(`<div class="text-center p-2"></div>`).join('');
     for (let day = 1; day <= daysInMonth; day++) {
         const isSelected = state.selectedDate === day;
-        calendarDaysHTML += `<div class="text-center p-1"><button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'}">${day}</button></div>`;
+        const hasTransaction = daysWithTransactions.has(day);
+
+        let dayClasses = 'text-gray-800'; // Define a cor padrão do texto como preta
+if (isSelected) {
+    dayClasses = 'bg-blue-500 text-white';
+} else if (hasTransaction) {
+    // CORREÇÃO: Removido o 'text-white', e adicionado 'text-gray-800' para manter a cor preta do número
+    dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800';
+} else {
+    dayClasses += ' hover:bg-gray-200';
+}
+
+        calendarDaysHTML += `<div class="text-center p-1">
+            <button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${dayClasses}">${day}</button>
+        </div>`;
     }
 
-    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center mb-4"><button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div><div class="grid grid-cols-7 gap-1 text-sm text-center text-gray-500 mb-2"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div><div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div>${state.selectedDate ? `<div class="text-center mt-4"><button id="clear-date-filter" class="text-sm text-blue-600 hover:underline">Limpar filtro do dia</button></div>` : ''}</div>`;
-    
+    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3>
+            <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+        <div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div>
+    </div>`;
+
     const filtered = state.transactions.filter(t => {
         const transactionDate = new Date(t.date + 'T12:00:00');
         const typeMatch = state.detailsFilterType === 'all' || t.type === state.detailsFilterType;
@@ -470,7 +505,7 @@ export function renderRecordsPage() {
         return acc;
     }, {});
 
-    const sortedDays = Object.keys(groupedByDate).sort((a,b) => b - a);
+    const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
 
     let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada para os filtros selecionados.</p>`;
     if (sortedDays.length > 0) {
@@ -511,7 +546,7 @@ export function renderBudgetPage() {
 
     const budgetItemsHTML = activeBudgets.map(budget => {
         let progressHTML = '';
-        if(budget.type === 'expense') {
+        if (budget.type === 'expense') {
             const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
             const limit = budget.value;
             const percentage = limit > 0 ? (spent / limit) * 100 : 0;
@@ -574,11 +609,11 @@ export function renderMonthlyChart() {
     const chartCanvas = document.getElementById('monthly-expenses-chart');
     const noDataElement = document.getElementById('monthly-expenses-chart-no-data');
     if (!chartCanvas || !noDataElement) return null;
-    
+
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year && t.type === 'expense');
-    
+
     if (monthlyTransactions.length === 0) {
         chartCanvas.style.display = 'none';
         noDataElement.style.display = 'flex';
@@ -598,7 +633,7 @@ export function renderMonthlyChart() {
     const data = Object.values(expenseData);
     const colors = labels.map(label => state.categoryColors[label] || '#6B7280');
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-    
+
     if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
 
     return new Chart(chartCanvas.getContext('2d'), {
@@ -631,7 +666,7 @@ export function renderAnnualChart() {
         }
     });
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-    
+
     return new Chart(chartCanvas.getContext('2d'), {
         type: 'bar', data: {
             labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [
@@ -655,7 +690,7 @@ export function renderComparisonChart() {
     const currentMonthExpenses = getExpensesForMonth(currentMonthDate);
     const prevMonthExpenses = getExpensesForMonth(prevMonthDate);
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-    
+
     return new Chart(chartCanvas.getContext('2d'), {
         type: 'bar', data: {
             labels: [prevMonthDate.toLocaleString('pt-BR', { month: 'long' }), currentMonthDate.toLocaleString('pt-BR', { month: 'long' })],
@@ -674,7 +709,7 @@ export function renderPersonSpendingChart() {
     const chartCanvas = document.getElementById('person-spending-chart');
     const noDataElement = document.getElementById('person-spending-chart-no-data');
     if (!chartCanvas || !noDataElement) return null;
-    
+
     const monthlyExpenses = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
         return t.type === 'expense' && tDate.getMonth() === state.displayedMonth.getMonth() && tDate.getFullYear() === state.displayedMonth.getFullYear();
@@ -695,12 +730,12 @@ export function renderPersonSpendingChart() {
         acc[userName] = (acc[userName] || 0) + t.amount;
         return acc;
     }, {});
-    
+
     const labels = Object.keys(spendingData);
     const data = Object.values(spendingData);
     const colors = labels.map((_, index) => PALETTE_COLORS[index % PALETTE_COLORS.length]);
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-    
+
     if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
 
     return new Chart(chartCanvas.getContext('2d'), {
@@ -753,6 +788,6 @@ export function renderCharts() {
     chartInstances.annual = renderAnnualChart();
     chartInstances.comparison = renderComparisonChart();
     chartInstances.personSpending = renderPersonSpendingChart();
-    
+
     return destroyAllCharts;
 }
