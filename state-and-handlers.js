@@ -75,7 +75,13 @@ export async function handleCreateFamily(event) {
     event.preventDefault();
     const familyName = event.target.familyName.value;
     if (!familyName) return;
-    const newFamily = { name: familyName, code: Math.random().toString(36).substring(2, 8).toUpperCase(), members: [state.user.uid], userCategories: { expense: [], income: [] }, categoryColors: state.categoryColors };
+    const newFamily = {
+        name: familyName,
+        code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+        members: [{ uid: state.user.uid, role: 'admin' }], // CORREÇÃO: Adicionado o objeto com a role
+        userCategories: { expense: [], income: [] },
+        categoryColors: state.categoryColors
+    };
     try {
         const docRef = await firebase.addDoc(firebase.collection(db, "familyGroups"), newFamily);
         await handleSelectFamily(docRef.id);
@@ -99,8 +105,14 @@ export async function handleJoinFamily(event) {
         }
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
-        if (!familyDoc.data().members.includes(state.user.uid)) {
-            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
+        const familyData = familyDoc.data();
+        
+        // CORREÇÃO: Verificando se o usuário já é membro do novo array de objetos
+        const userIsMember = familyData.members.some(member => member.uid === state.user.uid);
+
+        if (!userIsMember) {
+            const updatedMembers = [...familyData.members, { uid: state.user.uid, role: 'member' }];
+            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: updatedMembers });
         }
         await handleSelectFamily(familyId);
         showToast("Você entrou na família com sucesso!", 'success');
@@ -307,10 +319,33 @@ export function handleToggleTheme() {
 export async function fetchUserFamilies() {
     if (!state.user?.uid) return [];
     try {
-        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", state.user.uid));
-        const querySnapshot = await firebase.getDocs(q);
+        // CORREÇÃO: Buscando por todas as famílias onde o UID do usuário está presente,
+        // independentemente do cargo.
+        const adminQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'admin' }));
+        const memberQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'member' }));
+
+        const [adminSnapshot, memberSnapshot] = await Promise.all([
+            firebase.getDocs(adminQuery),
+            firebase.getDocs(memberQuery)
+        ]);
+
         const families = [];
-        querySnapshot.forEach(doc => { families.push({ id: doc.id, ...doc.data() }); });
+        const seenFamilyIds = new Set();
+
+        adminSnapshot.forEach(doc => {
+            if (!seenFamilyIds.has(doc.id)) {
+                families.push({ id: doc.id, ...doc.data() });
+                seenFamilyIds.add(doc.id);
+            }
+        });
+
+        memberSnapshot.forEach(doc => {
+            if (!seenFamilyIds.has(doc.id)) {
+                families.push({ id: doc.id, ...doc.data() });
+                seenFamilyIds.add(doc.id);
+            }
+        });
+
         return families;
     } catch (error) {
         console.error("Erro ao buscar famílias:", error);
@@ -323,6 +358,14 @@ export async function loadFamilyData(familyId) {
         const familyDocSnap = await firebase.getDoc(firebase.doc(db, "familyGroups", familyId));
         if (!familyDocSnap.exists()) throw new Error("Família não encontrada!");
         const familyData = familyDocSnap.data();
+
+        // Encontra a role do usuário atual
+        const userInFamily = familyData.members.find(member => member.uid === state.user.uid);
+        if (!userInFamily) throw new Error("Usuário não é membro desta família.");
+
+        // Atualiza o estado com a nova informação de role
+        state.user.role = userInFamily.role;
+
         state.family = { id: familyId, ...familyData };
         state.userCategories = familyData.userCategories || { expense: [], income: [] };
         state.categoryColors = familyData.categoryColors || state.categoryColors;
@@ -339,7 +382,7 @@ export async function loadFamilyData(familyId) {
         budgetsSnapshot.forEach(doc => loadedBudgets.push({ id: doc.id, ...doc.data() }));
         state.budgets = loadedBudgets;
     } catch (e) {
-        showToast("Erro ao carregar dados da família.", 'error');
+        showToast("Erro ao carregar dados da família. Você pode não ter permissão.", 'error');
         console.error(e);
         handleLeaveFamily();
     }
