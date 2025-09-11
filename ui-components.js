@@ -204,20 +204,16 @@ export function renderTransactionModal() {
                         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                         <input id="description" name="description" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" value="${transaction?.description || ''}" required />
                     </div>
-                    <div>
-                        <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                        <select id="category" name="category" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
-                            ${categoryOptions}
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="col-span-2">
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                            <select id="category" name="category" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white">
+                                ${categoryOptions}
+                            </select>
+                        </div>
                         <div>
                             <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
                             <input id="amount" name="amount" type="number" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-lg" value="${transaction?.amount || ''}" required />
-                        </div>
-                        <div>
-                            <label for="installments" class="block text-sm font-medium text-gray-700 mb-1">Parcelas</label>
-                            <input id="installments" name="installments" type="number" min="1" value="1" class="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100" ${isEditing || type === 'income' ? 'disabled' : ''} />
                         </div>
                     </div>
                     <div>
