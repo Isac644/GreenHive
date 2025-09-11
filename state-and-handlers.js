@@ -78,7 +78,8 @@ export async function handleCreateFamily(event) {
     const newFamily = {
         name: familyName,
         code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        members: [{ uid: state.user.uid, role: 'admin' }], // CORREÇÃO: Adicionado o objeto com a role
+        // CORREÇÃO: Adicionando o nome do criador
+        members: [{ uid: state.user.uid, role: 'admin', name: state.user.name }],
         userCategories: { expense: [], income: [] },
         categoryColors: state.categoryColors
     };
@@ -107,11 +108,11 @@ export async function handleJoinFamily(event) {
         const familyId = familyDoc.id;
         const familyData = familyDoc.data();
         
-        // CORREÇÃO: Verificando se o usuário já é membro do novo array de objetos
         const userIsMember = familyData.members.some(member => member.uid === state.user.uid);
 
         if (!userIsMember) {
-            const updatedMembers = [...familyData.members, { uid: state.user.uid, role: 'member' }];
+            // CORREÇÃO: Adicionando o nome do novo membro
+            const updatedMembers = [...familyData.members, { uid: state.user.uid, role: 'member', name: state.user.name }];
             await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: updatedMembers });
         }
         await handleSelectFamily(familyId);
@@ -130,16 +131,35 @@ export async function handleSelectFamily(familyId) {
     }
 }
 
-export function handleLeaveFamily() {
-    state.family = null;
-    state.transactions = [];
-    state.budgets = [];
-    state.currentView = 'onboarding';
-    fetchUserFamilies().then(families => {
-        state.userFamilies = families;
-        renderApp();
-        showToast("Você saiu da família.", 'success');
-    });
+export async function handleLeaveFamily() {
+    if (!state.family || !state.user) return;
+
+    try {
+        // Encontra o objeto do usuário no array de membros
+        const userObject = state.family.members.find(member => member.uid === state.user.uid);
+        
+        if (userObject) {
+            // Remove o usuário do array de membros no Firestore
+            const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
+            const updatedMembers = state.family.members.filter(member => member.uid !== state.user.uid);
+            await firebase.updateDoc(familyDocRef, { members: updatedMembers });
+        }
+
+        // Limpa o estado local após a remoção no banco
+        state.family = null;
+        state.transactions = [];
+        state.budgets = [];
+        state.currentView = 'onboarding';
+
+        fetchUserFamilies().then(families => {
+            state.userFamilies = families;
+            renderApp();
+            showToast("Você saiu da família com sucesso.", 'success');
+        });
+    } catch (e) {
+        showToast("Erro ao sair da família.", 'error');
+        console.error(e);
+    }
 }
 
 export async function handleAddTransaction(event) {

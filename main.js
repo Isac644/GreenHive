@@ -226,6 +226,14 @@ function attachEventListeners() {
             }
         };
     });
+
+	const leaveFamilyModalButton = document.getElementById('leave-family-modal-button');
+if (leaveFamilyModalButton) {
+    leaveFamilyModalButton.onclick = () => {
+        state.isModalOpen = false; // Fecha a modal antes de sair
+        handleLeaveFamily(); // Chama a função que já existe
+    };
+}
 }
 
 // NOVO: Handler para o botão "Informações da Família"

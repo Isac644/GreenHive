@@ -385,6 +385,11 @@ export function renderFamilyInfoModal() {
                     <p class="text-sm font-medium text-gray-700 mb-2">Membros</p>
                     <div class="divide-y">${membersHTML}</div>
                 </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700">
+                        Sair da Família
+                    </button>
+                </div>
             </div>
         </div>
     </div>`;
