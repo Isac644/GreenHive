@@ -12,7 +12,8 @@ import {
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
     renderMainContent, renderTransactionModal, renderBudgetModal,
-    renderCharts as renderChartsUI
+    renderCharts as renderChartsUI,
+    renderFamilyInfoModal // CORREÇÃO: Função renderFamilyInfoModal foi importada
 } from "./ui-components.js";
 
 const root = document.getElementById('root');
@@ -56,17 +57,21 @@ export function renderApp() {
     // Atualiza apenas o conteúdo principal
     root.innerHTML = contentHTML;
 
-    // Renderiza os modais
-    root.insertAdjacentHTML('beforeend', renderTransactionModal());
-    root.insertAdjacentHTML('beforeend', renderBudgetModal());
+    // CORREÇÃO: As modais agora são renderizadas dinamicamente com base no estado
+    if (state.isModalOpen) {
+        if (state.modalView === 'transaction') {
+            root.insertAdjacentHTML('beforeend', renderTransactionModal());
+        } else if (state.modalView === 'budget') {
+            root.insertAdjacentHTML('beforeend', renderBudgetModal());
+        } else if (state.modalView === 'familyInfo') {
+            root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
+        }
+    }
 
     attachEventListeners();
 }
 
 function attachEventListeners() {
-    // Limpar eventos anteriores para evitar duplicatas
-    // ...
-
     const loginForm = document.getElementById('login-form'); if (loginForm) loginForm.onsubmit = handleLogin;
     const signupForm = document.getElementById('signup-form'); if (signupForm) signupForm.onsubmit = handleSignup;
     const switchToSignup = document.getElementById('switch-to-signup'); if (switchToSignup) switchToSignup.onclick = () => { state.authView = 'signup'; renderApp(); };
@@ -75,7 +80,10 @@ function attachEventListeners() {
     const createFamilyForm = document.getElementById('create-family-form'); if (createFamilyForm) createFamilyForm.onsubmit = handleCreateFamily;
     const joinFamilyForm = document.getElementById('join-family-form'); if (joinFamilyForm) joinFamilyForm.onsubmit = handleJoinFamily;
     document.querySelectorAll('.select-family-button').forEach(button => button.onclick = (e) => handleSelectFamily(e.currentTarget.dataset.familyId));
+    
+    // CORREÇÃO: Removido o parêntese extra no final desta linha
     const userMenuButton = document.getElementById('user-menu-button'); if (userMenuButton) userMenuButton.onclick = () => document.getElementById('user-menu').classList.toggle('hidden');
+    
     const logoutButton = document.getElementById('logout-button'); if (logoutButton) logoutButton.onclick = handleLogout;
     const leaveFamilyButton = document.getElementById('leave-family-button'); if (leaveFamilyButton) leaveFamilyButton.onclick = handleLeaveFamily;
     document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
@@ -98,11 +106,30 @@ function attachEventListeners() {
         state.isModalOpen = true;
         state.modalView = 'transaction';
         state.editingTransactionId = null;
-        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.confirmingDelete = false;
         state.isCreatingTag = false;
         state.modalTransactionType = 'expense';
         renderApp();
     };
+
+    // CORREÇÃO: O handler para o botão de informações da família agora está no local certo
+    const familyInfoButton = document.getElementById('family-name-button');
+    if (familyInfoButton) familyInfoButton.onclick = () => {
+        state.isModalOpen = true;
+        state.modalView = 'familyInfo';
+        renderApp();
+    };
+
+    // CORREÇÃO: O handler para o botão de copiar da modal agora está no local certo
+    const copyCodeModalButton = document.getElementById('copy-code-button-modal');
+    if (copyCodeModalButton) {
+        copyCodeModalButton.onclick = () => {
+            const familyCode = document.getElementById('family-code').textContent;
+            navigator.clipboard.writeText(familyCode).then(() => {
+                showToast('Código copiado!', 'success');
+            });
+        };
+    }
 
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
@@ -111,15 +138,13 @@ function attachEventListeners() {
     const prevMonthButton = document.getElementById('prev-month-button'); if (prevMonthButton) prevMonthButton.onclick = () => handleChangeMonth(-1);
     const nextMonthButton = document.getElementById('next-month-button'); if (nextMonthButton) nextMonthButton.onclick = () => handleChangeMonth(1);
     document.querySelectorAll('.filter-button').forEach(button => button.onclick = (e) => { state.detailsFilterType = e.currentTarget.dataset.filter; state.selectedDate = null; renderApp(); });
-    
-    // CORREÇÃO: Lógica de clique no dia do calendário para limpar o filtro
+
     document.querySelectorAll('.calendar-day').forEach(day => day.onclick = e => {
         const recordsList = document.getElementById('records-list-wrapper');
         const dayNumber = parseInt(e.currentTarget.dataset.day);
         if (recordsList) {
             recordsList.classList.add('content-fade-out');
             setTimeout(() => {
-                // Se o dia clicado já está selecionado, ele limpa o filtro (null)
                 state.selectedDate = (state.selectedDate === dayNumber) ? null : dayNumber;
                 renderApp();
             }, 150);
@@ -127,38 +152,39 @@ function attachEventListeners() {
     });
 
     const clearDateFilterButton = document.getElementById('clear-date-filter'); if (clearDateFilterButton) clearDateFilterButton.onclick = () => { state.selectedDate = null; renderApp(); };
-    
+
     // Handler para abrir a edição de transação
     document.querySelectorAll('.transaction-item').forEach(item => item.onclick = e => {
         const transactionId = e.currentTarget.dataset.transactionId;
         state.editingTransactionId = transactionId;
         state.isModalOpen = true;
         state.modalView = 'transaction';
-        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.confirmingDelete = false;
         renderApp();
     });
 
     const addBudgetButton = document.getElementById('add-budget-button'); if (addBudgetButton) addBudgetButton.onclick = () => { state.isModalOpen = true; state.modalView = 'budget'; state.editingBudgetItemId = null; renderApp(); };
     document.querySelectorAll('.budget-item').forEach(item => item.onclick = e => { state.editingBudgetItemId = e.currentTarget.dataset.budgetId; state.isModalOpen = true; state.modalView = 'budget'; renderApp(); });
-    
+
     // Handler para fechar a modal
     const closeModalButton = document.getElementById('close-modal-button');
     if (closeModalButton) closeModalButton.onclick = () => {
         state.isModalOpen = false;
         state.editingTransactionId = null;
         state.editingBudgetItemId = null;
-        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.confirmingDelete = false;
+        state.modalView = null;
         renderApp();
     };
-    
+
     const confirmDeleteYes = document.getElementById('confirm-delete-yes'); if (confirmDeleteYes) confirmDeleteYes.onclick = state.editingTransactionId ? handleDeleteTransaction : handleDeleteBudget;
     const confirmDeleteNo = document.getElementById('confirm-delete-no'); if (confirmDeleteNo) confirmDeleteNo.onclick = () => { state.confirmingDelete = false; renderApp(); };
     const addTransactionForm = document.getElementById('add-transaction-form'); if (addTransactionForm) addTransactionForm.onsubmit = handleAddTransaction;
     const editTransactionForm = document.getElementById('edit-transaction-form'); if (editTransactionForm) editTransactionForm.onsubmit = handleUpdateTransaction;
-    
+
     // Handler para o botão "Excluir"
     const deleteTransactionButton = document.getElementById('delete-transaction-button'); if (deleteTransactionButton) deleteTransactionButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
-    
+
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
     const deleteBudgetButton = document.getElementById('delete-budget-button'); if (deleteBudgetButton) deleteBudgetButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
     const budgetTypeSelect = document.getElementById('budgetType'); if (budgetTypeSelect) budgetTypeSelect.onchange = () => {
@@ -200,6 +226,24 @@ function attachEventListeners() {
             }
         };
     });
+}
+
+// NOVO: Handler para o botão "Informações da Família"
+const familyInfoButton = document.getElementById('family-name-button');
+if (familyInfoButton) familyInfoButton.onclick = () => {
+    state.isModalOpen = true;
+    state.modalView = 'familyInfo';
+    renderApp();
+};
+
+const copyCodeModalButton = document.getElementById('copy-code-button-modal');
+if (copyCodeModalButton) {
+    copyCodeModalButton.onclick = () => {
+        const familyCode = document.getElementById('family-code').textContent;
+        navigator.clipboard.writeText(familyCode).then(() => {
+            showToast('Código copiado!', 'success');
+        });
+    };
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---

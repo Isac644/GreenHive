@@ -5,7 +5,7 @@ const logoFullHorizontal = `<img src="assets/LogoFullHorizontal.png" style="heig
 const logoFull = `<img src="assets/LogoFull.png" style="height: 180px;">`;
 const logoIcon = `<img src="assets/LogoIcon.png" style="height: 80px;">`;
 const logoName = `<img src="assets/LogoName.png" style="height: 80px;">`;
-const themeIcon = () => state.theme === 'light' ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+const themeIcon = () => state.theme === 'light' ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
 export function renderHeader() {
     if (!state.user) return '';
@@ -330,7 +330,7 @@ export function renderMainContent() {
     return `<div class="w-full max-w-6xl mx-auto px-4 py-8">
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">${state.family.name}</h1>
+            <button id="family-name-button" class="text-2xl font-bold text-gray-800 cursor-pointer hover:underline">${state.family.name}</button>
             <p class="text-sm text-gray-500">Bem-vindo(a), ${state.user.name}!</p>
         </div>
         <button id="leave-family-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-red-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg">Sair da Família</button>
@@ -339,6 +339,57 @@ export function renderMainContent() {
     <div id="view-content" class="content-fade-in">${viewContent}</div>
 </div>`;
 }
+
+export function renderFamilyInfoModal() {
+    if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
+    
+    // Ícone de usuário para a lista de membros
+    const userIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+
+    const membersHTML = state.family.members.map(member => `<div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50">
+        <div class="flex items-center gap-2">
+            ${userIcon}
+            <p class="text-gray-800 dark:text-black">${member.uid === state.user.uid ? `${state.user.name} (Você)` : (member.name || member.uid.substring(0,8))}</p>
+        </div>
+        <span class="text-xs font-semibold px-2 py-1 rounded-full text-white bg-gray-600">${member.role}</span>
+    </div>`).join('');
+    
+    return `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
+        <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Informações da Família</h2>
+                <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">Nome da Família</p>
+                        <p class="text-xl font-semibold text-gray-800">${state.family.name}</p>
+                    </div>
+                    <div class="mt-2 md:mt-0">
+                        <p class="text-sm font-medium text-gray-700">Código de Convite</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <p id="family-code" class="text-xl font-bold text-gray-800">${state.family.code}</p>
+                            <button id="copy-code-button-modal" class="px-3 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg flex items-center gap-1">
+                                <img src="assets/copy_icon.png" alt="Copiar" class="h-4 w-4 icon-invert" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Membros</p>
+                    <div class="divide-y">${membersHTML}</div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
 
 export function renderFamilyDashboard() {
     const month = state.displayedMonth.getMonth();
