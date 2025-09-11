@@ -144,6 +144,17 @@ function attachEventListeners() {
         destroyChartsCallback();
         destroyChartsCallback = null;
     }
+
+    document.querySelectorAll('.open-modal-day-button').forEach(button => {
+    button.onclick = (e) => {
+        state.isModalOpen = true;
+        state.modalView = 'transaction';
+        state.editingTransactionId = null;
+        state.isCreatingTag = false;
+        state.modalTransactionType = 'expense';
+        renderApp();
+    };
+});
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---

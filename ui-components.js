@@ -438,6 +438,7 @@ ${['dashboard', 'records'].includes(state.currentView) ? `
     </button>` : ''}`;
 }
 
+// ... dentro de ui-components.js
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
@@ -447,38 +448,10 @@ export function renderRecordsPage() {
     let calendarDaysHTML = Array(firstDay).fill(`<div class="text-center p-2"></div>`).join('');
     for (let day = 1; day <= daysInMonth; day++) {
         const isSelected = state.selectedDate === day;
-        calendarDaysHTML += `
-            <div class="text-center p-1">
-                <button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'}">${day}</button>
-            </div>`;
+        calendarDaysHTML += `<div class="text-center p-1"><button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-200'}">${day}</button></div>`;
     }
 
-    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-    <div class="flex justify-between items-center mb-4">
-        <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3>
-        <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
-    </div>
-    <div class="grid grid-cols-7 gap-1 text-sm text-center text-gray-500 mb-2">
-        <div>Dom</div>
-        <div>Seg</div>
-        <div>Ter</div>
-        <div>Qua</div>
-        <div>Qui</div>
-        <div>Sex</div>
-        <div>Sáb</div>
-    </div>
-    <div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div>
-    ${state.selectedDate ? `<div class="text-center mt-4"><button id="clear-date-filter" class="text-sm text-blue-600 hover:underline">Limpar filtro do dia</button></div>` : ''}
-</div>`;
+    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center mb-4"><button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div><div class="grid grid-cols-7 gap-1 text-sm text-center text-gray-500 mb-2"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div><div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div>${state.selectedDate ? `<div class="text-center mt-4"><button id="clear-date-filter" class="text-sm text-blue-600 hover:underline">Limpar filtro do dia</button></div>` : ''}</div>`;
     
     const filtered = state.transactions.filter(t => {
         const transactionDate = new Date(t.date + 'T12:00:00');
@@ -499,47 +472,16 @@ export function renderRecordsPage() {
     let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada para os filtros selecionados.</p>`;
     if (sortedDays.length > 0) {
         transactionsHTML = sortedDays.map(day => {
-            const transactionsForDay = groupedByDate[day].map(t => `
-                <li class="transaction-item flex justify-between items-center py-3 px-2 -mx-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer" data-transaction-id="${t.id}">
-                    <div>
-                        <p class="font-medium text-gray-800">${t.description}</p>
-                        <div class="flex items-center mt-1">
-                            <p class="text-sm text-gray-500 mr-2">${t.userName || 'Autor desconhecido'}</p>
-                            <span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${state.categoryColors[t.category] || '#6B7280'}">${t.category}</span>
-                        </div>
-                    </div>
-                    <p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p>
-                </li>`).join('');
-            return `<div class="mb-4">
-    <p class="font-bold text-gray-700 pb-2 border-b">${day} de ${monthName}</p>
-    <ul class="divide-y">${transactionsForDay}</ul>
-</div>`;
+            const transactionsForDay = groupedByDate[day].map(t => `<li class="transaction-item flex justify-between items-center py-3 px-2 -mx-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer" data-transaction-id="${t.id}"><div><p class="font-medium text-gray-800">${t.description}</p><div class="flex items-center mt-1"><p class="text-sm text-gray-500 mr-2">${t.userName || 'Autor desconhecido'}</p><span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${state.categoryColors[t.category] || '#6B7280'}">${t.category}</span></div></div><p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></li>`).join('');
+            return `<div class="mb-4"><div class="flex items-center justify-between pb-2 border-b"><p class="font-bold text-gray-700">${day} de ${monthName}</p></div><ul class="divide-y">${transactionsForDay}</ul></div>`;
         }).join('');
     }
 
-    return `<div id="records-page-container" class="content-fade-in">
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div class="lg:col-span-2">${calendarHTML}</div>
-        <div class="lg:col-span-3">
-            <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-                <div class="flex items-center justify-center gap-4">
-                    <button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button>
-                    <button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button>
-                    <button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button>
-                </div>
-            </div>
-            <div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${transactionsHTML}</div>
-        </div>
-    </div>
-    ${['dashboard', 'records'].includes(state.currentView) ? `
-    <button id="open-modal-button" class="fixed bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-110">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>` : ''}
-</div>`;
+    const newButtonHTML = `<div class="flex justify-end mb-4"><button id="open-modal-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Adicionar Transação</button></div>`;
+
+    return `<div id="records-page-container" class="content-fade-in"><div class="grid grid-cols-1 lg:grid-cols-5 gap-6"><div class="lg:col-span-2">${calendarHTML}</div><div class="lg:col-span-3"><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-center gap-4"><button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button><button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button><button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button></div></div><div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${newButtonHTML + transactionsHTML}</div></div></div></div>`;
 }
+// ...
 
 export function renderBudgetPage() {
     const month = state.displayedMonth.getMonth();
