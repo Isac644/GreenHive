@@ -546,7 +546,7 @@ export function renderBudgetPage() {
 
     const budgetItemsHTML = activeBudgets.map(budget => {
         let progressHTML = '';
-        if (budget.type === 'expense') {
+        if(budget.type === 'expense') {
             const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
             const limit = budget.value;
             const percentage = limit > 0 ? (spent / limit) * 100 : 0;
@@ -576,29 +576,23 @@ export function renderBudgetPage() {
 
     return `
         <main class="content-fade-in">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-lg">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Mês do Orçamento</h3>
-                    <div class="flex items-center justify-between">
-                        <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <span class="font-semibold capitalize month-selector-text">${monthName} de ${year}</span>
-                        <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </button>
-                    </div>
+            <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+                <div class="flex items-center justify-between">
+                    <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <span class="font-semibold capitalize month-selector-text">${monthName} de ${year}</span>
+                    <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
                 </div>
-                <div class="lg:col-span-3 bg-white p-6 rounded-2xl shadow-lg">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamentos para ${monthName}</h3>
-                    <div class="space-y-4">
-                        ${budgetItemsHTML}
-                        <button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>
-                    </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamentos para ${monthName}</h3>
+                <div class="space-y-4">
+                    ${budgetItemsHTML}
+                    <button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>
                 </div>
             </div>
         </main>`;
