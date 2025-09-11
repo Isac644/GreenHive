@@ -194,8 +194,11 @@ export function renderTransactionModal() {
     <button type="button" id="confirm-delete-yes" class="px-3 py-1 bg-red-600 text-white rounded-md mr-2">Sim</button>
     <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
 </div>` : '';
+        const typeSelectorHTML = `<div class="flex gap-2 mb-6"><button type="button" data-type="expense" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}">Despesa</button><button type="button" data-type="income" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}">Receita</button></div>`;
+        
         contentHTML = `
             <form id="${isEditing ? 'edit' : 'add'}-transaction-form">
+                ${typeSelectorHTML}
                 <div class="space-y-4">
                     <div>
                         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
@@ -403,10 +406,9 @@ export function renderFamilyDashboard() {
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamento Mensal</h3>
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${new Date().getFullYear()})</h3>
         <div class="h-80 relative">
-            <canvas id="budget-overview-chart"></canvas>
-            <div id="budget-chart-text" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none"></div>
+            <canvas id="annual-balance-chart"></canvas>
         </div>
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
@@ -424,9 +426,9 @@ export function renderFamilyDashboard() {
         </div>
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${new Date().getFullYear()})</h3>
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3>
         <div class="h-80 relative">
-            <canvas id="annual-balance-chart"></canvas>
+            <canvas id="person-spending-chart"></canvas>
         </div>
     </div>
 </div>
@@ -442,7 +444,6 @@ export function renderFamilyDashboard() {
 </div>`;
 }
 
-// ... dentro de ui-components.js
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
@@ -485,7 +486,6 @@ export function renderRecordsPage() {
 
     return `<div id="records-page-container" class="content-fade-in"><div class="grid grid-cols-1 lg:grid-cols-5 gap-6"><div class="lg:col-span-2">${calendarHTML}</div><div class="lg:col-span-3"><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-center gap-4"><button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button><button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button><button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button></div></div><div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${newButtonHTML + transactionsHTML}</div></div></div></div>`;
 }
-// ...
 
 export function renderBudgetPage() {
     const month = state.displayedMonth.getMonth();
@@ -571,141 +571,166 @@ export function renderBudgetPage() {
         </main>`;
 }
 
-export function renderCharts() {
-    const chartInstances = { monthly: null, annual: null, comparison: null, budget: null };
+// Funções de renderização de gráficos
+export function renderMonthlyChart() {
+    const chartCanvas = document.getElementById('monthly-expenses-chart');
+    if (!chartCanvas) return null;
+    const month = state.displayedMonth.getMonth();
+    const year = state.displayedMonth.getFullYear();
+    const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year && t.type === 'expense');
+    const expenseData = monthlyTransactions.reduce((acc, t) => {
+        const category = t.category || 'Outros';
+        acc[category] = (acc[category] || 0) + t.amount;
+        return acc;
+    }, {});
+    const labels = Object.keys(expenseData);
+    const data = Object.values(expenseData);
+    const colors = labels.map(label => state.categoryColors[label] || '#6B7280');
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+    
+    return new Chart(chartCanvas.getContext('2d'), {
+        type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb', borderWidth: 4 }] }, options: {
+            responsive: true, maintainAspectRatio: false, plugins: {
+                legend: { position: 'bottom', labels: { color: textColor } }, datalabels: {
+                    formatter: (value, ctx) => {
+                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? (value / total * 100).toFixed(0) + '%' : '0%';
+                        return percentage;
+                    }, color: '#fff', font: { weight: 'bold' }
+                }
+            }
+        }
+    });
+}
 
-    const destroyCharts = () => {
+export function renderAnnualChart() {
+    const chartCanvas = document.getElementById('annual-balance-chart');
+    if (!chartCanvas) return null;
+    const currentYear = new Date().getFullYear();
+    const annualData = { income: Array(12).fill(0), expense: Array(12).fill(0) };
+    state.transactions.forEach(t => {
+        const transactionDate = new Date(t.date + 'T12:00:00');
+        if (transactionDate.getFullYear() === currentYear) {
+            const month = transactionDate.getMonth();
+            if (t.type === 'income') annualData.income[month] += t.amount;
+            else annualData.expense[month] += t.amount;
+        }
+    });
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+    
+    return new Chart(chartCanvas.getContext('2d'), {
+        type: 'bar', data: {
+            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [
+                { label: 'Receitas', data: annualData.income, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                { label: 'Despesas', data: annualData.expense, backgroundColor: 'rgba(239, 68, 68, 0.6)' }
+            ]
+        }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } }, datalabels: { display: false } }, scales: { x: { stacked: false, ticks: { color: textColor } }, y: { stacked: false, ticks: { color: textColor } } } }
+    });
+}
+
+export function renderComparisonChart() {
+    const chartCanvas = document.getElementById('comparison-chart');
+    if (!chartCanvas) return null;
+    const currentMonthDate = state.displayedMonth;
+    const prevMonthDate = new Date(currentMonthDate);
+    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+    const getExpensesForMonth = (date) => state.transactions.filter(t => {
+        const tDate = new Date(t.date + 'T12:00:00');
+        return t.type === 'expense' && tDate.getMonth() === date.getMonth() && tDate.getFullYear() === date.getFullYear();
+    }).reduce((sum, t) => sum + t.amount, 0);
+    const currentMonthExpenses = getExpensesForMonth(currentMonthDate);
+    const prevMonthExpenses = getExpensesForMonth(prevMonthDate);
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+    
+    return new Chart(chartCanvas.getContext('2d'), {
+        type: 'bar', data: {
+            labels: [prevMonthDate.toLocaleString('pt-BR', { month: 'long' }), currentMonthDate.toLocaleString('pt-BR', { month: 'long' })],
+            datasets: [{ label: 'Total de Despesas', data: [prevMonthExpenses, currentMonthExpenses], backgroundColor: ['rgba(107, 114, 128, 0.6)', 'rgba(239, 68, 68, 0.6)'] }]
+        }, options: {
+            responsive: true, maintainAspectRatio: false, plugins: {
+                legend: { display: false }, datalabels: {
+                    anchor: 'end', align: 'top', formatter: (value) => `R$ ${value.toFixed(2)}`, color: textColor, font: { weight: 'bold' }
+                }
+            }, scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
+        }
+    });
+}
+
+export function renderPersonSpendingChart() {
+    const chartCanvas = document.getElementById('person-spending-chart');
+    if (!chartCanvas) return null;
+    const ctx = chartCanvas.getContext('2d');
+    
+    // Filtra transações de despesa do mês atual
+    const monthlyExpenses = state.transactions.filter(t => {
+        const tDate = new Date(t.date + 'T12:00:00');
+        return t.type === 'expense' && tDate.getMonth() === state.displayedMonth.getMonth() && tDate.getFullYear() === state.displayedMonth.getFullYear();
+    });
+    
+    // Soma gastos por pessoa
+    const spendingData = monthlyExpenses.reduce((acc, t) => {
+        const userName = t.userName || 'Desconhecido';
+        acc[userName] = (acc[userName] || 0) + t.amount;
+        return acc;
+    }, {});
+    
+    const labels = Object.keys(spendingData);
+    const data = Object.values(spendingData);
+    const colors = labels.map((_, index) => PALETTE_COLORS[index % PALETTE_COLORS.length]);
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+    
+    if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+
+    return new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: colors,
+                borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb',
+                borderWidth: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: textColor }
+                },
+                datalabels: {
+                    formatter: (value, ctx) => {
+                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? (value / total * 100).toFixed(0) + '%' : '0%';
+                        return percentage;
+                    },
+                    color: '#fff',
+                    font: { weight: 'bold' }
+                }
+            }
+        }
+    });
+}
+
+
+// --- Função que gerencia todos os gráficos do dashboard ---
+// Essa função será chamada pelo main.js
+export function renderCharts() {
+    const chartInstances = {};
+
+    // Destrói todas as instâncias de gráfico para evitar sobreposição
+    const destroyAllCharts = () => {
         Object.values(chartInstances).forEach(chart => {
             if (chart) chart.destroy();
         });
     };
 
-    const renderMonthlyChart = () => {
-        const chartCanvas = document.getElementById('monthly-expenses-chart');
-        if (chartCanvas) {
-            if (chartInstances.monthly) chartInstances.monthly.destroy();
-            const month = state.displayedMonth.getMonth();
-            const year = state.displayedMonth.getFullYear();
-            const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year && t.type === 'expense');
-            const expenseData = monthlyTransactions.reduce((acc, t) => {
-                const category = t.category || 'Outros';
-                acc[category] = (acc[category] || 0) + t.amount;
-                return acc;
-            }, {});
-            const labels = Object.keys(expenseData);
-            const data = Object.values(expenseData);
-            const colors = labels.map(label => state.categoryColors[label] || '#6B7280');
-            const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-            chartInstances.monthly = new Chart(chartCanvas.getContext('2d'), {
-                type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb', borderWidth: 4 }] }, options: {
-                    responsive: true, maintainAspectRatio: false, plugins: {
-                        legend: { position: 'bottom', labels: { color: textColor } }, datalabels: {
-                            formatter: (value, ctx) => {
-                                const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? (value / total * 100).toFixed(0) + '%' : '0%';
-                                return percentage;
-                            }, color: '#fff', font: { weight: 'bold' }
-                        }
-                    }
-                }
-            });
-        }
-    };
-
-    const renderAnnualChart = () => {
-        const chartCanvas = document.getElementById('annual-balance-chart');
-        if (chartCanvas) {
-            if (chartInstances.annual) chartInstances.annual.destroy();
-            const currentYear = new Date().getFullYear();
-            const annualData = { income: Array(12).fill(0), expense: Array(12).fill(0) };
-            state.transactions.forEach(t => {
-                const transactionDate = new Date(t.date + 'T12:00:00');
-                if (transactionDate.getFullYear() === currentYear) {
-                    const month = transactionDate.getMonth();
-                    if (t.type === 'income') annualData.income[month] += t.amount;
-                    else annualData.expense[month] += t.amount;
-                }
-            });
-            const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-            chartInstances.annual = new Chart(chartCanvas.getContext('2d'), {
-                type: 'bar', data: {
-                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [
-                        { label: 'Receitas', data: annualData.income, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-                        { label: 'Despesas', data: annualData.expense, backgroundColor: 'rgba(239, 68, 68, 0.6)' }
-                    ]
-                }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } }, datalabels: { display: false } }, scales: { x: { stacked: false, ticks: { color: textColor } }, y: { stacked: false, ticks: { color: textColor } } } }
-            });
-        }
-    };
-
-    const renderComparisonChart = () => {
-        const chartCanvas = document.getElementById('comparison-chart');
-        if (chartCanvas) {
-            if (chartInstances.comparison) chartInstances.comparison.destroy();
-            const currentMonthDate = state.displayedMonth;
-            const prevMonthDate = new Date(currentMonthDate);
-            prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
-            const getExpensesForMonth = (date) => state.transactions.filter(t => {
-                const tDate = new Date(t.date + 'T12:00:00');
-                return t.type === 'expense' && tDate.getMonth() === date.getMonth() && tDate.getFullYear() === date.getFullYear();
-            }).reduce((sum, t) => sum + t.amount, 0);
-            const currentMonthExpenses = getExpensesForMonth(currentMonthDate);
-            const prevMonthExpenses = getExpensesForMonth(prevMonthDate);
-            const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-            chartInstances.comparison = new Chart(chartCanvas.getContext('2d'), {
-                type: 'bar', data: {
-                    labels: [prevMonthDate.toLocaleString('pt-BR', { month: 'long' }), currentMonthDate.toLocaleString('pt-BR', { month: 'long' })],
-                    datasets: [{ label: 'Total de Despesas', data: [prevMonthExpenses, currentMonthExpenses], backgroundColor: ['rgba(107, 114, 128, 0.6)', 'rgba(239, 68, 68, 0.6)'] }]
-                }, options: {
-                    responsive: true, maintainAspectRatio: false, plugins: {
-                        legend: { display: false }, datalabels: {
-                            anchor: 'end', align: 'top', formatter: (value) => `R$ ${value.toFixed(2)}`, color: textColor, font: { weight: 'bold' }
-                        }
-                    }, scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
-                }
-            });
-        }
-    };
-
-    const renderBudgetChart = () => {
-        const chartCanvas = document.getElementById('budget-overview-chart');
-        if (chartCanvas) {
-            if (chartInstances.budget) chartInstances.budget.destroy();
-            const month = state.displayedMonth.getMonth();
-            const year = state.displayedMonth.getFullYear();
-            const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
-            const totalExpenses = monthlyTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-            const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
-            const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
-            const remaining = totalBudget - totalExpenses;
-            const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
-            chartInstances.budget = new Chart(chartCanvas.getContext('2d'), {
-                type: 'doughnut', data: {
-                    labels: ['Gasto', 'Restante'], datasets: [{ data: [totalExpenses, remaining > 0 ? remaining : 0], backgroundColor: ['#EF4444', '#10B981'], borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb', borderWidth: 4 }]
-                }, options: {
-                    responsive: true, maintainAspectRatio: false, plugins: {
-                        legend: { position: 'bottom', labels: { color: textColor } }, datalabels: {
-                            formatter: (value, ctx) => {
-                                const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                return total > 0 ? (value / total * 100).toFixed(0) + '%' : '0%';
-                            }, color: '#fff'
-                        }
-                    }, cutout: '70%'
-                }
-            });
-            const budgetText = document.getElementById('budget-chart-text');
-            if (budgetText) {
-                const percentage = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
-                const percentageColor = percentage > 100 ? 'text-red-500' : (percentage > 80 ? 'text-yellow-500' : 'text-green-500');
-                budgetText.innerHTML = `<span class="text-3xl font-bold ${percentageColor}">${percentage.toFixed(0)}%</span><span class="text-sm text-gray-500">Gasto</span>`;
-            }
-        }
-    };
-
-    renderMonthlyChart();
-    renderAnnualChart();
-    renderComparisonChart();
-    renderBudgetChart();
-
-    return destroyCharts;
+    chartInstances.monthly = renderMonthlyChart();
+    chartInstances.annual = renderAnnualChart();
+    chartInstances.comparison = renderComparisonChart();
+    chartInstances.personSpending = renderPersonSpendingChart();
+    
+    return destroyAllCharts;
 }

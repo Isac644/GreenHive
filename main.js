@@ -138,23 +138,26 @@ function attachEventListeners() {
     // ... dentro de attachEventListeners() em main.js
     // ...
     if (state.currentView === 'dashboard') {
-        renderChartsUI();
-    }
-    else if (state.currentView !== 'dashboard' && destroyChartsCallback) {
+        if (destroyChartsCallback) {
+            destroyChartsCallback();
+            destroyChartsCallback = null;
+        }
+        destroyChartsCallback = renderChartsUI();
+    } else if (destroyChartsCallback) {
         destroyChartsCallback();
         destroyChartsCallback = null;
     }
 
     document.querySelectorAll('.open-modal-day-button').forEach(button => {
-    button.onclick = (e) => {
-        state.isModalOpen = true;
-        state.modalView = 'transaction';
-        state.editingTransactionId = null;
-        state.isCreatingTag = false;
-        state.modalTransactionType = 'expense';
-        renderApp();
-    };
-});
+        button.onclick = (e) => {
+            state.isModalOpen = true;
+            state.modalView = 'transaction';
+            state.editingTransactionId = null;
+            state.isCreatingTag = false;
+            state.modalTransactionType = 'expense';
+            renderApp();
+        };
+    });
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
