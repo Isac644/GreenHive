@@ -65,10 +65,7 @@ export function renderApp() {
 
 function attachEventListeners() {
     // Limpar eventos anteriores para evitar duplicatas
-    // A abordagem mais simples aqui é usar um "proxy" ou IDs únicos,
-    // mas a forma atual com 'removeAllEventListeners' não é trivial.
-    // Vamos manter a abordagem original, pois para esse projeto funciona,
-    // mas em um framework seria aprimorado.
+    // ...
 
     const loginForm = document.getElementById('login-form'); if (loginForm) loginForm.onsubmit = handleLogin;
     const signupForm = document.getElementById('signup-form'); if (signupForm) signupForm.onsubmit = handleSignup;
@@ -94,7 +91,19 @@ function attachEventListeners() {
     });
     const themeToggleButton = document.getElementById('theme-toggle-button'); if (themeToggleButton) themeToggleButton.onclick = handleToggleTheme;
     const detailsButton = document.getElementById('details-button'); if (detailsButton) detailsButton.onclick = () => { state.currentView = 'records'; renderApp(); };
-    const openModalButton = document.getElementById('open-modal-button'); if (openModalButton) openModalButton.onclick = () => { state.isModalOpen = true; state.modalView = 'transaction'; state.editingTransactionId = null; state.isCreatingTag = false; state.modalTransactionType = 'expense'; renderApp(); };
+
+    // Handler para o botão "Adicionar Transação"
+    const openModalButton = document.getElementById('open-modal-button');
+    if (openModalButton) openModalButton.onclick = () => {
+        state.isModalOpen = true;
+        state.modalView = 'transaction';
+        state.editingTransactionId = null;
+        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.isCreatingTag = false;
+        state.modalTransactionType = 'expense';
+        renderApp();
+    };
+
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
     const copyCodeButton = document.getElementById('copy-code-button'); if (copyCodeButton) copyCodeButton.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
@@ -104,15 +113,38 @@ function attachEventListeners() {
     document.querySelectorAll('.filter-button').forEach(button => button.onclick = (e) => { state.detailsFilterType = e.currentTarget.dataset.filter; state.selectedDate = null; renderApp(); });
     document.querySelectorAll('.calendar-day').forEach(day => day.onclick = e => { const recordsList = document.getElementById('records-list-wrapper'); const dayNumber = parseInt(e.currentTarget.dataset.day); if (recordsList) { recordsList.classList.add('content-fade-out'); setTimeout(() => { state.selectedDate = dayNumber; renderApp(); }, 150); } });
     const clearDateFilterButton = document.getElementById('clear-date-filter'); if (clearDateFilterButton) clearDateFilterButton.onclick = () => { state.selectedDate = null; renderApp(); };
-    document.querySelectorAll('.transaction-item').forEach(item => item.onclick = e => { const transactionId = e.currentTarget.dataset.transactionId; state.editingTransactionId = transactionId; state.isModalOpen = true; state.modalView = 'transaction'; renderApp(); });
+    
+    // Handler para abrir a edição de transação
+    document.querySelectorAll('.transaction-item').forEach(item => item.onclick = e => {
+        const transactionId = e.currentTarget.dataset.transactionId;
+        state.editingTransactionId = transactionId;
+        state.isModalOpen = true;
+        state.modalView = 'transaction';
+        state.confirmingDelete = false; // LINHA ADICIONADA
+        renderApp();
+    });
+
     const addBudgetButton = document.getElementById('add-budget-button'); if (addBudgetButton) addBudgetButton.onclick = () => { state.isModalOpen = true; state.modalView = 'budget'; state.editingBudgetItemId = null; renderApp(); };
     document.querySelectorAll('.budget-item').forEach(item => item.onclick = e => { state.editingBudgetItemId = e.currentTarget.dataset.budgetId; state.isModalOpen = true; state.modalView = 'budget'; renderApp(); });
-    const closeModalButton = document.getElementById('close-modal-button'); if (closeModalButton) closeModalButton.onclick = () => { state.isModalOpen = false; state.editingTransactionId = null; state.editingBudgetItemId = null; renderApp(); };
+    
+    // Handler para fechar a modal
+    const closeModalButton = document.getElementById('close-modal-button');
+    if (closeModalButton) closeModalButton.onclick = () => {
+        state.isModalOpen = false;
+        state.editingTransactionId = null;
+        state.editingBudgetItemId = null;
+        state.confirmingDelete = false; // LINHA ADICIONADA
+        renderApp();
+    };
+    
     const confirmDeleteYes = document.getElementById('confirm-delete-yes'); if (confirmDeleteYes) confirmDeleteYes.onclick = state.editingTransactionId ? handleDeleteTransaction : handleDeleteBudget;
     const confirmDeleteNo = document.getElementById('confirm-delete-no'); if (confirmDeleteNo) confirmDeleteNo.onclick = () => { state.confirmingDelete = false; renderApp(); };
     const addTransactionForm = document.getElementById('add-transaction-form'); if (addTransactionForm) addTransactionForm.onsubmit = handleAddTransaction;
     const editTransactionForm = document.getElementById('edit-transaction-form'); if (editTransactionForm) editTransactionForm.onsubmit = handleUpdateTransaction;
+    
+    // Handler para o botão "Excluir"
     const deleteTransactionButton = document.getElementById('delete-transaction-button'); if (deleteTransactionButton) deleteTransactionButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
+    
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
     const deleteBudgetButton = document.getElementById('delete-budget-button'); if (deleteBudgetButton) deleteBudgetButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
     const budgetTypeSelect = document.getElementById('budgetType'); if (budgetTypeSelect) budgetTypeSelect.onchange = () => {
@@ -135,8 +167,6 @@ function attachEventListeners() {
     }
 
     // Gerenciamento de gráficos
-    // ... dentro de attachEventListeners() em main.js
-    // ...
     if (state.currentView === 'dashboard') {
         if (destroyChartsCallback) {
             destroyChartsCallback();
@@ -148,25 +178,14 @@ function attachEventListeners() {
         destroyChartsCallback = null;
     }
 
-    document.querySelectorAll('.open-modal-day-button').forEach(button => {
+    document.querySelectorAll('.transaction-type-button').forEach(button => {
         button.onclick = (e) => {
-            state.isModalOpen = true;
-            state.modalView = 'transaction';
-            state.editingTransactionId = null;
-            state.isCreatingTag = false;
-            state.modalTransactionType = 'expense';
-            renderApp();
+            if (state.modalTransactionType !== e.currentTarget.dataset.type) {
+                state.modalTransactionType = e.currentTarget.dataset.type;
+                renderApp(); // re-renderiza para atualizar a UI do modal
+            }
         };
     });
-
-    document.querySelectorAll('.transaction-type-button').forEach(button => {
-    button.onclick = (e) => {
-        if (state.modalTransactionType !== e.currentTarget.dataset.type) {
-            state.modalTransactionType = e.currentTarget.dataset.type;
-            renderApp(); // re-renderiza para atualizar a UI do modal
-        }
-    };
-});
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
