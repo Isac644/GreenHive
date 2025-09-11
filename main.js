@@ -158,6 +158,15 @@ function attachEventListeners() {
             renderApp();
         };
     });
+
+    document.querySelectorAll('.transaction-type-button').forEach(button => {
+    button.onclick = (e) => {
+        if (state.modalTransactionType !== e.currentTarget.dataset.type) {
+            state.modalTransactionType = e.currentTarget.dataset.type;
+            renderApp(); // re-renderiza para atualizar a UI do modal
+        }
+    };
+});
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
