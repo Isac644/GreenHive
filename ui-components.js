@@ -1,7 +1,10 @@
 // ui-components.js
 import { state, CATEGORIES, PALETTE_COLORS } from "./state-and-handlers.js";
 
-const iconHTML = `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU... (código muito longo omitido para concisão)`;
+const logoFullHorizontal = `<img src="assets/LogoFullHorizontal.png" style="height: 80px;">`;
+const logoFull = `<img src="assets/LogoFull.png" style="height: 180px;">`;
+const logoIcon = `<img src="assets/LogoIcon.png" style="height: 80px;">`;
+const logoName = `<img src="assets/LogoName.png" style="height: 80px;">`;
 const themeIcon = () => state.theme === 'light' ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
 export function renderHeader() {
@@ -9,8 +12,7 @@ export function renderHeader() {
     return `<header class="bg-white shadow-md w-full sticky top-0 z-10">
     <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            ${iconHTML}
-            <h1 class="text-xl font-bold text-gray-800">GreenHive</h1>
+            ${logoFullHorizontal}
         </div>
         <div class="flex items-center gap-4">
             <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 transition">
@@ -37,8 +39,7 @@ export function renderAuthPage() {
     <div class="bg-white p-8 rounded-2xl shadow-lg w-full animate-fade-in max-w-md mx-auto">
         <div class="text-center mb-8">
             <div class="flex justify-center items-center gap-3 mb-2">
-                ${iconHTML}
-                <h1 class="text-3xl font-bold text-gray-800">GreenHive</h1>
+                ${logoFull}
             </div>
             <p class="text-gray-600">Sua colmeia financeira familiar.</p>
         </div>
