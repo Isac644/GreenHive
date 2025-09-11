@@ -351,6 +351,13 @@ export function renderFamilyDashboard() {
     const incomeBudget = state.budgets.find(b => b.type === 'income' && new Date(b.appliesFrom) <= state.displayedMonth);
     const incomeGoal = incomeBudget ? incomeBudget.value : 0;
     const incomePercentage = incomeGoal > 0 ? (summary.income / incomeGoal) * 100 : 0;
+    
+    // Calcule o total dos orçamentos de despesa
+    const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
+    const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
+    const expensePercentage = totalBudget > 0 ? (summary.expenses / totalBudget) * 100 : 0;
+    const barColor = expensePercentage > 100 ? 'bg-red-500' : (expensePercentage > 80 ? 'bg-yellow-500' : 'bg-green-500');
+
     return `
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white p-6 rounded-2xl shadow-lg">
@@ -364,6 +371,10 @@ export function renderFamilyDashboard() {
     <div class="bg-white p-6 rounded-2xl shadow-lg">
         <p class="text-sm text-gray-500">Despesa do Mês</p>
         <p class="text-2xl font-bold text-gray-800 text-red-600">R$ ${summary.expenses.toFixed(2)}</p>
+        <p class="text-sm text-gray-500 mt-2">Limite Definido: R$ ${totalBudget.toFixed(2)}</p>
+        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+            <div class="${barColor} h-2 rounded-full" style="width: ${Math.min(expensePercentage, 100)}%"></div>
+        </div>
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
         <p class="text-sm text-gray-500">Saldo do Mês</p>
@@ -428,14 +439,7 @@ export function renderFamilyDashboard() {
             <button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button>
         </div>
     </div>
-</div>
-${['dashboard', 'records'].includes(state.currentView) ? `
-    <button id="open-modal-button" class="fixed bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-110">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>` : ''}`;
+</div>`;
 }
 
 // ... dentro de ui-components.js
