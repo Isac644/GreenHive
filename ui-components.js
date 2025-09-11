@@ -415,6 +415,7 @@ export function renderFamilyDashboard() {
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Despesas do Mês por Categoria</h3>
         <div class="h-80 relative">
             <canvas id="monthly-expenses-chart"></canvas>
+            <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
         </div>
     </div>
 </div>
@@ -429,6 +430,7 @@ export function renderFamilyDashboard() {
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3>
         <div class="h-80 relative">
             <canvas id="person-spending-chart"></canvas>
+            <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
         </div>
     </div>
 </div>
@@ -574,10 +576,23 @@ export function renderBudgetPage() {
 // Funções de renderização de gráficos
 export function renderMonthlyChart() {
     const chartCanvas = document.getElementById('monthly-expenses-chart');
-    if (!chartCanvas) return null;
+    const noDataElement = document.getElementById('monthly-expenses-chart-no-data');
+    if (!chartCanvas || !noDataElement) return null;
+    
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year && t.type === 'expense');
+    
+    if (monthlyTransactions.length === 0) {
+        chartCanvas.style.display = 'none';
+        noDataElement.style.display = 'flex';
+        noDataElement.innerHTML = `Ainda não foram registrados gastos para esse mês.`;
+        return null;
+    } else {
+        chartCanvas.style.display = 'block';
+        noDataElement.style.display = 'none';
+    }
+
     const expenseData = monthlyTransactions.reduce((acc, t) => {
         const category = t.category || 'Outros';
         acc[category] = (acc[category] || 0) + t.amount;
@@ -588,6 +603,8 @@ export function renderMonthlyChart() {
     const colors = labels.map(label => state.categoryColors[label] || '#6B7280');
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
     
+    if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
+
     return new Chart(chartCanvas.getContext('2d'), {
         type: 'doughnut', data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb', borderWidth: 4 }] }, options: {
             responsive: true, maintainAspectRatio: false, plugins: {
@@ -602,6 +619,7 @@ export function renderMonthlyChart() {
         }
     });
 }
+
 
 export function renderAnnualChart() {
     const chartCanvas = document.getElementById('annual-balance-chart');
@@ -658,16 +676,24 @@ export function renderComparisonChart() {
 
 export function renderPersonSpendingChart() {
     const chartCanvas = document.getElementById('person-spending-chart');
-    if (!chartCanvas) return null;
-    const ctx = chartCanvas.getContext('2d');
+    const noDataElement = document.getElementById('person-spending-chart-no-data');
+    if (!chartCanvas || !noDataElement) return null;
     
-    // Filtra transações de despesa do mês atual
     const monthlyExpenses = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
         return t.type === 'expense' && tDate.getMonth() === state.displayedMonth.getMonth() && tDate.getFullYear() === state.displayedMonth.getFullYear();
     });
-    
-    // Soma gastos por pessoa
+
+    if (monthlyExpenses.length === 0) {
+        chartCanvas.style.display = 'none';
+        noDataElement.style.display = 'flex';
+        noDataElement.innerHTML = `Ainda não foram registrados gastos para esse mês.`;
+        return null;
+    } else {
+        chartCanvas.style.display = 'block';
+        noDataElement.style.display = 'none';
+    }
+
     const spendingData = monthlyExpenses.reduce((acc, t) => {
         const userName = t.userName || 'Desconhecido';
         acc[userName] = (acc[userName] || 0) + t.amount;
@@ -679,9 +705,9 @@ export function renderPersonSpendingChart() {
     const colors = labels.map((_, index) => PALETTE_COLORS[index % PALETTE_COLORS.length]);
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
     
-    if (Chart.getChart(ctx)) Chart.getChart(ctx).destroy();
+    if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
 
-    return new Chart(ctx, {
+    return new Chart(chartCanvas.getContext('2d'), {
         type: 'doughnut',
         data: {
             labels,
