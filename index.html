@@ -47,6 +47,7 @@
             transition: background-color 0.3s ease;
         }
 
+        /* Remova a classe 'dark' do body e adicione a 'dark' ao html */
         .dark body {
             background: linear-gradient(to bottom, #111827, #043a25);
         }
@@ -148,12 +149,14 @@
         }
 
         .transaction-item:hover {
-        background-color: #f3f4f6; /* cinza suave */
-    }
-    
-    .dark .transaction-item:hover {
-        background-color: #374151; /* cinza escuro para o modo noturno */
-    }
+            background-color: #f3f4f6;
+            /* cinza suave */
+        }
+
+        .dark .transaction-item:hover {
+            background-color: #374151;
+            /* cinza escuro para o modo noturno */
+        }
     </style>
 </head>
 

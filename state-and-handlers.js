@@ -24,6 +24,9 @@ export const state = {
     modalTransactionType: 'expense',
     confirmingDelete: false,
     errorMessage: '',
+    // NOVO:
+    familyAdmins: [],
+    familyMembers: [],
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -75,7 +78,14 @@ export async function handleCreateFamily(event) {
     event.preventDefault();
     const familyName = event.target.familyName.value;
     if (!familyName) return;
-    const newFamily = { name: familyName, code: Math.random().toString(36).substring(2, 8).toUpperCase(), members: [state.user.uid], userCategories: { expense: [], income: [] }, categoryColors: state.categoryColors };
+    const newFamily = { 
+        name: familyName, 
+        code: Math.random().toString(36).substring(2, 8).toUpperCase(), 
+        members: [state.user.uid],
+        admins: [state.user.uid], // NOVO: Define o criador como admin
+        userCategories: { expense: [], income: [] }, 
+        categoryColors: state.categoryColors 
+    };
     try {
         const docRef = await firebase.addDoc(firebase.collection(db, "familyGroups"), newFamily);
         await handleSelectFamily(docRef.id);
@@ -84,6 +94,20 @@ export async function handleCreateFamily(event) {
         showToast("Erro ao criar família.", 'error');
         console.error(e);
     }
+}
+
+export function handleSwitchFamily() {
+    state.family = null;
+    state.transactions = [];
+    state.budgets = [];
+    state.userCategories = { expense: [], income: [] };
+    state.categoryColors = {};
+    state.familyAdmins = [];
+    state.familyMembers = [];
+    state.currentView = 'onboarding'; // Volta para a tela de seleção/criação
+    state.isModalOpen = false;
+    renderApp();
+    showToast("Você saiu da família atual.", 'success');
 }
 
 export async function handleJoinFamily(event) {
@@ -326,6 +350,16 @@ export async function loadFamilyData(familyId) {
         state.family = { id: familyId, ...familyData };
         state.userCategories = familyData.userCategories || { expense: [], income: [] };
         state.categoryColors = familyData.categoryColors || state.categoryColors;
+        state.familyAdmins = familyData.admins || []; // NOVO: Carrega admins
+
+        // Busca dados de todos os membros da família para o modal
+        const memberUserDocs = await Promise.all(
+            familyData.members.map(memberId => firebase.getDoc(firebase.doc(db, "users", memberId)))
+        );
+        state.familyMembers = memberUserDocs.map(doc => ({
+            uid: doc.id,
+            ...doc.data()
+        }));
 
         const transactionsQuery = firebase.query(firebase.collection(db, "transactions"), firebase.where("familyGroupId", "==", familyId));
         const transactionsSnapshot = await firebase.getDocs(transactionsQuery);

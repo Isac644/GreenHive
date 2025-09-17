@@ -11,9 +11,11 @@ import {
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
-    renderMainContent, renderTransactionModal, renderBudgetModal,
-    renderCharts as renderChartsUI
+    renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal,
+    renderCharts as renderChartsUI, 
 } from "./ui-components.js";
+
+import { handleSwitchFamily } from "./state-and-handlers.js"; 
 
 const root = document.getElementById('root');
 const toastContainer = document.getElementById('toast-container');
@@ -179,6 +181,21 @@ function attachEventListeners() {
         swipeTarget.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
         swipeTarget.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; if (touchEndX < touchStartX - 50) handleChangeMonth(1); if (touchEndX > touchStartX + 50) handleChangeMonth(-1); });
     }
+    const familyInfoButton = document.getElementById('family-info-button');
+    if (familyInfoButton) {
+        familyInfoButton.onclick = () => {
+            state.isModalOpen = true;
+            state.modalView = 'familyInfo';
+            renderApp();
+        };
+    }
+
+     // NOVO: Evento para o botão "Trocar de Família"
+     const switchFamilyButton = document.getElementById('switch-family-button');
+     if (switchFamilyButton) {
+         switchFamilyButton.onclick = handleSwitchFamily;
+     }
+ 
 
     // Gerenciamento de gráficos
     if (state.currentView === 'dashboard') {

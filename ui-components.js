@@ -313,6 +313,74 @@ export function renderBudgetModal() {
         </div>`;
 }
 
+export function renderFamilyInfoModal() {
+    if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
+
+    const memberListHTML = state.familyMembers.map(member => {
+        const isAdmin = state.familyAdmins.includes(member.uid);
+        const adminTag = isAdmin ? `<span class="ml-2 bg-green-200 text-green-800 text-xs font-medium px-2 py-0.5 rounded-full dark:bg-green-800 dark:text-green-200">Admin</span>` : '';
+        const isCurrentUser = member.uid === state.user.uid;
+
+        const memberName = member.name || 'Anônimo'; 
+        const userName = isCurrentUser ? `${memberName} (você)` : memberName;
+
+        return `
+            <li class="flex items-center justify-between p-3 border-b border-gray-200 last:border-b-0 dark:border-gray-600">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-sm mr-3">
+                      ${userName.charAt(0)}
+                    </div>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">${userName}</p>
+                    ${adminTag}
+                </div>
+            </li>
+        `;
+    }).join('');
+
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
+            <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content dark:bg-gray-800">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Informações da Família</h2>
+                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-6">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Nome da Família</p>
+                        <p class="text-lg font-bold text-gray-800 dark:text-gray-200">${state.family.name}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Código de Convite</p>
+                        <div class="flex items-center justify-between p-2 bg-gray-100 rounded-lg dark:bg-gray-700">
+                            <p class="text-xl font-bold text-gray-800 tracking-widest dark:text-gray-200">${state.family.code}</p>
+                            <button id="copy-code-button" class="p-2 rounded-md hover:bg-gray-200 transition dark:hover:bg-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                                    <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Membros</p>
+                        <ul class="bg-gray-50 rounded-lg divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
+                            ${memberListHTML}
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button id="switch-family-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition">Trocar de Família</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 export function renderMainContent() {
     if (!state.family) return '';
     const navTabs = `<div class="mb-8 border-b">
@@ -328,16 +396,17 @@ export function renderMainContent() {
     else if (state.currentView === 'budget') viewContent = renderBudgetPage();
 
     return `<div class="w-full max-w-6xl mx-auto px-4 py-8">
-    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-800">${state.family.name}</h1>
-            <p class="text-sm text-gray-500">Bem-vindo(a), ${state.user.name}!</p>
-        </div>
-        <button id="leave-family-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-red-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg">Sair da Família</button>
-    </header>
-    ${navTabs}
-    <div id="view-content" class="content-fade-in">${viewContent}</div>
-</div>`;
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <div>
+                <button id="family-info-button" class="text-2xl font-bold text-gray-800 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition cursor-pointer">${state.family.name}</button>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Bem-vindo(a), ${state.user.name}!</p>
+            </div>
+            <button id="leave-family-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-red-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Sair da Família</button>
+        </header>
+        ${navTabs}
+        <div id="view-content" class="content-fade-in">${viewContent}</div>
+    </div>
+    ${renderFamilyInfoModal()}`; // NOVO: Adiciona o modal
 }
 
 export function renderFamilyDashboard() {
