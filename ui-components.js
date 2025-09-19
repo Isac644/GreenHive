@@ -381,6 +381,99 @@ export function renderFamilyInfoModal() {
     `;
 }
 
+export function renderManageCategoriesModal() {
+    if (!state.isModalOpen || state.modalView !== 'manageCategories') return '';
+
+    const allExpenseCategories = [...CATEGORIES.expense, ...(state.userCategories.expense || [])];
+
+    const categoryListHTML = allExpenseCategories.map(cat => {
+        const color = state.categoryColors[cat] || '#6B7280';
+        return `
+            <li class="flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0 dark:border-gray-600">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${color};"></div>
+                    <span class="text-gray-800 dark:text-gray-200">${cat}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button class="edit-category-button px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 transition" data-category-name="${cat}">
+                        Editar
+                    </button>
+                </div>
+            </li>
+        `;
+    }).join('');
+
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
+            <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content dark:bg-gray-800">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Gerenciar Categorias</h2>
+                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <ul class="bg-gray-50 rounded-lg divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
+                        ${categoryListHTML}
+                    </ul>
+                    <button id="add-new-category-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500 dark:hover:bg-gray-700 transition">
+                        + Adicionar Nova Categoria
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderEditCategoryModal() {
+    if (!state.isModalOpen || state.modalView !== 'editCategory') return '';
+
+    const categoryName = state.editingCategory;
+    const categoryColor = state.categoryColors[categoryName] || '#6B7280';
+
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
+            <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content dark:bg-gray-800">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Editar Categoria</h2>
+                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <form id="edit-category-form" class="space-y-4">
+                    <div>
+                        <label for="category-name-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Categoria</label>
+                        <input type="text" id="category-name-input" value="${categoryName}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                    </div>
+                    <div>
+                        <label for="category-color-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cor</label>
+                        <input type="color" id="category-color-input" value="${categoryColor}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                    </div>
+                    <div class="flex justify-between items-center pt-4">
+                        <button type="button" id="delete-category-button" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition">
+                            Excluir
+                        </button>
+                        <div class="space-x-2">
+                            <button type="button" id="cancel-edit-button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition">
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+}
+
 export function renderMainContent() {
     if (!state.family) return '';
     const navTabs = `<div class="mb-8 border-b">
@@ -477,12 +570,17 @@ export function renderFamilyDashboard() {
         </div>
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Despesas do Mês por Categoria</h3>
-        <div class="h-80 relative">
-            <canvas id="monthly-expenses-chart"></canvas>
-            <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
-        </div>
-    </div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Despesas do Mês por Categoria</h3>
+                    <button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">
+                        Gerenciar Categorias
+                    </button>
+                </div>
+                <div class="h-80 relative">
+                    <canvas id="monthly-expenses-chart"></canvas>
+                    <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
+                </div>
+            </div>
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <div class="bg-white p-6 rounded-2xl shadow-lg">

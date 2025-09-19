@@ -27,6 +27,8 @@ export const state = {
     // NOVO:
     familyAdmins: [],
     familyMembers: [],
+    modalView: '',
+    editingCategory: '', // NOVO: A categoria que está sendo editada
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -376,5 +378,149 @@ export async function loadFamilyData(familyId) {
         showToast("Erro ao carregar dados da família.", 'error');
         console.error(e);
         handleLeaveFamily();
+    }
+}
+// NOVO: Lógica para Atualizar a Categoria
+export async function handleUpdateCategory(event) {
+    event.preventDefault();
+    const oldName = state.editingCategory;
+    const newName = document.getElementById('category-name-input').value.trim();
+    const newColor = document.getElementById('category-color-input').value;
+
+    const isDefault = CATEGORIES.expense.includes(oldName) || CATEGORIES.income.includes(oldName);
+    if (isDefault) {
+        showToast("Categorias padrão não podem ser editadas.", 'error');
+        state.isModalOpen = false;
+        renderApp();
+        return;
+    }
+
+    if (!newName) {
+        showToast("O nome da categoria não pode ser vazio.", 'error');
+        return;
+    }
+
+    try {
+        const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
+
+        const currentCategories = { ...state.userCategories };
+        let type = '';
+
+        if (currentCategories.expense.includes(oldName)) {
+            type = 'expense';
+        } else if (currentCategories.income.includes(oldName)) {
+            type = 'income';
+        }
+
+        const oldCategories = currentCategories[type];
+        const newCategories = oldCategories.filter(cat => cat !== oldName);
+
+        if (oldCategories.includes(newName) && newName !== oldName) {
+            showToast("Uma categoria com este nome já existe.", 'error');
+            return;
+        }
+
+        newCategories.push(newName);
+        
+        // Atualizar o nome da categoria nas transações
+        const transactionsToUpdate = state.transactions.filter(t => t.category === oldName);
+        const batch = firebase.writeBatch(db);
+        transactionsToUpdate.forEach(t => {
+            const transactionRef = firebase.doc(db, "transactions", t.id);
+            batch.update(transactionRef, { category: newName });
+        });
+        await batch.commit();
+
+        // Atualizar no banco de dados da família
+        await firebase.updateDoc(familyDocRef, {
+            [`userCategories.${type}`]: newCategories,
+            [`categoryColors.${newName}`]: newColor
+        });
+        
+        // Remover a cor antiga se o nome mudou
+        if (oldName !== newName) {
+            const familyData = (await firebase.getDoc(familyDocRef)).data();
+            const newColors = familyData.categoryColors;
+            delete newColors[oldName];
+            await firebase.updateDoc(familyDocRef, { categoryColors: newColors });
+        }
+
+        // Atualizar o estado local
+        state.userCategories[type] = newCategories;
+        state.categoryColors[newName] = newColor;
+        delete state.categoryColors[oldName];
+
+        // Recarregar os dados para refletir as mudanças
+        await loadFamilyData(state.family.id);
+
+        state.isModalOpen = false;
+        state.editingCategory = '';
+        renderApp();
+        showToast("Categoria atualizada com sucesso!", 'success');
+    } catch (e) {
+        showToast("Erro ao atualizar categoria.", 'error');
+        console.error(e);
+    }
+}
+
+// NOVO: Lógica para Excluir a Categoria
+export async function handleDeleteCategory() {
+    const categoryToDelete = state.editingCategory;
+
+    const isDefault = CATEGORIES.expense.includes(categoryToDelete) || CATEGORIES.income.includes(categoryToDelete);
+    if (isDefault) {
+        showToast("Categorias padrão não podem ser excluídas.", 'error');
+        state.isModalOpen = false;
+        renderApp();
+        return;
+    }
+    
+    try {
+        const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
+        const familyData = (await firebase.getDoc(familyDocRef)).data();
+        const userCategories = familyData.userCategories;
+        const categoryColors = familyData.categoryColors;
+        
+        // Identifica o tipo (receita ou despesa) da categoria
+        let type = '';
+        if (userCategories.expense.includes(categoryToDelete)) {
+            type = 'expense';
+        } else if (userCategories.income.includes(categoryToDelete)) {
+            type = 'income';
+        }
+
+        // Remove a categoria da lista
+        const newCategories = userCategories[type].filter(cat => cat !== categoryToDelete);
+        
+        // Remove a cor da categoria
+        delete categoryColors[categoryToDelete];
+
+        // Atualiza o documento no Firebase
+        await firebase.updateDoc(familyDocRef, {
+            [`userCategories.${type}`]: newCategories,
+            categoryColors: categoryColors
+        });
+
+        // Atualizar transações para a categoria "Indefinida"
+        const transactionsToUpdate = state.transactions.filter(t => t.category === categoryToDelete);
+        const batch = firebase.writeBatch(db);
+        transactionsToUpdate.forEach(t => {
+            const transactionRef = firebase.doc(db, "transactions", t.id);
+            batch.update(transactionRef, { category: 'Indefinida' });
+        });
+        await batch.commit();
+
+        // Atualiza o estado local
+        state.userCategories[type] = newCategories;
+        delete state.categoryColors[categoryToDelete];
+        state.transactions = state.transactions.map(t => t.category === categoryToDelete ? { ...t, category: 'Indefinida' } : t);
+
+        state.isModalOpen = false;
+        state.editingCategory = '';
+        renderApp();
+        showToast("Categoria excluída com sucesso! Transações relacionadas foram movidas para 'Indefinida'.", 'success');
+    } catch (e) {
+        showToast("Erro ao excluir categoria.", 'error');
+        console.error(e);
     }
 }

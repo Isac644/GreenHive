@@ -8,14 +8,17 @@ import {
     handleSaveBudget, handleDeleteBudget, handleSaveNewTag,
     handleChangeMonth, handleToggleTheme,
     fetchUserFamilies, loadFamilyData,
+    handleSwitchFamily,
+    handleUpdateCategory, // NOVO: Importe a função de atualização
+    handleDeleteCategory // NOVO: Importe a função de exclusão
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
     renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal,
-    renderCharts as renderChartsUI, 
+    renderCharts as renderChartsUI,
+    renderManageCategoriesModal, // NOVO: Importe a função do novo modal
+    renderEditCategoryModal,
 } from "./ui-components.js";
-
-import { handleSwitchFamily } from "./state-and-handlers.js"; 
 
 const root = document.getElementById('root');
 const toastContainer = document.getElementById('toast-container');
@@ -55,12 +58,17 @@ export function renderApp() {
         contentHTML = renderMainContent();
     }
 
+    root.innerHTML = contentHTML;
+
     // Atualiza apenas o conteúdo principal
     root.innerHTML = contentHTML;
 
     // Renderiza os modais
     root.insertAdjacentHTML('beforeend', renderTransactionModal());
     root.insertAdjacentHTML('beforeend', renderBudgetModal());
+    root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
+    root.insertAdjacentHTML('beforeend', renderManageCategoriesModal());
+    root.insertAdjacentHTML('beforeend', renderEditCategoryModal()); // NOVO: Chame a função do novo modal de edição
 
     attachEventListeners();
 }
@@ -217,6 +225,65 @@ function attachEventListeners() {
             }
         };
     });
+
+    
+    // NOVO: Handler para o botão "Adicionar Nova Categoria" dentro do modal
+    const addNewCategoryButton = document.getElementById('add-new-category-button');
+    if (addNewCategoryButton) {
+        addNewCategoryButton.onclick = () => {
+            state.isModalOpen = true;
+            state.modalView = 'newTag';
+            renderApp();
+        };
+    }
+
+    const manageCategoriesButton = document.getElementById('manage-categories-button');
+    if (manageCategoriesButton) {
+        manageCategoriesButton.onclick = () => {
+            state.isModalOpen = true;
+            state.modalView = 'manageCategories';
+            renderApp();
+        };
+    }
+    
+    // NOVO: Handler para os botões "Editar" de cada categoria
+    document.querySelectorAll('.edit-category-button').forEach(button => {
+        button.onclick = (event) => {
+            const categoryToEdit = event.target.dataset.categoryName;
+            state.editingCategory = categoryToEdit;
+            state.isModalOpen = true;
+            state.modalView = 'editCategory';
+            renderApp();
+        };
+    });
+
+    // NOVO: Handler para o botão "Cancelar" no modal de edição
+    const cancelEditButton = document.getElementById('cancel-edit-button');
+    if (cancelEditButton) {
+        cancelEditButton.onclick = () => {
+            state.isModalOpen = false;
+            state.modalView = '';
+            state.editingCategory = '';
+            renderApp();
+        };
+    }
+
+    // Handler para o formulário de edição de categoria
+    const editCategoryForm = document.getElementById('edit-category-form');
+    if (editCategoryForm) {
+        editCategoryForm.onsubmit = handleUpdateCategory; // Conecta com a nova função
+    }
+
+    // Handler para o botão "Excluir"
+    const deleteCategoryButton = document.getElementById('delete-category-button');
+    if (deleteCategoryButton) {
+        deleteCategoryButton.onclick = () => {
+             // NOVO: Adicione uma confirmação simples antes de excluir
+            if (confirm("Tem certeza que deseja excluir esta categoria?")) {
+                handleDeleteCategory(); // Conecta com a nova função
+            }
+        };
+    }
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
