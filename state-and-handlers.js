@@ -159,6 +159,41 @@ export async function handleJoinFamily(event) {
     }
 }
 
+export async function handleJoinFamilyFromLink(code) {
+    const uppercaseCode = code.toUpperCase();
+    
+    // Evita que usuários já em uma família tentem entrar em outra automaticamente
+    if (state.family) return false;
+    
+    try {
+        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("code", "==", uppercaseCode));
+        const querySnapshot = await firebase.getDocs(q);
+        
+        if (querySnapshot.empty) {
+            // Falha silenciosa, pois o código pode estar errado
+            return false;
+        }
+        
+        const familyDoc = querySnapshot.docs[0];
+        const familyId = familyDoc.id;
+        
+        // Se o usuário não estiver na lista de membros, adiciona
+        if (!familyDoc.data().members.includes(state.user.uid)) {
+            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
+        }
+        
+        // Seleciona e carrega a nova família
+        await handleSelectFamily(familyId);
+        showToast("Você entrou na família via link de convite!", 'success');
+        return true;
+        
+    } catch (e) {
+        console.error("Erro ao entrar na família via link:", e);
+        showToast("Erro ao tentar entrar na família via link.", 'error');
+        return false;
+    }
+}
+
 export async function handleSelectFamily(familyId) {
     await loadFamilyData(familyId);
     if (state.family) {

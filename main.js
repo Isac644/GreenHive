@@ -9,8 +9,9 @@ import {
     handleChangeMonth, handleToggleTheme,
     fetchUserFamilies, loadFamilyData,
     handleSwitchFamily,
-    handleUpdateCategory, // NOVO: Importe a função de atualização
-    handleDeleteCategory // NOVO: Importe a função de exclusão
+    handleUpdateCategory, 
+    handleDeleteCategory,
+    handleJoinFamilyFromLink // <--- NOVO: ADICIONE ESTA FUNÇÃO
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
@@ -117,7 +118,6 @@ function attachEventListeners() {
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
     const copyCodeButton = document.getElementById('copy-code-button'); if (copyCodeButton) copyCodeButton.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
-    const shareLinkButton = document.getElementById('share-link-button'); if (shareLinkButton) shareLinkButton.onclick = () => navigator.clipboard.writeText(`https://seusite.com/join?code=${state.family.code}`).then(() => showToast('Link de convite copiado!', 'success'));
     const prevMonthButton = document.getElementById('prev-month-button'); if (prevMonthButton) prevMonthButton.onclick = () => handleChangeMonth(-1);
     const nextMonthButton = document.getElementById('next-month-button'); if (nextMonthButton) nextMonthButton.onclick = () => handleChangeMonth(1);
     document.querySelectorAll('.filter-button').forEach(button => button.onclick = (e) => { state.detailsFilterType = e.currentTarget.dataset.filter; state.selectedDate = null; renderApp(); });
@@ -328,6 +328,10 @@ function attachEventListeners() {
         state.confirmingDelete = false; // Oculta a confirmação
         renderApp();
     };
+
+    const shareLinkButton = document.getElementById('share-link-button'); 
+if (shareLinkButton) shareLinkButton.onclick = () => navigator.clipboard.writeText(`${window.location.origin}/?code=${state.family.code}`).then(() => showToast('Link de convite copiado!', 'success'));
+
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
@@ -335,6 +339,23 @@ firebase.onAuthStateChanged(auth, async (user) => {
     if (user) {
         state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0] };
         state.userFamilies = await fetchUserFamilies();
+
+        // --- NOVO: LÓGICA DE CONVITE POR LINK ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteCode = urlParams.get('code');
+
+        // Só tenta entrar se houver um código e o usuário não estiver em uma família
+        if (inviteCode && !state.family) {
+            const success = await handleJoinFamilyFromLink(inviteCode); 
+            
+            // Se o código for processado (sucesso ou falha), limpamos o código da URL
+            if (success || inviteCode) {
+                 // Use replaceState para remover o código da URL sem recarregar a página
+                history.replaceState(null, '', window.location.pathname);
+            }
+        }
+        // ----------------------------------------
+
     } else {
         state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = [];
         state.currentView = 'auth';

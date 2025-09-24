@@ -530,6 +530,13 @@ export function renderFamilyDashboard() {
     const expensePercentage = totalBudget > 0 ? (summary.expenses / totalBudget) * 100 : 0;
     const barColor = expensePercentage > 100 ? 'bg-red-500' : (expensePercentage > 80 ? 'bg-yellow-500' : 'bg-green-500');
 
+    // NOVO: Verifica se o usuário é administrador
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+
+    const manageCategoriesButton = isAdmin ? 
+        `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : 
+        '';
+
     return `
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white p-6 rounded-2xl shadow-lg">
@@ -582,10 +589,8 @@ export function renderFamilyDashboard() {
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Despesas do Mês por Categoria</h3>
-                    <button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">
-                        Gerenciar Categorias
-                    </button>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Despesas do Mês por Categoria</h3>
+                        ${manageCategoriesButton} 
                 </div>
                 <div class="h-80 relative">
                     <canvas id="monthly-expenses-chart"></canvas>
