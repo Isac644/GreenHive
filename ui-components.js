@@ -433,6 +433,16 @@ export function renderEditCategoryModal() {
 
     const categoryName = state.editingCategory;
     const categoryColor = state.categoryColors[categoryName] || '#6B7280';
+    
+    // NOVO: HTML de confirmação de exclusão
+    const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-4 p-4 bg-red-100 rounded-lg text-center">
+        <p class="text-red-700 mb-2">Tem certeza?</p>
+        <button type="button" id="confirm-delete-yes" class="px-3 py-1 bg-red-600 text-white rounded-md mr-2">Sim</button>
+        <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
+    </div>` : '';
+    
+    // Define se o botão de salvar ocupa a largura total ou se divide o espaço
+    const deleteButtonClass = state.confirmingDelete ? 'hidden' : '';
 
     return `
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
@@ -455,7 +465,7 @@ export function renderEditCategoryModal() {
                         <label for="category-color-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cor</label>
                         <input type="color" id="category-color-input" value="${categoryColor}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                     </div>
-                    <div class="flex justify-between items-center pt-4">
+                    <div class="flex justify-between items-center pt-4 ${deleteButtonClass}">
                         <button type="button" id="delete-category-button" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition">
                             Excluir
                         </button>
@@ -468,6 +478,7 @@ export function renderEditCategoryModal() {
                             </button>
                         </div>
                     </div>
+                    ${confirmDeleteHTML}
                 </form>
             </div>
         </div>

@@ -161,8 +161,6 @@ function attachEventListeners() {
         renderApp();
     };
     
-    const confirmDeleteYes = document.getElementById('confirm-delete-yes'); if (confirmDeleteYes) confirmDeleteYes.onclick = state.editingTransactionId ? handleDeleteTransaction : handleDeleteBudget;
-    const confirmDeleteNo = document.getElementById('confirm-delete-no'); if (confirmDeleteNo) confirmDeleteNo.onclick = () => { state.confirmingDelete = false; renderApp(); };
     const addTransactionForm = document.getElementById('add-transaction-form'); if (addTransactionForm) addTransactionForm.onsubmit = handleAddTransaction;
     const editTransactionForm = document.getElementById('edit-transaction-form'); if (editTransactionForm) editTransactionForm.onsubmit = handleUpdateTransaction;
     
@@ -179,10 +177,8 @@ function attachEventListeners() {
         const options = (type === 'expense' ? allExpenseCategories : allIncomeCategories).map(c => `<option value="${c}">${c}</option>`).join('');
         form.querySelector('#budgetCategory').innerHTML = options;
     };
-    const categorySelect = document.getElementById('category'); if (categorySelect) categorySelect.onchange = (e) => { if (e.target.value === '--create-new--') { state.modalView = 'newTag'; renderApp(); } };
     const createTagForm = document.getElementById('create-tag-form'); if (createTagForm) createTagForm.onsubmit = handleSaveNewTag;
-    const cancelTagCreation = document.getElementById('cancel-tag-creation'); if (cancelTagCreation) cancelTagCreation.onclick = () => { state.modalView = 'transaction'; renderApp(); };
-
+    
     const swipeTarget = document.getElementById('view-content');
     if (swipeTarget && ['dashboard', 'records'].includes(state.currentView)) {
         let touchStartX = 0; let touchEndX = 0;
@@ -226,17 +222,6 @@ function attachEventListeners() {
         };
     });
 
-    
-    // NOVO: Handler para o botão "Adicionar Nova Categoria" dentro do modal
-    const addNewCategoryButton = document.getElementById('add-new-category-button');
-    if (addNewCategoryButton) {
-        addNewCategoryButton.onclick = () => {
-            state.isModalOpen = true;
-            state.modalView = 'newTag';
-            renderApp();
-        };
-    }
-
     const manageCategoriesButton = document.getElementById('manage-categories-button');
     if (manageCategoriesButton) {
         manageCategoriesButton.onclick = () => {
@@ -274,16 +259,75 @@ function attachEventListeners() {
         editCategoryForm.onsubmit = handleUpdateCategory; // Conecta com a nova função
     }
 
-    // Handler para o botão "Excluir"
+    // Handler para o botão "Adicionar Nova Categoria" dentro do modal de GERENCIAR
+    const addNewCategoryButton = document.getElementById('add-new-category-button');
+    if (addNewCategoryButton) {
+        addNewCategoryButton.onclick = () => {
+            state.isModalOpen = true;
+            state.modalParentView = 'manageCategories'; // <--- RASTREIA A ORIGEM
+            state.modalView = 'newTag';
+            renderApp();
+        };
+    }
+    
+    // ... (Seu código atual)
+
+    // Handler para o select de categoria (quando escolhe '--create-new--')
+    const categorySelect = document.getElementById('category'); 
+    if (categorySelect) categorySelect.onchange = (e) => { 
+        if (e.target.value === '--create-new--') { 
+            state.modalParentView = 'transaction'; // <--- RASTREIA A ORIGEM
+            state.modalView = 'newTag'; 
+            renderApp(); 
+        } 
+    };
+    
+    // Handler para o botão "Cancelar" no modal de criação de tags
+    const cancelTagCreation = document.getElementById('cancel-tag-creation'); 
+    if (cancelTagCreation) cancelTagCreation.onclick = () => { 
+        // Retorna para o pai rastreado
+        state.modalView = state.modalParentView || 'transaction'; 
+        state.modalParentView = ''; // Limpa o estado
+        renderApp(); 
+    };
+
+    // Handler para os botões "Editar" de cada categoria
+    document.querySelectorAll('.edit-category-button').forEach(button => {
+        button.onclick = (event) => {
+            const categoryToEdit = event.target.dataset.categoryName;
+            state.editingCategory = categoryToEdit;
+            state.confirmingDelete = false; // Garante que a confirmação esteja oculta ao abrir
+            state.isModalOpen = true;
+            state.modalView = 'editCategory';
+            renderApp();
+        };
+    });
+
+    // ... (Seu código atual)
+
+    // Handler para o botão "Excluir" no modal de edição de categoria
     const deleteCategoryButton = document.getElementById('delete-category-button');
     if (deleteCategoryButton) {
         deleteCategoryButton.onclick = () => {
-             // NOVO: Adicione uma confirmação simples antes de excluir
-            if (confirm("Tem certeza que deseja excluir esta categoria?")) {
-                handleDeleteCategory(); // Conecta com a nova função
-            }
+             // NOVO: Apenas mostra a confirmação, não exclui ainda
+            state.confirmingDelete = true;
+            renderApp();
         };
     }
+    
+    // NOVO: Handler para o botão "Sim" na confirmação
+    const confirmDeleteYes = document.getElementById('confirm-delete-yes'); 
+    if (confirmDeleteYes) confirmDeleteYes.onclick = () => {
+        handleDeleteCategory(); // Chama a função de exclusão
+        state.confirmingDelete = false; // Limpa o estado
+    };
+
+    // NOVO: Handler para o botão "Não" na confirmação
+    const confirmDeleteNo = document.getElementById('confirm-delete-no'); 
+    if (confirmDeleteNo) confirmDeleteNo.onclick = () => { 
+        state.confirmingDelete = false; // Oculta a confirmação
+        renderApp();
+    };
 }
 
 // --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
