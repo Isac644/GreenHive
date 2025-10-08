@@ -1,26 +1,42 @@
 // ui-components.js
 import { state, CATEGORIES, PALETTE_COLORS } from "./state-and-handlers.js";
 
-const logoFullHorizontal = `<img src="assets/LogoFullHorizontal.png" style="height: 80px;">`;
-const logoFull = `<img src="assets/LogoFull.png" style="height: 180px;">`;
-const logoIcon = `<img src="assets/LogoIcon.png" style="height: 80px;">`;
-const logoName = `<img src="assets/LogoName.png" style="height: 80px;">`;
-const themeIcon = () => state.theme === 'light' ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+const GreenHiveLogoSVG = (height) => `
+    <svg height="${height}" viewBox="0 0 340 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#16a34a;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <path d="M30,5 L0,25 L0,65 L30,85 L60,65 L60,25 Z M30,15 L50,28 L50,52 L30,65 L10,52 L10,28 Z" fill="url(#logoGradient)"/>
+        <text x="80" y="62" font-family="Arial, sans-serif" font-size="40" font-weight="bold" fill="url(#logoGradient)">GreenHive</text>
+    </svg>`;
+
+const ThemeIconSVG = () => state.theme === 'light' 
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>` 
+    : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+const GoogleIconSVG = `<svg class="h-6 w-6 mr-2" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C44.572,36.833,48,30.826,48,24C48,22.659,47.862,21.35,47.611,20.083z"></path></svg>`;
+
+const CopyIconSVG = `<svg class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
+
+const BellIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
 
 export function renderHeader() {
     if (!state.user) return '';
     return `<header class="bg-white shadow-md w-full sticky top-0 z-10">
     <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            ${logoFullHorizontal}
+            ${GreenHiveLogoSVG('40')}
         </div>
         <div class="flex items-center gap-4">
             <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 transition">
-                ${themeIcon()}
+                ${ThemeIconSVG()}
             </button>
             <div class="relative">
                 <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
@@ -39,7 +55,7 @@ export function renderAuthPage() {
     <div class="bg-white p-8 rounded-2xl shadow-lg w-full animate-fade-in max-w-md mx-auto">
         <div class="text-center mb-8">
             <div class="flex justify-center items-center gap-3 mb-2">
-                ${logoFull}
+                ${GreenHiveLogoSVG('80')}
             </div>
             <p class="text-gray-600">Sua colmeia financeira familiar.</p>
         </div>
@@ -80,7 +96,7 @@ export function renderLoginFormHTML() {
     hover:bg-gray-100 hover:text-gray-800 
     dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 
     dark:hover:bg-gray-600 dark:hover:text-white">
-    <img src="assets/google_icon.png" alt="Google icon" class="h-6 w-6 mr-2" />
+    ${GoogleIconSVG}
     Login com Google
 </button>
 <p class="mt-8 text-center text-sm text-gray-600">Não tem uma conta?
@@ -235,7 +251,7 @@ export function renderTransactionModal() {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-700">${isEditing ? 'Editar Transação' : (state.modalView === 'newTag' ? 'Criar Categoria' : 'Nova Transação')}</h2>
                     <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -269,7 +285,7 @@ export function renderBudgetModal() {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-700">${isEditing ? 'Editar' : 'Criar'} Orçamento</h2>
                     <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -343,7 +359,7 @@ export function renderFamilyInfoModal() {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Informações da Família</h2>
                     <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -359,10 +375,7 @@ export function renderFamilyInfoModal() {
                         <div class="flex items-center justify-between p-2 bg-gray-100 rounded-lg dark:bg-gray-700">
                             <p class="text-xl font-bold text-gray-800 tracking-widest dark:text-gray-200">${state.family.code}</p>
                             <button id="copy-code-button" class="p-2 rounded-md hover:bg-gray-200 transition dark:hover:bg-gray-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
-                                    <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
-                                </svg>
+                                ${CopyIconSVG}
                             </button>
                         </div>
                     </div>
@@ -384,18 +397,18 @@ export function renderFamilyInfoModal() {
 export function renderManageCategoriesModal() {
     if (!state.isModalOpen || state.modalView !== 'manageCategories') return '';
 
-    const allExpenseCategories = [...CATEGORIES.expense, ...(state.userCategories.expense || [])];
+    const allExpenseCategories = [...(state.userCategories.expense || [])];
 
     const categoryListHTML = allExpenseCategories.map(cat => {
         const color = state.categoryColors[cat] || '#6B7280';
         return `
-            <li class="flex justify-between items-center p-3 border-b border-gray-200 last:border-b-0 dark:border-gray-600">
+            <li class="bg-white flex justify-between items-center p-3">
                 <div class="flex items-center">
                     <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${color};"></div>
-                    <span class="text-gray-800 dark:text-gray-200">${cat}</span>
+                    <span class="text-gray-800">${cat}</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button class="edit-category-button px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 transition" data-category-name="${cat}">
+                    <button class="edit-category-button px-2 py-1 text-xs font-medium rounded-md transition bg-gray-200 text-gray-600 hover:bg-gray-300" data-category-name="${cat}">
                         Editar
                     </button>
                 </div>
@@ -409,17 +422,17 @@ export function renderManageCategoriesModal() {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Gerenciar Categorias</h2>
                     <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
                 </div>
                 <div class="space-y-4">
-                    <ul class="bg-gray-50 rounded-lg divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
+                    <ul class="rounded-lg overflow-hidden divide-y divide-gray-200 dark:divide-gray-600">
                         ${categoryListHTML}
                     </ul>
-                    <button id="add-new-category-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500 dark:hover:bg-gray-700 transition">
+                    <button id="add-new-category-button" class="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:border-green-500 transition">
                         + Adicionar Nova Categoria
                     </button>
                 </div>
@@ -434,14 +447,12 @@ export function renderEditCategoryModal() {
     const categoryName = state.editingCategory;
     const categoryColor = state.categoryColors[categoryName] || '#6B7280';
     
-    // NOVO: HTML de confirmação de exclusão
     const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-4 p-4 bg-red-100 rounded-lg text-center">
         <p class="text-red-700 mb-2">Tem certeza?</p>
         <button type="button" id="confirm-delete-yes" class="px-3 py-1 bg-red-600 text-white rounded-md mr-2">Sim</button>
         <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
     </div>` : '';
     
-    // Define se o botão de salvar ocupa a largura total ou se divide o espaço
     const deleteButtonClass = state.confirmingDelete ? 'hidden' : '';
 
     return `
@@ -450,7 +461,7 @@ export function renderEditCategoryModal() {
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Editar Categoria</h2>
                     <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -509,8 +520,7 @@ export function renderMainContent() {
         </header>
         ${navTabs}
         <div id="view-content" class="content-fade-in">${viewContent}</div>
-    </div>
-    ${renderFamilyInfoModal()}`; // NOVO: Adiciona o modal
+    </div>`;
 }
 
 export function renderFamilyDashboard() {
@@ -524,13 +534,11 @@ export function renderFamilyDashboard() {
     const incomeGoal = incomeBudget ? incomeBudget.value : 0;
     const incomePercentage = incomeGoal > 0 ? (summary.income / incomeGoal) * 100 : 0;
 
-    // Calcule o total dos orçamentos de despesa
     const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
     const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
     const expensePercentage = totalBudget > 0 ? (summary.expenses / totalBudget) * 100 : 0;
     const barColor = expensePercentage > 100 ? 'bg-red-500' : (expensePercentage > 80 ? 'bg-yellow-500' : 'bg-green-500');
 
-    // NOVO: Verifica se o usuário é administrador
     const isAdmin = state.familyAdmins.includes(state.user.uid);
 
     const manageCategoriesButton = isAdmin ? 
@@ -589,8 +597,8 @@ export function renderFamilyDashboard() {
     </div>
     <div class="bg-white p-6 rounded-2xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Despesas do Mês por Categoria</h3>
-                        ${manageCategoriesButton} 
+                    <h3 class="text-lg font-semibold text-gray-700">Despesas do Mês por Categoria</h3>
+                    ${manageCategoriesButton} 
                 </div>
                 <div class="h-80 relative">
                     <canvas id="monthly-expenses-chart"></canvas>
@@ -625,7 +633,6 @@ export function renderFamilyDashboard() {
 </div>`;
 }
 
-// ... dentro de ui-components.js
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
@@ -646,15 +653,14 @@ export function renderRecordsPage() {
         const isSelected = state.selectedDate === day;
         const hasTransaction = daysWithTransactions.has(day);
 
-        let dayClasses = 'text-gray-800'; // Define a cor padrão do texto como preta
-if (isSelected) {
-    dayClasses = 'bg-blue-500 text-white';
-} else if (hasTransaction) {
-    // CORREÇÃO: Removido o 'text-white', e adicionado 'text-gray-800' para manter a cor preta do número
-    dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800';
-} else {
-    dayClasses += ' hover:bg-gray-200';
-}
+        let dayClasses = 'text-gray-800';
+        if (isSelected) {
+            dayClasses = 'bg-blue-500 text-white';
+        } else if (hasTransaction) {
+            dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800';
+        } else {
+            dayClasses += ' hover:bg-gray-200';
+        }
 
         calendarDaysHTML += `<div class="text-center p-1">
             <button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${dayClasses}">${day}</button>
@@ -781,7 +787,6 @@ export function renderBudgetPage() {
         </main>`;
 }
 
-// Funções de renderização de gráficos
 export function renderMonthlyChart() {
     const chartCanvas = document.getElementById('monthly-expenses-chart');
     const noDataElement = document.getElementById('monthly-expenses-chart-no-data');
@@ -948,13 +953,8 @@ export function renderPersonSpendingChart() {
     });
 }
 
-
-// --- Função que gerencia todos os gráficos do dashboard ---
-// Essa função será chamada pelo main.js
 export function renderCharts() {
     const chartInstances = {};
-
-    // Destrói todas as instâncias de gráfico para evitar sobreposição
     const destroyAllCharts = () => {
         Object.values(chartInstances).forEach(chart => {
             if (chart) chart.destroy();
@@ -968,3 +968,4 @@ export function renderCharts() {
 
     return destroyAllCharts;
 }
+

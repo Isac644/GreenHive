@@ -11,13 +11,13 @@ import {
     handleSwitchFamily,
     handleUpdateCategory, 
     handleDeleteCategory,
-    handleJoinFamilyFromLink // <--- NOVO: ADICIONE ESTA FUNÇÃO
+    handleJoinFamilyFromLink
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
     renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal,
     renderCharts as renderChartsUI,
-    renderManageCategoriesModal, // NOVO: Importe a função do novo modal
+    renderManageCategoriesModal,
     renderEditCategoryModal,
 } from "./ui-components.js";
 
@@ -25,7 +25,6 @@ const root = document.getElementById('root');
 const toastContainer = document.getElementById('toast-container');
 let destroyChartsCallback = null;
 
-// Funções de utilidade
 export function showToast(message, type) {
     const toast = document.createElement('div');
     toast.className = `toast ${type} animate-fade-in`;
@@ -40,11 +39,9 @@ export function showToast(message, type) {
     }, 5000);
 }
 
-// Funções de Renderização
 export function renderApp() {
     document.documentElement.className = state.theme;
 
-    // Renderiza o cabeçalho fora do fluxo principal para evitar re-renderização
     document.querySelector('body > header')?.remove();
     if (state.user) {
         document.body.insertAdjacentHTML('afterbegin', renderHeader());
@@ -61,23 +58,16 @@ export function renderApp() {
 
     root.innerHTML = contentHTML;
 
-    // Atualiza apenas o conteúdo principal
-    root.innerHTML = contentHTML;
-
-    // Renderiza os modais
     root.insertAdjacentHTML('beforeend', renderTransactionModal());
     root.insertAdjacentHTML('beforeend', renderBudgetModal());
     root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
     root.insertAdjacentHTML('beforeend', renderManageCategoriesModal());
-    root.insertAdjacentHTML('beforeend', renderEditCategoryModal()); // NOVO: Chame a função do novo modal de edição
+    root.insertAdjacentHTML('beforeend', renderEditCategoryModal());
 
     attachEventListeners();
 }
 
 function attachEventListeners() {
-    // Limpar eventos anteriores para evitar duplicatas
-    // ...
-
     const loginForm = document.getElementById('login-form'); if (loginForm) loginForm.onsubmit = handleLogin;
     const signupForm = document.getElementById('signup-form'); if (signupForm) signupForm.onsubmit = handleSignup;
     const switchToSignup = document.getElementById('switch-to-signup'); if (switchToSignup) switchToSignup.onclick = () => { state.authView = 'signup'; renderApp(); };
@@ -103,13 +93,12 @@ function attachEventListeners() {
     const themeToggleButton = document.getElementById('theme-toggle-button'); if (themeToggleButton) themeToggleButton.onclick = handleToggleTheme;
     const detailsButton = document.getElementById('details-button'); if (detailsButton) detailsButton.onclick = () => { state.currentView = 'records'; renderApp(); };
 
-    // Handler para o botão "Adicionar Transação"
     const openModalButton = document.getElementById('open-modal-button');
     if (openModalButton) openModalButton.onclick = () => {
         state.isModalOpen = true;
         state.modalView = 'transaction';
         state.editingTransactionId = null;
-        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.confirmingDelete = false;
         state.isCreatingTag = false;
         state.modalTransactionType = 'expense';
         renderApp();
@@ -117,19 +106,22 @@ function attachEventListeners() {
 
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
-    const copyCodeButton = document.getElementById('copy-code-button'); if (copyCodeButton) copyCodeButton.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
+    
+    // *** CORREÇÃO APLICADA AQUI ***
+    document.querySelectorAll('#copy-code-button').forEach(button => {
+        if (button) button.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
+    });
+
     const prevMonthButton = document.getElementById('prev-month-button'); if (prevMonthButton) prevMonthButton.onclick = () => handleChangeMonth(-1);
     const nextMonthButton = document.getElementById('next-month-button'); if (nextMonthButton) nextMonthButton.onclick = () => handleChangeMonth(1);
     document.querySelectorAll('.filter-button').forEach(button => button.onclick = (e) => { state.detailsFilterType = e.currentTarget.dataset.filter; state.selectedDate = null; renderApp(); });
     
-    // CORREÇÃO: Lógica de clique no dia do calendário para limpar o filtro
     document.querySelectorAll('.calendar-day').forEach(day => day.onclick = e => {
         const recordsList = document.getElementById('records-list-wrapper');
         const dayNumber = parseInt(e.currentTarget.dataset.day);
         if (recordsList) {
             recordsList.classList.add('content-fade-out');
             setTimeout(() => {
-                // Se o dia clicado já está selecionado, ele limpa o filtro (null)
                 state.selectedDate = (state.selectedDate === dayNumber) ? null : dayNumber;
                 renderApp();
             }, 150);
@@ -138,33 +130,32 @@ function attachEventListeners() {
 
     const clearDateFilterButton = document.getElementById('clear-date-filter'); if (clearDateFilterButton) clearDateFilterButton.onclick = () => { state.selectedDate = null; renderApp(); };
     
-    // Handler para abrir a edição de transação
     document.querySelectorAll('.transaction-item').forEach(item => item.onclick = e => {
         const transactionId = e.currentTarget.dataset.transactionId;
         state.editingTransactionId = transactionId;
         state.isModalOpen = true;
         state.modalView = 'transaction';
-        state.confirmingDelete = false; // LINHA ADICIONADA
+        state.confirmingDelete = false;
         renderApp();
     });
 
     const addBudgetButton = document.getElementById('add-budget-button'); if (addBudgetButton) addBudgetButton.onclick = () => { state.isModalOpen = true; state.modalView = 'budget'; state.editingBudgetItemId = null; renderApp(); };
     document.querySelectorAll('.budget-item').forEach(item => item.onclick = e => { state.editingBudgetItemId = e.currentTarget.dataset.budgetId; state.isModalOpen = true; state.modalView = 'budget'; renderApp(); });
     
-    // Handler para fechar a modal
-    const closeModalButton = document.getElementById('close-modal-button');
-    if (closeModalButton) closeModalButton.onclick = () => {
-        state.isModalOpen = false;
-        state.editingTransactionId = null;
-        state.editingBudgetItemId = null;
-        state.confirmingDelete = false; // LINHA ADICIONADA
-        renderApp();
-    };
+    // *** CORREÇÃO APLICADA AQUI ***
+    document.querySelectorAll('#close-modal-button').forEach(button => {
+        if (button) button.onclick = () => {
+            state.isModalOpen = false;
+            state.editingTransactionId = null;
+            state.editingBudgetItemId = null;
+            state.confirmingDelete = false;
+            renderApp();
+        };
+    });
     
     const addTransactionForm = document.getElementById('add-transaction-form'); if (addTransactionForm) addTransactionForm.onsubmit = handleAddTransaction;
     const editTransactionForm = document.getElementById('edit-transaction-form'); if (editTransactionForm) editTransactionForm.onsubmit = handleUpdateTransaction;
     
-    // Handler para o botão "Excluir"
     const deleteTransactionButton = document.getElementById('delete-transaction-button'); if (deleteTransactionButton) deleteTransactionButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
     
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
@@ -172,8 +163,8 @@ function attachEventListeners() {
     const budgetTypeSelect = document.getElementById('budgetType'); if (budgetTypeSelect) budgetTypeSelect.onchange = () => {
         const form = budgetTypeSelect.closest('form');
         const type = budgetTypeSelect.value;
-        const allIncomeCategories = [...CATEGORIES.income, ...(state.userCategories.income || [])];
-        const allExpenseCategories = [...CATEGORIES.expense, ...(state.userCategories.expense || [])];
+        const allIncomeCategories = [...(state.userCategories.income || [])];
+        const allExpenseCategories = [...(state.userCategories.expense || [])];
         const options = (type === 'expense' ? allExpenseCategories : allIncomeCategories).map(c => `<option value="${c}">${c}</option>`).join('');
         form.querySelector('#budgetCategory').innerHTML = options;
     };
@@ -194,14 +185,11 @@ function attachEventListeners() {
         };
     }
 
-     // NOVO: Evento para o botão "Trocar de Família"
      const switchFamilyButton = document.getElementById('switch-family-button');
      if (switchFamilyButton) {
          switchFamilyButton.onclick = handleSwitchFamily;
      }
  
-
-    // Gerenciamento de gráficos
     if (state.currentView === 'dashboard') {
         if (destroyChartsCallback) {
             destroyChartsCallback();
@@ -217,7 +205,7 @@ function attachEventListeners() {
         button.onclick = (e) => {
             if (state.modalTransactionType !== e.currentTarget.dataset.type) {
                 state.modalTransactionType = e.currentTarget.dataset.type;
-                renderApp(); // re-renderiza para atualizar a UI do modal
+                renderApp();
             }
         };
     });
@@ -231,7 +219,6 @@ function attachEventListeners() {
         };
     }
     
-    // NOVO: Handler para os botões "Editar" de cada categoria
     document.querySelectorAll('.edit-category-button').forEach(button => {
         button.onclick = (event) => {
             const categoryToEdit = event.target.dataset.categoryName;
@@ -242,7 +229,6 @@ function attachEventListeners() {
         };
     });
 
-    // NOVO: Handler para o botão "Cancelar" no modal de edição
     const cancelEditButton = document.getElementById('cancel-edit-button');
     if (cancelEditButton) {
         cancelEditButton.onclick = () => {
@@ -253,109 +239,93 @@ function attachEventListeners() {
         };
     }
 
-    // Handler para o formulário de edição de categoria
     const editCategoryForm = document.getElementById('edit-category-form');
     if (editCategoryForm) {
-        editCategoryForm.onsubmit = handleUpdateCategory; // Conecta com a nova função
+        editCategoryForm.onsubmit = handleUpdateCategory;
     }
 
-    // Handler para o botão "Adicionar Nova Categoria" dentro do modal de GERENCIAR
     const addNewCategoryButton = document.getElementById('add-new-category-button');
     if (addNewCategoryButton) {
         addNewCategoryButton.onclick = () => {
             state.isModalOpen = true;
-            state.modalParentView = 'manageCategories'; // <--- RASTREIA A ORIGEM
+            state.modalParentView = 'manageCategories';
             state.modalView = 'newTag';
             renderApp();
         };
     }
     
-    // ... (Seu código atual)
-
-    // Handler para o select de categoria (quando escolhe '--create-new--')
     const categorySelect = document.getElementById('category'); 
     if (categorySelect) categorySelect.onchange = (e) => { 
         if (e.target.value === '--create-new--') { 
-            state.modalParentView = 'transaction'; // <--- RASTREIA A ORIGEM
+            state.modalParentView = 'transaction';
             state.modalView = 'newTag'; 
             renderApp(); 
         } 
     };
     
-    // Handler para o botão "Cancelar" no modal de criação de tags
     const cancelTagCreation = document.getElementById('cancel-tag-creation'); 
     if (cancelTagCreation) cancelTagCreation.onclick = () => { 
-        // Retorna para o pai rastreado
         state.modalView = state.modalParentView || 'transaction'; 
-        state.modalParentView = ''; // Limpa o estado
+        state.modalParentView = '';
         renderApp(); 
     };
 
-    // Handler para os botões "Editar" de cada categoria
     document.querySelectorAll('.edit-category-button').forEach(button => {
         button.onclick = (event) => {
             const categoryToEdit = event.target.dataset.categoryName;
             state.editingCategory = categoryToEdit;
-            state.confirmingDelete = false; // Garante que a confirmação esteja oculta ao abrir
+            state.confirmingDelete = false;
             state.isModalOpen = true;
             state.modalView = 'editCategory';
             renderApp();
         };
     });
 
-    // ... (Seu código atual)
-
-    // Handler para o botão "Excluir" no modal de edição de categoria
     const deleteCategoryButton = document.getElementById('delete-category-button');
     if (deleteCategoryButton) {
         deleteCategoryButton.onclick = () => {
-             // NOVO: Apenas mostra a confirmação, não exclui ainda
             state.confirmingDelete = true;
             renderApp();
         };
     }
     
-    // NOVO: Handler para o botão "Sim" na confirmação
     const confirmDeleteYes = document.getElementById('confirm-delete-yes'); 
     if (confirmDeleteYes) confirmDeleteYes.onclick = () => {
-        handleDeleteCategory(); // Chama a função de exclusão
-        state.confirmingDelete = false; // Limpa o estado
+        if (state.editingCategory) {
+            handleDeleteCategory();
+        } else if (state.editingTransactionId) {
+            handleDeleteTransaction();
+        } else if (state.editingBudgetItemId) {
+            handleDeleteBudget();
+        }
+        state.confirmingDelete = false;
     };
 
-    // NOVO: Handler para o botão "Não" na confirmação
     const confirmDeleteNo = document.getElementById('confirm-delete-no'); 
     if (confirmDeleteNo) confirmDeleteNo.onclick = () => { 
-        state.confirmingDelete = false; // Oculta a confirmação
+        state.confirmingDelete = false;
         renderApp();
     };
 
     const shareLinkButton = document.getElementById('share-link-button'); 
-if (shareLinkButton) shareLinkButton.onclick = () => navigator.clipboard.writeText(`${window.location.origin}/?code=${state.family.code}`).then(() => showToast('Link de convite copiado!', 'success'));
-
+    if (shareLinkButton) shareLinkButton.onclick = () => navigator.clipboard.writeText(`${window.location.origin}/?code=${state.family.code}`).then(() => showToast('Link de convite copiado!', 'success'));
 }
 
-// --- PONTO DE PARTIDA E CONTROLE DE AUTH ---
 firebase.onAuthStateChanged(auth, async (user) => {
     if (user) {
         state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0] };
         state.userFamilies = await fetchUserFamilies();
 
-        // --- NOVO: LÓGICA DE CONVITE POR LINK ---
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('code');
 
-        // Só tenta entrar se houver um código e o usuário não estiver em uma família
         if (inviteCode && !state.family) {
             const success = await handleJoinFamilyFromLink(inviteCode); 
             
-            // Se o código for processado (sucesso ou falha), limpamos o código da URL
             if (success || inviteCode) {
-                 // Use replaceState para remover o código da URL sem recarregar a página
                 history.replaceState(null, '', window.location.pathname);
             }
         }
-        // ----------------------------------------
-
     } else {
         state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = [];
         state.currentView = 'auth';
