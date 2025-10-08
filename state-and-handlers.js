@@ -148,8 +148,14 @@ export async function handleJoinFamily(event) {
         }
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
-        if (!familyDoc.data().members.includes(state.user.uid)) {
-            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
+        const familyData = familyDoc.data();
+        
+        const userIsMember = familyData.members.some(member => member.uid === state.user.uid);
+
+        if (!userIsMember) {
+            // CORREÇÃO: Adicionando o nome do novo membro
+            const updatedMembers = [...familyData.members, { uid: state.user.uid, role: 'member', name: state.user.name }];
+            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: updatedMembers });
         }
         await handleSelectFamily(familyId);
         showToast("Você entrou na família com sucesso!", 'success');
@@ -202,16 +208,35 @@ export async function handleSelectFamily(familyId) {
     }
 }
 
-export function handleLeaveFamily() {
-    state.family = null;
-    state.transactions = [];
-    state.budgets = [];
-    state.currentView = 'onboarding';
-    fetchUserFamilies().then(families => {
-        state.userFamilies = families;
-        renderApp();
-        showToast("Você saiu da família.", 'success');
-    });
+export async function handleLeaveFamily() {
+    if (!state.family || !state.user) return;
+
+    try {
+        // Encontra o objeto do usuário no array de membros
+        const userObject = state.family.members.find(member => member.uid === state.user.uid);
+        
+        if (userObject) {
+            // Remove o usuário do array de membros no Firestore
+            const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
+            const updatedMembers = state.family.members.filter(member => member.uid !== state.user.uid);
+            await firebase.updateDoc(familyDocRef, { members: updatedMembers });
+        }
+
+        // Limpa o estado local após a remoção no banco
+        state.family = null;
+        state.transactions = [];
+        state.budgets = [];
+        state.currentView = 'onboarding';
+
+        fetchUserFamilies().then(families => {
+            state.userFamilies = families;
+            renderApp();
+            showToast("Você saiu da família com sucesso.", 'success');
+        });
+    } catch (e) {
+        showToast("Erro ao sair da família.", 'error');
+        console.error(e);
+    }
 }
 
 export async function handleAddTransaction(event) {
@@ -402,10 +427,33 @@ export function handleToggleTheme() {
 export async function fetchUserFamilies() {
     if (!state.user?.uid) return [];
     try {
-        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", state.user.uid));
-        const querySnapshot = await firebase.getDocs(q);
+        // CORREÇÃO: Buscando por todas as famílias onde o UID do usuário está presente,
+        // independentemente do cargo.
+        const adminQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'admin' }));
+        const memberQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'member' }));
+
+        const [adminSnapshot, memberSnapshot] = await Promise.all([
+            firebase.getDocs(adminQuery),
+            firebase.getDocs(memberQuery)
+        ]);
+
         const families = [];
-        querySnapshot.forEach(doc => { families.push({ id: doc.id, ...doc.data() }); });
+        const seenFamilyIds = new Set();
+
+        adminSnapshot.forEach(doc => {
+            if (!seenFamilyIds.has(doc.id)) {
+                families.push({ id: doc.id, ...doc.data() });
+                seenFamilyIds.add(doc.id);
+            }
+        });
+
+        memberSnapshot.forEach(doc => {
+            if (!seenFamilyIds.has(doc.id)) {
+                families.push({ id: doc.id, ...doc.data() });
+                seenFamilyIds.add(doc.id);
+            }
+        });
+
         return families;
     } catch (error) {
         console.error("Erro ao buscar famílias:", error);
