@@ -523,62 +523,6 @@ export function renderMainContent() {
     </div>`;
 }
 
-export function renderFamilyInfoModal() {
-    if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
-    
-    // Ícone de usuário para a lista de membros
-    const userIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-
-    const membersHTML = state.family.members.map(member => `<div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50">
-        <div class="flex items-center gap-2">
-            ${userIcon}
-            <p class="text-gray-800 dark:text-black">${member.uid === state.user.uid ? `${state.user.name} (Você)` : (member.name || member.uid.substring(0,8))}</p>
-        </div>
-        <span class="text-xs font-semibold px-2 py-1 rounded-full text-white bg-gray-600">${member.role}</span>
-    </div>`).join('');
-    
-    return `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
-        <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-semibold text-gray-700">Informações da Família</h2>
-                <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <div>
-                        <p class="text-sm font-medium text-gray-700">Nome da Família</p>
-                        <p class="text-xl font-semibold text-gray-800">${state.family.name}</p>
-                    </div>
-                    <div class="mt-2 md:mt-0">
-                        <p class="text-sm font-medium text-gray-700">Código de Convite</p>
-                        <div class="flex items-center gap-2 mt-1">
-                            <p id="family-code" class="text-xl font-bold text-gray-800">${state.family.code}</p>
-                            <button id="copy-code-button-modal" class="px-3 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg flex items-center gap-1">
-                                <img src="assets/copy_icon.png" alt="Copiar" class="h-4 w-4 icon-invert" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <p class="text-sm font-medium text-gray-700 mb-2">Membros</p>
-                    <div class="divide-y">${membersHTML}</div>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700">
-                        Sair da Família
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>`;
-}
-
-
 export function renderFamilyDashboard() {
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
