@@ -2,7 +2,6 @@
 import { firebase, db, auth, googleProvider } from "./firebase-config.js";
 import { renderApp, showToast } from "./main.js";
 
-// --- ESTADO GLOBAL DA APLICAÇÃO ---
 export const state = {
     user: null,
     family: null,
@@ -415,24 +414,54 @@ export async function fetchUserFamilies() {
 
 export async function loadFamilyData(familyId) {
     try {
-        const familyDocSnap = await firebase.getDoc(firebase.doc(db, "familyGroups", familyId));
-        if (!familyDocSnap.exists()) throw new Error("Família não encontrada!");
-        const familyData = familyDocSnap.data();
-        
-        state.family = { id: familyId, ...familyData };
-        
-        // NOVO: Carrega categorias e cores diretamente do Firestore
-        state.userCategories = familyData.userCategories || { expense: [], income: [] };
-        state.categoryColors = familyData.categoryColors || {}; // Garante que as cores venham do DB
-        state.familyAdmins = familyData.admins || [];
-        // ... (resto da lógica de carregamento, como members, transactions, budgets)
+        // 1. CARREGA O DOCUMENTO DA FAMÍLIA (Dados da Família, Categorias, etc.)
+        const familyDocSnap = await firebase.getDoc(firebase.doc(db, "familyGroups", familyId));
+        if (!familyDocSnap.exists()) throw new Error("Família não encontrada!");
+        const familyData = familyDocSnap.data();
         
-        // ...
-        // Restante da função loadFamilyData
-        
-    } catch (e) {
-        // ...
-    }
+        // 2. ATUALIZA O ESTADO COM DADOS DA FAMÍLIA E CATEGORIAS
+        state.family = { id: familyId, ...familyData };
+        state.userCategories = familyData.userCategories || { expense: [], income: [] };
+        state.categoryColors = familyData.categoryColors || {};
+        state.familyAdmins = familyData.admins || [];
+
+        // --- 3. PONTO DE CORREÇÃO: CARREGAR TRANSAÇÕES ---
+        // Cria uma consulta (query) para buscar todas as transações desta família
+        const qTransactions = firebase.query(
+            firebase.collection(db, "transactions"), 
+            firebase.where("familyGroupId", "==", familyId)
+        );
+        
+        const transactionsSnapshot = await firebase.getDocs(qTransactions);
+        const transactions = [];
+        
+        transactionsSnapshot.forEach(doc => {
+            transactions.push({ id: doc.id, ...doc.data() });
+        });
+
+        // 4. ATUALIZA O ESTADO COM TRANSAÇÕES CARREGADAS
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        state.transactions = transactions;
+        
+        // --- 5. CARREGAR ORÇAMENTOS ---
+        const qBudgets = firebase.query(firebase.collection(db, "familyGroups", familyId, "budgets"));
+        const budgetsSnapshot = await firebase.getDocs(qBudgets);
+        const budgets = [];
+        budgetsSnapshot.forEach(doc => { budgets.push({ id: doc.id, ...doc.data() }); });
+        state.budgets = budgets;
+        
+        // 6. CARREGAR MEMBROS
+        const memberPromises = familyData.members.map(uid => firebase.getDoc(firebase.doc(db, "users", uid)));
+        const memberDocs = await Promise.all(memberPromises);
+        state.familyMembers = memberDocs.map(doc => ({ uid: doc.id, ...doc.data() }));
+
+    } catch (e) {
+        console.error("Erro ao carregar dados da família:", e);
+        showToast("Erro ao carregar dados. Tente fazer login novamente.", 'error');
+        state.family = null; 
+        state.userFamilies = await fetchUserFamilies(); // Mantém a capacidade de trocar de família
+        renderApp();
+    }
 }
 
 export async function handleUpdateCategory(event) {
