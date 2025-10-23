@@ -2,7 +2,6 @@
 import { firebase, db, auth, googleProvider } from "./firebase-config.js";
 import { renderApp, showToast } from "./main.js";
 
-// --- ESTADO GLOBAL DA APLICAÇÃO ---
 export const state = {
     user: null,
     family: null,
@@ -195,14 +194,8 @@ export async function handleJoinFamily(event) {
         }
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
-        const familyData = familyDoc.data();
-        
-        const userIsMember = familyData.members.some(member => member.uid === state.user.uid);
-
-        if (!userIsMember) {
-            // CORREÇÃO: Adicionando o nome do novo membro
-            const updatedMembers = [...familyData.members, { uid: state.user.uid, role: 'member', name: state.user.name }];
-            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: updatedMembers });
+        if (!familyDoc.data().members.includes(state.user.uid)) {
+            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
         }
         await handleSelectFamily(familyId);
         showToast("Você entrou na família com sucesso!", 'success');
@@ -255,35 +248,16 @@ export async function handleSelectFamily(familyId) {
     }
 }
 
-export async function handleLeaveFamily() {
-    if (!state.family || !state.user) return;
-
-    try {
-        // Encontra o objeto do usuário no array de membros
-        const userObject = state.family.members.find(member => member.uid === state.user.uid);
-        
-        if (userObject) {
-            // Remove o usuário do array de membros no Firestore
-            const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
-            const updatedMembers = state.family.members.filter(member => member.uid !== state.user.uid);
-            await firebase.updateDoc(familyDocRef, { members: updatedMembers });
-        }
-
-        // Limpa o estado local após a remoção no banco
-        state.family = null;
-        state.transactions = [];
-        state.budgets = [];
-        state.currentView = 'onboarding';
-
-        fetchUserFamilies().then(families => {
-            state.userFamilies = families;
-            renderApp();
-            showToast("Você saiu da família com sucesso.", 'success');
-        });
-    } catch (e) {
-        showToast("Erro ao sair da família.", 'error');
-        console.error(e);
-    }
+export function handleLeaveFamily() {
+    state.family = null;
+    state.transactions = [];
+    state.budgets = [];
+    state.currentView = 'onboarding';
+    fetchUserFamilies().then(families => {
+        state.userFamilies = families;
+        renderApp();
+        showToast("Você saiu da família.", 'success');
+    });
 }
 
 export async function handleAddTransaction(event) {
@@ -474,33 +448,10 @@ export function handleToggleTheme() {
 export async function fetchUserFamilies() {
     if (!state.user?.uid) return [];
     try {
-        // CORREÇÃO: Buscando por todas as famílias onde o UID do usuário está presente,
-        // independentemente do cargo.
-        const adminQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'admin' }));
-        const memberQuery = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", { uid: state.user.uid, role: 'member' }));
-
-        const [adminSnapshot, memberSnapshot] = await Promise.all([
-            firebase.getDocs(adminQuery),
-            firebase.getDocs(memberQuery)
-        ]);
-
+        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", state.user.uid));
+        const querySnapshot = await firebase.getDocs(q);
         const families = [];
-        const seenFamilyIds = new Set();
-
-        adminSnapshot.forEach(doc => {
-            if (!seenFamilyIds.has(doc.id)) {
-                families.push({ id: doc.id, ...doc.data() });
-                seenFamilyIds.add(doc.id);
-            }
-        });
-
-        memberSnapshot.forEach(doc => {
-            if (!seenFamilyIds.has(doc.id)) {
-                families.push({ id: doc.id, ...doc.data() });
-                seenFamilyIds.add(doc.id);
-            }
-        });
-
+        querySnapshot.forEach(doc => { families.push({ id: doc.id, ...doc.data() }); });
         return families;
     } catch (error) {
         console.error("Erro ao buscar famílias:", error);
@@ -510,24 +461,54 @@ export async function fetchUserFamilies() {
 
 export async function loadFamilyData(familyId) {
     try {
-        const familyDocSnap = await firebase.getDoc(firebase.doc(db, "familyGroups", familyId));
-        if (!familyDocSnap.exists()) throw new Error("Família não encontrada!");
-        const familyData = familyDocSnap.data();
-        
-        state.family = { id: familyId, ...familyData };
-        
-        // NOVO: Carrega categorias e cores diretamente do Firestore
-        state.userCategories = familyData.userCategories || { expense: [], income: [] };
-        state.categoryColors = familyData.categoryColors || {}; // Garante que as cores venham do DB
-        state.familyAdmins = familyData.admins || [];
-        // ... (resto da lógica de carregamento, como members, transactions, budgets)
+        // 1. CARREGA O DOCUMENTO DA FAMÍLIA (Dados da Família, Categorias, etc.)
+        const familyDocSnap = await firebase.getDoc(firebase.doc(db, "familyGroups", familyId));
+        if (!familyDocSnap.exists()) throw new Error("Família não encontrada!");
+        const familyData = familyDocSnap.data();
         
-        // ...
-        // Restante da função loadFamilyData
-        
-    } catch (e) {
-        // ...
-    }
+        // 2. ATUALIZA O ESTADO COM DADOS DA FAMÍLIA E CATEGORIAS
+        state.family = { id: familyId, ...familyData };
+        state.userCategories = familyData.userCategories || { expense: [], income: [] };
+        state.categoryColors = familyData.categoryColors || {};
+        state.familyAdmins = familyData.admins || [];
+
+        // --- 3. PONTO DE CORREÇÃO: CARREGAR TRANSAÇÕES ---
+        // Cria uma consulta (query) para buscar todas as transações desta família
+        const qTransactions = firebase.query(
+            firebase.collection(db, "transactions"), 
+            firebase.where("familyGroupId", "==", familyId)
+        );
+        
+        const transactionsSnapshot = await firebase.getDocs(qTransactions);
+        const transactions = [];
+        
+        transactionsSnapshot.forEach(doc => {
+            transactions.push({ id: doc.id, ...doc.data() });
+        });
+
+        // 4. ATUALIZA O ESTADO COM TRANSAÇÕES CARREGADAS
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        state.transactions = transactions;
+        
+        // --- 5. CARREGAR ORÇAMENTOS ---
+        const qBudgets = firebase.query(firebase.collection(db, "familyGroups", familyId, "budgets"));
+        const budgetsSnapshot = await firebase.getDocs(qBudgets);
+        const budgets = [];
+        budgetsSnapshot.forEach(doc => { budgets.push({ id: doc.id, ...doc.data() }); });
+        state.budgets = budgets;
+        
+        // 6. CARREGAR MEMBROS
+        const memberPromises = familyData.members.map(uid => firebase.getDoc(firebase.doc(db, "users", uid)));
+        const memberDocs = await Promise.all(memberPromises);
+        state.familyMembers = memberDocs.map(doc => ({ uid: doc.id, ...doc.data() }));
+
+    } catch (e) {
+        console.error("Erro ao carregar dados da família:", e);
+        showToast("Erro ao carregar dados. Tente fazer login novamente.", 'error');
+        state.family = null; 
+        state.userFamilies = await fetchUserFamilies(); // Mantém a capacidade de trocar de família
+        renderApp();
+    }
 }
 
 export async function handleUpdateCategory(event) {

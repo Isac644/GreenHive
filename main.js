@@ -76,10 +76,7 @@ function attachEventListeners() {
     const createFamilyForm = document.getElementById('create-family-form'); if (createFamilyForm) createFamilyForm.onsubmit = handleCreateFamily;
     const joinFamilyForm = document.getElementById('join-family-form'); if (joinFamilyForm) joinFamilyForm.onsubmit = handleJoinFamily;
     document.querySelectorAll('.select-family-button').forEach(button => button.onclick = (e) => handleSelectFamily(e.currentTarget.dataset.familyId));
-    
-    // CORREÇÃO: Removido o parêntese extra no final desta linha
     const userMenuButton = document.getElementById('user-menu-button'); if (userMenuButton) userMenuButton.onclick = () => document.getElementById('user-menu').classList.toggle('hidden');
-    
     const logoutButton = document.getElementById('logout-button'); if (logoutButton) logoutButton.onclick = handleLogout;
     const leaveFamilyButton = document.getElementById('leave-family-button'); if (leaveFamilyButton) leaveFamilyButton.onclick = handleLeaveFamily;
     document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
@@ -106,17 +103,6 @@ function attachEventListeners() {
         state.modalTransactionType = 'expense';
         renderApp();
     };
-
-    // CORREÇÃO: O handler para o botão de copiar da modal agora está no local certo
-    const copyCodeModalButton = document.getElementById('copy-code-button-modal');
-    if (copyCodeModalButton) {
-        copyCodeModalButton.onclick = () => {
-            const familyCode = document.getElementById('family-code').textContent;
-            navigator.clipboard.writeText(familyCode).then(() => {
-                showToast('Código copiado!', 'success');
-            });
-        };
-    }
 
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
@@ -171,7 +157,7 @@ function attachEventListeners() {
     const editTransactionForm = document.getElementById('edit-transaction-form'); if (editTransactionForm) editTransactionForm.onsubmit = handleUpdateTransaction;
     
     const deleteTransactionButton = document.getElementById('delete-transaction-button'); if (deleteTransactionButton) deleteTransactionButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
-
+    
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
     const deleteBudgetButton = document.getElementById('delete-budget-button'); if (deleteBudgetButton) deleteBudgetButton.onclick = () => { state.confirmingDelete = true; renderApp(); };
     const budgetTypeSelect = document.getElementById('budgetType'); if (budgetTypeSelect) budgetTypeSelect.onchange = () => {
