@@ -54,10 +54,36 @@ export async function handleLogin(event) {
     event.preventDefault();
     const email = event.target.email.value;
     const password = event.target.password.value;
+    
     try {
         await firebase.signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-        showToast("Falha no login: " + error.message, 'error');
+        let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
+        
+        console.log(error.code);
+        // A chave para o tratamento específico é o error.code
+        switch (error.code) {
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+                errorMessage = "Email ou senha incorretos.";
+                break;
+            case 'auth/invalid-credential':
+                errorMessage = "Email ou senha incorretos.";
+                break;
+            case 'auth/invalid-email':
+                errorMessage = "O formato do email é inválido.";
+                break;
+            case 'auth/too-many-requests':
+                errorMessage = "Acesso temporariamente bloqueado. Tente mais tarde.";
+                break;
+            default:
+                console.error("Erro de login não mapeado:", error);
+                errorMessage = error.message; 
+                break;
+        }
+        
+        // Exibe a mensagem amigável para o usuário
+        showToast("Falha no login: " + errorMessage, 'error');
     }
 }
 
@@ -66,15 +92,36 @@ export async function handleSignup(event) {
     const name = event.target.name.value;
     const email = event.target.email.value;
     const password = event.target.password.value;
+    
     if (!name || !email || !password) {
         showToast("Por favor, preencha todos os campos.", 'error');
         return;
     }
+    
     try {
         const userCredential = await firebase.createUserWithEmailAndPassword(auth, email, password);
         await firebase.updateProfile(userCredential.user, { displayName: name });
     } catch (error) {
-        showToast("Falha no cadastro: " + error.message, 'error');
+        let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
+        switch (error.code) {
+            case 'auth/email-already-in-use':
+                errorMessage = "Este email já está cadastrado.";
+                break;
+            case 'auth/invalid-email':
+                errorMessage = "O formato do email é inválido.";
+                break;
+            case 'auth/weak-password':
+                errorMessage = "A senha deve ter pelo menos 6 caracteres.";
+                break;
+            case 'auth/operation-not-allowed':
+                errorMessage = "O cadastro de email/senha não está ativado no Firebase.";
+                break;
+            default:
+                console.error("Erro de cadastro não mapeado:", error);
+                errorMessage = error.message; 
+                break;
+        }
+        showToast("Falha no cadastro: " + errorMessage, 'error');
     }
 }
 

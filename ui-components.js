@@ -523,6 +523,7 @@ export function renderMainContent() {
     </div>`;
 }
 
+/*
 export function renderFamilyInfoModal() {
     if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
     
@@ -577,7 +578,7 @@ export function renderFamilyInfoModal() {
         </div>
     </div>`;
 }
-
+*/
 
 export function renderFamilyDashboard() {
     const month = state.displayedMonth.getMonth();
