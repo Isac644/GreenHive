@@ -1,6 +1,7 @@
 // state-and-handlers.js
 import { firebase, db, auth, googleProvider } from "./firebase-config.js";
 import { renderApp, showToast } from "./main.js";
+import { getFirestore, collection, addDoc, getDocs, doc, query, where, updateDoc, arrayUnion, getDoc, deleteDoc, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 export const state = {
     user: null,
@@ -28,6 +29,10 @@ export const state = {
     familyMembers: [],
     modalView: '',
     editingCategory: '', // NOVO: A categoria que está sendo editada
+    notifications: [], // NOVO: Para armazenar as notificações
+    joinRequestMessage: '', // NOVO: Para exibir msg de pendente no formulário
+    isNotificationMenuOpen: false, // NOVO: Controle do menu
+    isSigningUp: false,
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -48,6 +53,26 @@ export const DEFAULT_CATEGORIES_SETUP = {
 
 export const CATEGORIES = { expense: [], income: [] }; // AGORA VAZIO
 
+export function subscribeToNotifications() {
+    if (!state.user) return;
+    
+    const q = query(
+        collection(db, "notifications"), 
+        where("recipientId", "==", state.user.uid)
+    );
+
+    // Escuta mudanças em tempo real
+    return onSnapshot(q, (snapshot) => {
+        const notifs = [];
+        snapshot.forEach(doc => {
+            notifs.push({ id: doc.id, ...doc.data() });
+        });
+        // Ordena por data (mais recente primeiro)
+        state.notifications = notifs.sort((a, b) => b.createdAt - a.createdAt);
+        renderApp(); // Atualiza a UI (bolinha vermelha)
+    });
+}
+
 // --- LÓGICA / HANDLERS ---
 export async function handleLogin(event) {
     event.preventDefault();
@@ -55,17 +80,25 @@ export async function handleLogin(event) {
     const password = event.target.password.value;
     
     try {
-        await firebase.signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await firebase.signInWithEmailAndPassword(auth, email, password);
+        
+        // NOVO: Verificação de Email
+        if (!userCredential.user.emailVerified) {
+            // Se não verificado, desloga imediatamente
+            await firebase.signOut(auth);
+            showToast("Seu email ainda não foi verificado. Verifique sua caixa de entrada.", 'error');
+            return;
+        }
+
+        // Se chegou aqui, o login ocorre naturalmente pelo onAuthStateChanged no main.js
+
     } catch (error) {
         let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
         
         console.log(error.code);
-        // A chave para o tratamento específico é o error.code
         switch (error.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-                errorMessage = "Email ou senha incorretos.";
-                break;
             case 'auth/invalid-credential':
                 errorMessage = "Email ou senha incorretos.";
                 break;
@@ -81,7 +114,6 @@ export async function handleLogin(event) {
                 break;
         }
         
-        // Exibe a mensagem amigável para o usuário
         showToast("Falha no login: " + errorMessage, 'error');
     }
 }
@@ -97,28 +129,39 @@ export async function handleSignup(event) {
         return;
     }
     
+    // 1. BLOQUEIA O LISTENER: Isso impede que o main.js veja o login automático
+    state.isSigningUp = true; 
+
     try {
         const userCredential = await firebase.createUserWithEmailAndPassword(auth, email, password);
         await firebase.updateProfile(userCredential.user, { displayName: name });
+
+        const actionCodeSettings = {
+            url: window.location.href,
+            handleCodeInApp: false
+        };
+
+        await firebase.sendEmailVerification(userCredential.user, actionCodeSettings);
+
+        // O usuário foi logado automaticamente, mas o listener foi ignorado.
+        // Agora deslogamos silenciosamente.
+        await firebase.signOut(auth);
+
+        // 2. LIBERA O LISTENER E MUDA A TELA
+        state.isSigningUp = false; 
+        state.authView = 'signup-success'; 
+        renderApp();
+
     } catch (error) {
-        let errorMessage = "Ocorreu um erro desconhecido. Tente novamente.";
+        // EM CASO DE ERRO: Importante liberar o listener novamente
+        state.isSigningUp = false;
+
+        let errorMessage = "Ocorreu um erro desconhecido.";
         switch (error.code) {
-            case 'auth/email-already-in-use':
-                errorMessage = "Este email já está cadastrado.";
-                break;
-            case 'auth/invalid-email':
-                errorMessage = "O formato do email é inválido.";
-                break;
-            case 'auth/weak-password':
-                errorMessage = "A senha deve ter pelo menos 6 caracteres.";
-                break;
-            case 'auth/operation-not-allowed':
-                errorMessage = "O cadastro de email/senha não está ativado no Firebase.";
-                break;
-            default:
-                console.error("Erro de cadastro não mapeado:", error);
-                errorMessage = error.message; 
-                break;
+            case 'auth/email-already-in-use': errorMessage = "Este email já está cadastrado."; break;
+            case 'auth/invalid-email': errorMessage = "O formato do email é inválido."; break;
+            case 'auth/weak-password': errorMessage = "A senha deve ter pelo menos 6 caracteres."; break;
+            default: errorMessage = error.message; break;
         }
         showToast("Falha no cadastro: " + errorMessage, 'error');
     }
@@ -181,28 +224,191 @@ export function handleSwitchFamily() {
     showToast("Você saiu da família atual.", 'success');
 }
 
+// ATUALIZADA: handleJoinFamily com verificação explícita
 export async function handleJoinFamily(event) {
     event.preventDefault();
-    const code = event.target.inviteCode.value.toUpperCase();
+    const code = event.target.inviteCode.value.toUpperCase().trim();
     if (!code) return;
+
+    state.joinRequestMessage = ''; 
+    renderApp(); 
+
     try {
-        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("code", "==", code));
-        const querySnapshot = await firebase.getDocs(q);
+        const qFamily = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("code", "==", code));
+        const querySnapshot = await firebase.getDocs(qFamily);
+        
+        // AVISO 1: Código não existe
         if (querySnapshot.empty) {
-            showToast("Código de família inválido!", 'error');
+            showToast("Família não encontrada com esse código.", 'error');
+            state.joinRequestMessage = "Código inválido.";
+            renderApp();
             return;
         }
+
         const familyDoc = querySnapshot.docs[0];
+        const familyData = familyDoc.data();
         const familyId = familyDoc.id;
-        if (!familyDoc.data().members.includes(state.user.uid)) {
-            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
+
+        // AVISO 2: Usuário já está na família (O aviso que você pediu)
+        if (familyData.members.includes(state.user.uid)) {
+            showToast(`Você já faz parte da família "${familyData.name}"!`, 'info');
+            state.joinRequestMessage = `Você já é membro da família ${familyData.name}.`;
+            renderApp();
+            return;
         }
-        await handleSelectFamily(familyId);
-        showToast("Você entrou na família com sucesso!", 'success');
+
+        // ... (Resto da função de verificação de pendência e envio igual à anterior) ...
+        const qExisting = firebase.query(
+            firebase.collection(db, "notifications"),
+            firebase.where("senderId", "==", state.user.uid),
+            firebase.where("targetFamilyId", "==", familyId),
+            where("type", "==", "join_request")
+        );
+        
+        const existingDocs = await firebase.getDocs(qExisting);
+        if (!existingDocs.empty) {
+            state.joinRequestMessage = 'Solicitação pendente. Aguarde aprovação do admin.';
+            renderApp();
+            return;
+        }
+
+        const batch = firebase.writeBatch(db);
+        familyData.admins.forEach(adminId => {
+            const notifRef = firebase.doc(firebase.collection(db, "notifications"));
+            batch.set(notifRef, {
+                recipientId: adminId,
+                senderId: state.user.uid,
+                senderName: state.user.name,
+                targetFamilyId: familyId,
+                targetFamilyName: familyData.name,
+                type: 'join_request',
+                createdAt: Date.now(),
+                read: false
+            });
+        });
+
+        await batch.commit();
+        state.joinRequestMessage = `Solicitação enviada para "${familyData.name}". Aguarde.`;
+        renderApp();
+        showToast("Solicitação enviada!", 'success');
+
     } catch (e) {
-        showToast("Erro ao entrar na família.", 'error');
+        showToast("Erro ao processar solicitação.", 'error');
         console.error(e);
     }
+}
+
+export async function handleAcceptJoinRequest(notification) {
+    try {
+        const batch = firebase.writeBatch(db);
+        const familyRef = firebase.doc(db, "familyGroups", notification.targetFamilyId);
+        
+        // 1. Adiciona o usuário na família
+        batch.update(familyRef, { 
+            members: firebase.arrayUnion(notification.senderId) 
+        });
+
+        // 2. Apaga a notificação do Admin (a solicitação)
+        const notifRef = firebase.doc(db, "notifications", notification.id);
+        batch.delete(notifRef);
+        
+        // 3. Cria notificação para o Usuário (Aceito)
+        const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
+        batch.set(newNotifRef, {
+            recipientId: notification.senderId, // Manda de volta para quem pediu
+            senderId: state.user.uid, // Admin que aceitou
+            targetFamilyId: notification.targetFamilyId,
+            targetFamilyName: notification.targetFamilyName,
+            type: 'request_accepted', // Novo tipo
+            createdAt: Date.now(),
+            read: false
+        });
+
+        // Limpa notificações duplicadas de outros admins (opcional, mas recomendado)
+        const qOthers = firebase.query(
+            firebase.collection(db, "notifications"),
+            firebase.where("senderId", "==", notification.senderId),
+            firebase.where("targetFamilyId", "==", notification.targetFamilyId),
+            firebase.where("type", "==", "join_request")
+        );
+        const otherDocs = await firebase.getDocs(qOthers);
+        otherDocs.forEach(d => {
+            if (d.id !== notification.id) batch.delete(d.ref);
+        });
+
+        await batch.commit();
+
+        showToast(`${notification.senderName} foi adicionado à família!`, 'success');
+        
+        // Se o admin estiver na tela dessa família, recarrega
+        if (state.family && state.family.id === notification.targetFamilyId) {
+            loadFamilyData(notification.targetFamilyId);
+        }
+
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao aceitar solicitação.", 'error');
+    }
+}
+
+export async function handleRejectJoinRequest(notification) {
+    try {
+        const batch = firebase.writeBatch(db);
+        
+        // 1. Apaga a solicitação
+        const notifRef = firebase.doc(db, "notifications", notification.id);
+        batch.delete(notifRef);
+
+        // 2. Cria notificação para o Usuário (Recusado)
+        const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
+        batch.set(newNotifRef, {
+            recipientId: notification.senderId,
+            senderId: state.user.uid,
+            targetFamilyName: notification.targetFamilyName,
+            type: 'request_rejected', // Novo tipo
+            createdAt: Date.now(),
+            read: false
+        });
+
+        await batch.commit();
+        showToast("Solicitação recusada.", 'info');
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao recusar.", 'error');
+    }
+}
+
+export async function handleDeleteNotification(notificationId) {
+    try {
+        await deleteDoc(doc(db, "notifications", notificationId));
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// NOVA FUNÇÃO: Entrar na família via notificação
+export async function handleEnterFamilyFromNotification(notification) {
+    try {
+        // 1. Seleciona a família
+        await handleSelectFamily(notification.targetFamilyId);
+        
+        // 2. Apaga a notificação após usar
+        await firebase.deleteDoc(firebase.doc(db, "notifications", notification.id));
+        
+        // 3. Fecha o menu
+        state.isNotificationMenuOpen = false;
+        renderApp();
+        
+        showToast(`Bem-vindo à família ${notification.targetFamilyName}!`, 'success');
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao acessar a família. Ela pode ter sido excluída.", 'error');
+    }
+}
+
+export function toggleNotificationMenu() {
+    state.isNotificationMenuOpen = !state.isNotificationMenuOpen;
+    renderApp();
 }
 
 export async function handleJoinFamilyFromLink(code) {
@@ -635,5 +841,46 @@ export async function handleDeleteCategory() {
     } catch (e) {
         showToast("Erro ao excluir categoria.", 'error');
         console.error(e);
+    }
+}
+
+export async function handleResetPassword(event) {
+    event.preventDefault();
+    const email = event.target.email.value;
+
+    if (!email) {
+        showToast("Por favor, informe seu email.", 'error');
+        return;
+    }
+
+    try {
+        // Configura para redirecionar de volta para o app após redefinir (opcional, mas bom UX)
+        const actionCodeSettings = {
+            url: window.location.href,
+            handleCodeInApp: false
+        };
+
+        await firebase.sendPasswordResetEmail(auth, email, actionCodeSettings);
+
+        // Muda para a tela de sucesso
+        state.authView = 'forgot-password-success';
+        renderApp();
+
+    } catch (error) {
+        let errorMessage = "Erro ao enviar email.";
+        switch (error.code) {
+            case 'auth/user-not-found':
+                // Por segurança, alguns sistemas não avisam que o email não existe.
+                // Mas para facilitar, vamos avisar ou mostrar sucesso genérico.
+                errorMessage = "Email não encontrado.";
+                break;
+            case 'auth/invalid-email':
+                errorMessage = "Email inválido.";
+                break;
+            default:
+                console.error(error);
+                errorMessage = error.message;
+        }
+        showToast(errorMessage, 'error');
     }
 }

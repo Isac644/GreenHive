@@ -25,32 +25,110 @@ const BellIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 
 export function renderHeader() {
     if (!state.user) return '';
-    return `<header class="bg-white shadow-md w-full sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            ${GreenHiveLogoSVG('40')}
-        </div>
-        <div class="flex items-center gap-4">
-            <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 transition">
-                ${ThemeIconSVG()}
-            </button>
-            <div class="relative">
-                <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                </button>
-                <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2">
-                    <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sair da Conta</button>
+
+    const hasUnread = state.notifications && state.notifications.length > 0;
+    const badgeHTML = hasUnread 
+        ? `<span class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-red-600 transform translate-x-1/4 -translate-y-1/4"></span>` 
+        : '';
+
+    let notificationsListHTML = '';
+    if (state.isNotificationMenuOpen) {
+        if (state.notifications.length === 0) {
+            notificationsListHTML = `<div class="p-4 text-center text-gray-500 text-sm">Nenhuma notificação nova.</div>`;
+        } else {
+            notificationsListHTML = state.notifications.map(notif => {
+                
+                // 1. TIPO: SOLICITAÇÃO DE ENTRADA (Para o Admin)
+                if (notif.type === 'join_request') {
+                    return `
+                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 relative group">
+                        <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
+                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2">
+                            <strong>${notif.senderName}</strong> quer entrar na família <strong>${notif.targetFamilyName}</strong>.
+                        </p>
+                        <div class="flex gap-2">
+                            <button class="accept-request-btn px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700" data-notif-id="${notif.id}">Aceitar</button>
+                            <button class="reject-request-btn px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300" data-notif-id="${notif.id}">Recusar</button>
+                        </div>
+                    </div>`;
+                }
+
+                // 2. TIPO: SOLICITAÇÃO ACEITA (Para o Usuário)
+                if (notif.type === 'request_accepted') {
+                    return `
+                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 relative">
+                        <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
+                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2">
+                            <span class="text-green-600 font-bold">Aprovado!</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName}</strong> foi aceita.
+                        </p>
+                        <button class="enter-family-notif-btn w-full px-3 py-2 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition" data-notif-id="${notif.id}">
+                            Entrar Agora
+                        </button>
+                    </div>`;
+                }
+
+                // 3. TIPO: SOLICITAÇÃO RECUSADA (Para o Usuário)
+                if (notif.type === 'request_rejected') {
+                    return `
+                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 relative">
+                        <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
+                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4">
+                            <span class="text-red-600 font-bold">Recusado.</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName || 'solicitada'}</strong> foi recusada pelo administrador.
+                        </p>
+                    </div>`;
+                }
+
+                return '';
+            }).join('');
+        }
+    }
+
+    // ... (Resto do código do header permanece igual: userMenu, themeToggle, etc.)
+    const dropdownHTML = state.isNotificationMenuOpen 
+        ? `<div class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
+            <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300 text-sm">Notificações</div>
+            <div class="max-h-96 overflow-y-auto">${notificationsListHTML}</div>
+           </div>` : '';
+
+    return `<header class="bg-white dark:bg-gray-800 shadow-md w-full sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">${GreenHiveLogoSVG('40')}</div>
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <button id="notification-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition relative text-gray-600 dark:text-gray-300">
+                        ${BellIconSVG}${badgeHTML}
+                    </button>
+                    ${dropdownHTML}
+                </div>
+                <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">${ThemeIconSVG()}</button>
+                <div class="relative">
+                    <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-300"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </button>
+                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border dark:border-gray-700">
+                        <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Sair da Conta</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</header>`;
+    </header>`;
 }
 
 export function renderAuthPage() {
+    let content = '';
+    if (state.authView === 'login') {
+        content = renderLoginFormHTML();
+    } else if (state.authView === 'signup') {
+        content = renderSignupFormHTML();
+    } else if (state.authView === 'signup-success') {
+        content = renderSignupSuccessHTML();
+    // NOVOS CASOS:
+    } else if (state.authView === 'forgot-password') {
+        content = renderForgotPasswordFormHTML();
+    } else if (state.authView === 'forgot-password-success') {
+        content = renderForgotPasswordSuccessHTML();
+    }
+
     return `<div class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-2xl shadow-lg w-full animate-fade-in max-w-md mx-auto">
         <div class="text-center mb-8">
@@ -60,7 +138,7 @@ export function renderAuthPage() {
             <p class="text-gray-600">Sua colmeia financeira familiar.</p>
         </div>
         <div id="auth-form-container">
-            ${state.authView === 'login' ? renderLoginFormHTML() : renderSignupFormHTML()}
+            ${content}
         </div>
     </div>
 </div>`;
@@ -77,7 +155,7 @@ export function renderLoginFormHTML() {
         <div>
             <div class="flex items-center justify-between">
                 <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
-                <a href="#" class="text-sm font-medium text-green-600 hover:text-green-500 transition">Esqueceu a senha?</a>
+                <a href="#" id="forgot-password-link" class="text-sm font-medium text-green-600 hover:text-green-500 transition">Esqueceu a senha?</a>
             </div>
             <input id="password" name="password" type="password" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="Sua senha" />
         </div>
@@ -152,13 +230,16 @@ export function renderFamilyOnboardingPage() {
             </form>
         </div>
         <div class="bg-white p-8 rounded-2xl shadow-lg">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Ingresse em uma família</h2>
-            <form id="join-family-form">
-                <label for="inviteCode" class="block text-sm font-medium text-gray-700 mb-1">Código de Convite</label>
-                <input id="inviteCode" name="inviteCode" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="INSIRA O CÓDIGO" />
-                <button type="submit" class="mt-4 w-full py-3 px-4 rounded-lg font-medium text-white bg-gray-700 hover:bg-gray-800">Entrar com código</button>
-            </form>
-        </div>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Ingresse em uma família</h2>
+    <form id="join-family-form">
+        <label for="inviteCode" class="block text-sm font-medium text-gray-700 mb-1">Código de Convite</label>
+        <input id="inviteCode" name="inviteCode" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg uppercase" placeholder="INSIRA O CÓDIGO" />
+        
+        ${state.joinRequestMessage ? `<p class="mt-2 text-sm text-amber-600 font-medium animate-fade-in">${state.joinRequestMessage}</p>` : ''}
+        
+        <button type="submit" class="mt-4 w-full py-3 px-4 rounded-lg font-medium text-white bg-gray-700 hover:bg-gray-800">Solicitar Entrada</button>
+    </form>
+</div>
     </div>
     <div class="mt-8 bg-white p-8 rounded-2xl shadow-lg">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Acesse uma de suas famílias</h2>
@@ -753,10 +834,41 @@ export function renderRecordsPage() {
 
     const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
 
+    // *** ALTERAÇÃO AQUI: Verificamos se o usuário logado é Admin ***
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+
     let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada para os filtros selecionados.</p>`;
     if (sortedDays.length > 0) {
         transactionsHTML = sortedDays.map(day => {
-            const transactionsForDay = groupedByDate[day].map(t => `<li class="transaction-item flex justify-between items-center py-3 px-2 -mx-2 rounded-lg cursor-pointer" data-transaction-id="${t.id}"><div><p class="font-medium text-gray-800">${t.description}</p><div class="flex items-center mt-1"><p class="text-sm text-gray-500 mr-2">${t.userName || 'Autor desconhecido'}</p><span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${state.categoryColors[t.category] || '#6B7280'}">${t.category}</span></div></div><p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></li>`).join('');
+            const transactionsForDay = groupedByDate[day].map(t => {
+                
+                // *** ALTERAÇÃO AQUI: Lógica de permissão ***
+                const isOwner = t.userId === state.user.uid;
+                const canEdit = isAdmin || isOwner;
+
+                // Se pode editar: Mantém a classe 'transaction-item' (que ativa o click no main.js) e cursor-pointer
+                // Se NÃO pode editar: Remove 'transaction-item', põe cursor-default e reduz opacidade
+                const interactClasses = canEdit 
+                    ? 'transaction-item cursor-pointer' 
+                    : 'cursor-default opacity-60';
+
+                // Cor da categoria
+                const categoryColor = state.categoryColors[t.category] || '#6B7280';
+
+                return `
+                <li class="${interactClasses} flex justify-between items-center py-3 px-2 -mx-2 rounded-lg" data-transaction-id="${t.id}">
+                    <div>
+                        <p class="font-medium text-gray-800">${t.description}</p>
+                        <div class="flex items-center mt-1">
+                            <p class="text-sm text-gray-500 mr-2">${t.userName || 'Autor desconhecido'}</p>
+                            <span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${categoryColor}">${t.category}</span>
+                        </div>
+                    </div>
+                    <p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                        ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                    </p>
+                </li>`;
+            }).join('');
             return `<div class="mb-4"><div class="flex items-center justify-between pb-2 border-b"><p class="font-bold text-gray-700">${day} de ${monthName}</p></div><ul class="divide-y">${transactionsForDay}</ul></div>`;
         }).join('');
     }
@@ -771,6 +883,7 @@ export function renderBudgetPage() {
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    
     const activeBudgets = state.budgets.filter(b => {
         const startDate = new Date(b.appliesFrom + 'T12:00:00');
         const startYear = startDate.getUTCFullYear();
@@ -789,6 +902,9 @@ export function renderBudgetPage() {
         }
         return true;
     });
+
+    // *** ALTERAÇÃO AQUI: Verifica se é Admin ***
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
 
     const budgetItemsHTML = activeBudgets.map(budget => {
         let progressHTML = '';
@@ -814,11 +930,24 @@ export function renderBudgetPage() {
                 </div>
                 <p class="text-xs text-right text-gray-500 mt-1">Alcançado: R$ ${earned.toFixed(2)} de R$ ${goal.toFixed(2)}</p>`;
         }
+
+        // *** ALTERAÇÃO AQUI: Define classes interativas apenas para admin ***
+        // Se for admin: adiciona 'budget-item' (para o clique funcionar) e hover visual.
+        // Se não for admin: remove 'budget-item' e deixa cursor padrão.
+        const interactionClasses = isAdmin 
+            ? 'budget-item cursor-pointer hover:bg-gray-100' 
+            : 'cursor-default';
+
         return `
-            <div class="budget-item p-4 border rounded-lg cursor-pointer hover:bg-gray-100" data-budget-id="${budget.id}">
+            <div class="${interactionClasses} p-4 border rounded-lg" data-budget-id="${budget.id}">
                 ${progressHTML}
             </div>`;
     }).join('');
+
+    // *** ALTERAÇÃO AQUI: Cria o HTML do botão apenas se for Admin ***
+    const addButtonHTML = isAdmin 
+        ? `<button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>`
+        : '';
 
     return `
         <main class="content-fade-in">
@@ -838,7 +967,7 @@ export function renderBudgetPage() {
                 <h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamentos para ${monthName}</h3>
                 <div class="space-y-4">
                     ${budgetItemsHTML}
-                    <button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>
+                    ${addButtonHTML} 
                 </div>
             </div>
         </main>`;
@@ -1024,5 +1153,68 @@ export function renderCharts() {
     chartInstances.personSpending = renderPersonSpendingChart();
 
     return destroyAllCharts;
+}
+
+function renderSignupSuccessHTML() {
+    return `
+    <div class="text-center animate-fade-in">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Verifique seu Email</h2>
+        <div class="text-gray-600 mb-8 space-y-2">
+            <p>Enviamos um link de confirmação para o seu endereço de email.</p>
+            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
+                <strong>Atenção:</strong> Caso não encontre o email na caixa de entrada, verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
+            </p>
+            <p>Por favor, volte ao login após a confirmação.</p>
+        </div>
+        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
+            Voltar para Login
+        </button>
+    </div>`;
+}
+
+export function renderForgotPasswordFormHTML() {
+    return `<h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Recuperar Senha</h2>
+    <p class="text-gray-600 text-center mb-6 text-sm">Insira seu email para receber o link de redefinição.</p>
+    <form id="reset-password-form" novalidate>
+        <div class="space-y-6">
+            <div>
+                <label for="email-reset" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input id="email-reset" name="email" type="email" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="voce@exemplo.com" />
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700">Enviar Link</button>
+            </div>
+        </div>
+    </form>
+    <p class="mt-8 text-center text-sm text-gray-600">
+        Lembrou a senha?
+        <button id="back-to-login-link" class="font-medium text-green-600 hover:text-green-500">Voltar ao Login</button>
+    </p>`;
+}
+
+export function renderForgotPasswordSuccessHTML() {
+    return `
+    <div class="text-center animate-fade-in">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
+            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Email Enviado!</h2>
+        <div class="text-gray-600 mb-8 space-y-2">
+            <p>Se houver uma conta associada a este endereço, enviamos as instruções de recuperação.</p>
+            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
+                <strong>Dica:</strong> Verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
+            </p>
+        </div>
+        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
+            Voltar para Login
+        </button>
+    </div>`;
 }
 

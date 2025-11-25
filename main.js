@@ -11,7 +11,14 @@ import {
     handleSwitchFamily,
     handleUpdateCategory, 
     handleDeleteCategory,
-    handleJoinFamilyFromLink
+    handleJoinFamilyFromLink,
+    subscribeToNotifications, 
+    toggleNotificationMenu, 
+    handleAcceptJoinRequest, 
+    handleRejectJoinRequest,
+    handleDeleteNotification,
+    handleEnterFamilyFromNotification,
+    handleResetPassword
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
@@ -309,26 +316,144 @@ function attachEventListeners() {
 
     const shareLinkButton = document.getElementById('share-link-button'); 
     if (shareLinkButton) shareLinkButton.onclick = () => navigator.clipboard.writeText(`${window.location.origin}/?code=${state.family.code}`).then(() => showToast('Link de convite copiado!', 'success'));
+
+    const notificationButton = document.getElementById('notification-button');
+    if (notificationButton) {
+        notificationButton.onclick = (e) => {
+            e.stopPropagation(); // Evita fechar ao clicar no botão
+            toggleNotificationMenu();
+        };
+    }
+
+    // Fecha dropdowns se clicar fora
+    document.addEventListener('click', (e) => {
+        if (state.isNotificationMenuOpen && !e.target.closest('#notification-button') && !e.target.closest('.absolute.right-0')) {
+            toggleNotificationMenu();
+        }
+    });
+
+    // NOVO: Listeners para os botões dentro das notificações
+    // Como o conteúdo é dinâmico, adicionamos no document ou re-adicionamos ao renderizar.
+    // Usando delegação de eventos para simplificar:
+    
+    // Botão Aceitar
+    document.querySelectorAll('.accept-request-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const notifId = e.currentTarget.dataset.notifId;
+            const notif = state.notifications.find(n => n.id === notifId);
+            if (notif) handleAcceptJoinRequest(notif);
+        };
+    });
+
+    // Botão Recusar
+    document.querySelectorAll('.reject-request-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const notifId = e.currentTarget.dataset.notifId;
+            handleRejectJoinRequest(notifId);
+        };
+    });
+
+    // Botão Fechar (X)
+    document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation(); // Não fecha o menu
+            const notifId = e.currentTarget.dataset.id;
+            handleDeleteNotification(notifId);
+        };
+    });
+
+    // Botão Aceitar Solicitação (ADMIN)
+    document.querySelectorAll('.accept-request-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const notifId = e.currentTarget.dataset.notifId;
+            const notif = state.notifications.find(n => n.id === notifId);
+            if (notif) handleAcceptJoinRequest(notif);
+        };
+    });
+
+    // Botão Recusar Solicitação (ADMIN)
+    document.querySelectorAll('.reject-request-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const notifId = e.currentTarget.dataset.notifId;
+            const notif = state.notifications.find(n => n.id === notifId);
+            if (notif) handleRejectJoinRequest(notif); // Passando o objeto inteiro agora
+        };
+    });
+
+    // NOVO: Botão "Entrar Agora" (USUÁRIO)
+    document.querySelectorAll('.enter-family-notif-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const notifId = e.currentTarget.dataset.notifId;
+            const notif = state.notifications.find(n => n.id === notifId);
+            if (notif) handleEnterFamilyFromNotification(notif);
+        };
+    });
+
+    // Listener para o link "Esqueceu a senha?" na tela de Login
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.onclick = (e) => {
+            e.preventDefault();
+            state.authView = 'forgot-password';
+            renderApp();
+        };
+    }
+
+    // Listener para o formulário de Resetar Senha (Botão Enviar)
+    const resetPasswordForm = document.getElementById('reset-password-form');
+    if (resetPasswordForm) {
+        resetPasswordForm.onsubmit = handleResetPassword;
+    }
+
+    // Listener para o botão "Voltar ao Login" (texto pequeno) na tela de form de reset
+    const backToLoginLink = document.getElementById('back-to-login-link');
+    if (backToLoginLink) {
+        backToLoginLink.onclick = () => {
+            state.authView = 'login';
+            renderApp();
+        };
+    }
+    
+    // IMPORTANTE: Esse botão já existia para o "signup-success", mas como usamos o mesmo ID 
+    // ou IDs parecidos, vamos garantir que funcione para ambos os fluxos de sucesso.
+    // O código anterior que fizemos já tratava o `back-to-login-success-button`.
+    // Verifique se o listener abaixo já existe no seu código, se não, adicione:
+    const backToLoginSuccess = document.getElementById('back-to-login-success-button');
+    if (backToLoginSuccess) {
+        backToLoginSuccess.onclick = () => {
+            state.authView = 'login';
+            renderApp();
+        };
+    }
 }
 
+let unsubscribeNotifications = null;
+
 firebase.onAuthStateChanged(auth, async (user) => {
+    // A CORREÇÃO MÁGICA ESTÁ AQUI:
+    // Se estivermos no meio do processo de cadastro, ignoramos esse evento.
+    if (state.isSigningUp) return; 
+
     if (user) {
         state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0] };
         state.userFamilies = await fetchUserFamilies();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const inviteCode = urlParams.get('code');
-
-        if (inviteCode && !state.family) {
-            const success = await handleJoinFamilyFromLink(inviteCode); 
-            
-            if (success || inviteCode) {
-                history.replaceState(null, '', window.location.pathname);
-            }
-        }
+        
+        // ... (seu código de notificação e URL params continua aqui) ...
+        if (unsubscribeNotifications) unsubscribeNotifications(); 
+        unsubscribeNotifications = subscribeToNotifications();
+        // ...
+        
     } else {
-        state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = [];
-        state.currentView = 'auth';
+        if (unsubscribeNotifications) unsubscribeNotifications();
+        state.user = null; 
+        state.family = null; 
+        state.transactions = []; 
+        state.userFamilies = []; 
+        state.budgets = [];
+        // Removemos o reset forçado para 'auth' aqui para não sobrescrever o 'signup-success'
+        if (state.authView !== 'signup-success') {
+            state.currentView = 'auth';
+        }
     }
     renderApp();
 });
