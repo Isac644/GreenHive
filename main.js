@@ -425,6 +425,33 @@ function attachEventListeners() {
             renderApp();
         };
     }
+
+    const toggleChartsButton = document.getElementById('toggle-charts-button');
+    if (toggleChartsButton) {
+        toggleChartsButton.onclick = () => {
+            const container = document.getElementById('secondary-charts-container');
+            const icon = document.getElementById('toggle-icon');
+            const btnText = toggleChartsButton.querySelector('span');
+
+            if (container.classList.contains('hidden')) {
+                // EXIBIR
+                container.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+                btnText.textContent = "Ocultar gráficos";
+                
+                // Renderiza os gráficos agora que o container tem tamanho
+                if (window.renderSecondaryCharts) window.renderSecondaryCharts();
+                
+                // Scroll suave até o container
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                // OCULTAR
+                container.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+                btnText.textContent = "Exibir mais gráficos";
+            }
+        };
+    }
 }
 
 let unsubscribeNotifications = null;

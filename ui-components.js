@@ -666,109 +666,128 @@ export function renderFamilyDashboard() {
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    
+    // Cálculos de resumo (Cards Superiores)
     const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
     summary.balance = summary.income - summary.expenses;
-    const incomeBudget = state.budgets.find(b => b.type === 'income' && new Date(b.appliesFrom) <= state.displayedMonth);
-    const incomeGoal = incomeBudget ? incomeBudget.value : 0;
-    const incomePercentage = incomeGoal > 0 ? (summary.income / incomeGoal) * 100 : 0;
-
     const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
     const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
-    const expensePercentage = totalBudget > 0 ? (summary.expenses / totalBudget) * 100 : 0;
-    const barColor = expensePercentage > 100 ? 'bg-red-500' : (expensePercentage > 80 ? 'bg-yellow-500' : 'bg-green-500');
+
+    // Cálculos para o Resumo do Gráfico de Orçamento
+    const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => {
+        const spent = monthlyTransactions
+            .filter(t => t.type === 'expense' && t.category === b.category)
+            .reduce((sum, t) => sum + t.amount, 0);
+        return acc + spent;
+    }, 0);
 
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-
     const manageCategoriesButton = isAdmin ? 
-        `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : 
-        '';
+        `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : '';
 
     return `
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <p class="text-sm text-gray-500">Receita do Mês</p>
-        <p class="text-2xl font-bold text-gray-800 text-green-600">R$ ${summary.income.toFixed(2)}</p>
-        <p class="text-sm text-gray-500 mt-2">Meta: R$ ${incomeGoal.toFixed(2)}</p>
-        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-            <div class="bg-green-500 h-2 rounded-full" style="width: ${Math.min(incomePercentage, 100)}%"></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500">
+            <p class="text-sm text-gray-500">Receita</p>
+            <p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500">
+            <p class="text-sm text-gray-500">Despesa</p>
+            <p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500">
+            <p class="text-sm text-gray-500">Saldo</p>
+            <p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center">
+            <h3 class="font-semibold text-gray-700">Acesso Rápido</h3>
+            <button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button>
         </div>
     </div>
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <p class="text-sm text-gray-500">Despesa do Mês</p>
-        <p class="text-2xl font-bold text-gray-800 text-red-600">R$ ${summary.expenses.toFixed(2)}</p>
-        <p class="text-sm text-gray-500 mt-2">Limite Definido: R$ ${totalBudget.toFixed(2)}</p>
-        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-            <div class="${barColor} h-2 rounded-full" style="width: ${Math.min(expensePercentage, 100)}%"></div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
+        <div class="flex justify-between items-center">
+            <button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+            <h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3>
+            <button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
         </div>
     </div>
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <p class="text-sm text-gray-500">Saldo do Mês</p>
-        <p class="text-2xl font-bold text-gray-800 text-blue-600">R$ ${summary.balance.toFixed(2)}</p>
-    </div>
-    <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center">
-        <h3 class="font-semibold text-gray-700">Registro Geral</h3>
-        <p class="text-xs text-gray-500 mb-2">Veja todas as suas transações</p>
-        <button id="details-button" class="w-full mt-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver mais</button>
-    </div>
-</div>
-<div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-    <div class="flex justify-between items-center">
-        <button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3>
-        <button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
-    </div>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${new Date().getFullYear()})</h3>
-        <div class="h-80 relative">
-            <canvas id="annual-balance-chart"></canvas>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>
+                ${manageCategoriesButton} 
+            </div>
+            <div class="h-80 relative">
+                <canvas id="monthly-expenses-chart"></canvas>
+                <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+            </div>
         </div>
-    </div>
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Despesas do Mês por Categoria</h3>
-                    ${manageCategoriesButton} 
-                </div>
-                <div class="h-80 relative">
-                    <canvas id="monthly-expenses-chart"></canvas>
-                    <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3>
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span>
+                    <span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span>
                 </div>
             </div>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3>
-        <div class="h-80 relative">
-            <canvas id="comparison-chart"></canvas>
+            <div class="h-80 relative">
+                <canvas id="budget-performance-chart"></canvas>
+                <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div>
+            </div>
         </div>
     </div>
-    <div class="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3>
-        <div class="h-80 relative">
-            <canvas id="person-spending-chart"></canvas>
-            <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm"></div>
+
+    <div class="text-center mb-8">
+        <button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2">
+            <span>Exibir mais gráficos</span>
+            <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3>
+            <div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3>
+            <div class="h-80 relative"><canvas id="comparison-chart"></canvas></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3>
+            <div class="h-80 relative">
+                <canvas id="person-spending-chart"></canvas>
+                <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3>
+            <div class="h-80 relative">
+                <canvas id="daily-evolution-chart"></canvas>
+            </div>
         </div>
     </div>
-</div>
-<div class="mt-8 bg-white p-6 rounded-2xl shadow-lg">
-    <h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3>
-    <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg">
-        <p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p>
-        <div class="flex gap-2">
-            <button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button>
-            <button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button>
+    
+    <div class="mt-8 bg-white p-6 rounded-2xl shadow-lg">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3>
+        <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg">
+            <p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p>
+            <div class="flex gap-2">
+                <button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button>
+                <button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button>
+            </div>
         </div>
-    </div>
-</div>`;
+    </div>`;
 }
 
 export function renderRecordsPage() {
@@ -1141,16 +1160,33 @@ export function renderPersonSpendingChart() {
 
 export function renderCharts() {
     const chartInstances = {};
+    
+    // Renderiza SEMPRE os principais
+    chartInstances.monthly = renderMonthlyChart();
+    chartInstances.budget = renderBudgetPerformanceChart(); // NOVO
+    
+    // Os gráficos secundários só são renderizados se o container estiver visível
+    // (Isso será tratado no main.js, mas aqui deixamos a função pronta para destruir tudo)
+    
+    // Função auxiliar para renderizar os secundários sob demanda
+    window.renderSecondaryCharts = () => {
+        chartInstances.annual = renderAnnualChart();
+        chartInstances.comparison = renderComparisonChart();
+        chartInstances.personSpending = renderPersonSpendingChart();
+        chartInstances.daily = renderDailyEvolutionChart(); // NOVO
+    };
+
     const destroyAllCharts = () => {
         Object.values(chartInstances).forEach(chart => {
             if (chart) chart.destroy();
         });
+        // Também destrói os secundários se foram criados via window
+        const secIds = ['annual-balance-chart', 'comparison-chart', 'person-spending-chart', 'daily-evolution-chart'];
+        secIds.forEach(id => {
+            const canvas = document.getElementById(id);
+            if(canvas && Chart.getChart(canvas)) Chart.getChart(canvas).destroy();
+        });
     };
-
-    chartInstances.monthly = renderMonthlyChart();
-    chartInstances.annual = renderAnnualChart();
-    chartInstances.comparison = renderComparisonChart();
-    chartInstances.personSpending = renderPersonSpendingChart();
 
     return destroyAllCharts;
 }
@@ -1218,3 +1254,156 @@ export function renderForgotPasswordSuccessHTML() {
     </div>`;
 }
 
+
+
+export function renderBudgetPerformanceChart() {
+    const chartCanvas = document.getElementById('budget-performance-chart');
+    const noDataElement = document.getElementById('budget-performance-chart-no-data');
+    if (!chartCanvas || !noDataElement) return null;
+
+    const activeBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
+
+    if (activeBudgets.length === 0) {
+        chartCanvas.style.display = 'none';
+        noDataElement.style.display = 'flex';
+        noDataElement.innerText = "Nenhum orçamento definido para este mês.";
+        return null;
+    }
+
+    chartCanvas.style.display = 'block';
+    noDataElement.style.display = 'none';
+
+    // Preparar dados
+    const labels = [];
+    const limits = [];
+    const spentData = [];
+
+    activeBudgets.forEach(budget => {
+        labels.push(budget.name); // Nome do Orçamento
+        limits.push(budget.value); // Valor Limite
+        
+        // Calcula quanto gastou nessa categoria neste mês
+        const spent = state.transactions
+            .filter(t => 
+                t.type === 'expense' && 
+                t.category === budget.category &&
+                new Date(t.date + 'T12:00:00').getMonth() === state.displayedMonth.getMonth() &&
+                new Date(t.date + 'T12:00:00').getFullYear() === state.displayedMonth.getFullYear()
+            )
+            .reduce((sum, t) => sum + t.amount, 0);
+        
+        spentData.push(spent);
+    });
+
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+
+    if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
+
+    return new Chart(chartCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Limite Definido',
+                    data: limits,
+                    backgroundColor: 'rgba(16, 185, 129, 0.6)', // Verde
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Gasto Atual',
+                    data: spentData,
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)', // Vermelho
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { color: textColor } },
+                x: { ticks: { color: textColor } }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { color: textColor } },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `R$ ${context.raw.toFixed(2)}`
+                    }
+                },
+                datalabels: { display: false } // Polui muito nesse gráfico
+            }
+        }
+    });
+}
+
+// Função para o Gráfico de Evolução Diária (Linha)
+export function renderDailyEvolutionChart() {
+    const chartCanvas = document.getElementById('daily-evolution-chart');
+    if (!chartCanvas) return null;
+
+    const daysInMonth = new Date(state.displayedMonth.getFullYear(), state.displayedMonth.getMonth() + 1, 0).getDate();
+    const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+    
+    // Calcula gasto acumulado dia a dia
+    let accumulated = 0;
+    const dataPoints = days.map(day => {
+        const spentOnDay = state.transactions
+            .filter(t => {
+                const d = new Date(t.date + 'T12:00:00');
+                return t.type === 'expense' && 
+                       d.getDate() === day && 
+                       d.getMonth() === state.displayedMonth.getMonth() &&
+                       d.getFullYear() === state.displayedMonth.getFullYear();
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+        
+        accumulated += spentOnDay;
+        // Se o dia ainda não chegou (futuro), não mostra ponto no gráfico para não ficar uma linha reta no final
+        const today = new Date();
+        const currentCheckDate = new Date(state.displayedMonth.getFullYear(), state.displayedMonth.getMonth(), day);
+        if (state.displayedMonth.getMonth() === today.getMonth() && state.displayedMonth.getFullYear() === today.getFullYear() && day > today.getDate()) {
+            return null;
+        }
+        return accumulated;
+    });
+
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+
+    if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
+
+    return new Chart(chartCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Gasto Acumulado (Mês)',
+                data: dataPoints,
+                borderColor: '#3B82F6', // Azul
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4 // Linha curva suave
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { color: textColor } },
+                x: { ticks: { color: textColor, maxTicksLimit: 10 } } // Limita labels no eixo X
+            },
+            plugins: {
+                legend: { display: false },
+                datalabels: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Acumulado: R$ ${context.raw.toFixed(2)}`
+                    }
+                }
+            }
+        }
+    });
+}   
