@@ -1,5 +1,6 @@
 // main.js
 import { auth, firebase } from "./firebase-config.js";
+
 import {
     state,
     handleLogin, handleSignup, handleGoogleLogin, handleLogout,
@@ -18,14 +19,28 @@ import {
     handleRejectJoinRequest,
     handleDeleteNotification,
     handleEnterFamilyFromNotification,
-    handleResetPassword
+    handleResetPassword,
+    handleUpdateProfile, 
+    handleChangePassword, 
+    handleUpdateFamilyName, 
+    handleRegenerateCode,
+    // --- ADICIONE AS IMPORTAÇÕES ABAIXO QUE ESTAVAM FALTANDO ---
+    handlePromoteMember,
+    handleKickMember,
+    handleDeleteFamily,
+    // NOVOS:
+    handleConfirmAction,
+    closeConfirmation
 } from "./state-and-handlers.js";
+
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage,
     renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal,
     renderCharts as renderChartsUI,
     renderManageCategoriesModal,
     renderEditCategoryModal,
+    renderSettingsModal,
+    renderConfirmationModal // NOVO
 } from "./ui-components.js";
 
 const root = document.getElementById('root');
@@ -70,6 +85,8 @@ export function renderApp() {
     root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
     root.insertAdjacentHTML('beforeend', renderManageCategoriesModal());
     root.insertAdjacentHTML('beforeend', renderEditCategoryModal());
+    root.insertAdjacentHTML('beforeend', renderSettingsModal()); 
+    root.insertAdjacentHTML('beforeend', renderConfirmationModal());
 
     attachEventListeners();
 }
@@ -85,7 +102,8 @@ function attachEventListeners() {
     document.querySelectorAll('.select-family-button').forEach(button => button.onclick = (e) => handleSelectFamily(e.currentTarget.dataset.familyId));
     const userMenuButton = document.getElementById('user-menu-button'); if (userMenuButton) userMenuButton.onclick = () => document.getElementById('user-menu').classList.toggle('hidden');
     const logoutButton = document.getElementById('logout-button'); if (logoutButton) logoutButton.onclick = handleLogout;
-    const leaveFamilyButton = document.getElementById('leave-family-button'); if (leaveFamilyButton) leaveFamilyButton.onclick = handleLeaveFamily;
+    
+    // Navegação por abas
     document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
         const newView = e.currentTarget.dataset.view;
         if (state.currentView !== newView) {
@@ -97,6 +115,7 @@ function attachEventListeners() {
             }
         }
     });
+
     const themeToggleButton = document.getElementById('theme-toggle-button'); if (themeToggleButton) themeToggleButton.onclick = handleToggleTheme;
     const detailsButton = document.getElementById('details-button'); if (detailsButton) detailsButton.onclick = () => { state.currentView = 'records'; renderApp(); };
 
@@ -114,7 +133,6 @@ function attachEventListeners() {
     const prevMonthChartButton = document.getElementById('prev-month-chart-button'); if (prevMonthChartButton) prevMonthChartButton.onclick = () => handleChangeMonth(-1);
     const nextMonthChartButton = document.getElementById('next-month-chart-button'); if (nextMonthChartButton) nextMonthChartButton.onclick = () => handleChangeMonth(1);
     
-    // *** CORREÇÃO APLICADA AQUI ***
     document.querySelectorAll('#copy-code-button').forEach(button => {
         if (button) button.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
     });
@@ -149,7 +167,6 @@ function attachEventListeners() {
     const addBudgetButton = document.getElementById('add-budget-button'); if (addBudgetButton) addBudgetButton.onclick = () => { state.isModalOpen = true; state.modalView = 'budget'; state.editingBudgetItemId = null; renderApp(); };
     document.querySelectorAll('.budget-item').forEach(item => item.onclick = e => { state.editingBudgetItemId = e.currentTarget.dataset.budgetId; state.isModalOpen = true; state.modalView = 'budget'; renderApp(); });
     
-    // *** CORREÇÃO APLICADA AQUI ***
     document.querySelectorAll('#close-modal-button').forEach(button => {
         if (button) button.onclick = () => {
             state.isModalOpen = false;
@@ -183,6 +200,8 @@ function attachEventListeners() {
         swipeTarget.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
         swipeTarget.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; if (touchEndX < touchStartX - 50) handleChangeMonth(1); if (touchEndX > touchStartX + 50) handleChangeMonth(-1); });
     }
+    
+    // Modal de Informações da Família
     const familyInfoButton = document.getElementById('family-info-button');
     if (familyInfoButton) {
         familyInfoButton.onclick = () => {
@@ -192,11 +211,59 @@ function attachEventListeners() {
         };
     }
 
-     const switchFamilyButton = document.getElementById('switch-family-button');
-     if (switchFamilyButton) {
-         switchFamilyButton.onclick = handleSwitchFamily;
-     }
- 
+    // --- NOVOS LISTENERS DO MODAL DA FAMÍLIA ---
+    const switchFamilyHeaderBtn = document.getElementById('switch-family-header-button');
+    if (switchFamilyHeaderBtn) switchFamilyHeaderBtn.onclick = handleSwitchFamily;
+
+    const switchFamilyModalBtn = document.getElementById('switch-family-button');
+    if (switchFamilyModalBtn) switchFamilyModalBtn.onclick = handleSwitchFamily;
+
+    const leaveFamilyModalBtn = document.getElementById('leave-family-modal-button');
+    if (leaveFamilyModalBtn) leaveFamilyModalBtn.onclick = handleLeaveFamily; // Lógica inteligente
+
+    const deleteFamilyBtn = document.getElementById('delete-family-button');
+    if (deleteFamilyBtn) deleteFamilyBtn.onclick = handleDeleteFamily; // Lógica de exclusão
+
+    // Editar Nome da Família
+    const editFamilyNameBtn = document.getElementById('edit-family-name-btn');
+    if (editFamilyNameBtn) {
+        editFamilyNameBtn.onclick = () => {
+            document.getElementById('family-name-display').classList.add('hidden');
+            document.getElementById('family-name-edit').classList.remove('hidden');
+            document.getElementById('edit-family-name-input').focus();
+        };
+    }
+    const cancelNameEditBtn = document.getElementById('cancel-name-edit');
+    if (cancelNameEditBtn) {
+        cancelNameEditBtn.onclick = () => {
+            document.getElementById('family-name-display').classList.remove('hidden');
+            document.getElementById('family-name-edit').classList.add('hidden');
+        };
+    }
+    const familyNameEditForm = document.getElementById('family-name-edit');
+    if (familyNameEditForm) familyNameEditForm.onsubmit = handleUpdateFamilyName;
+
+    // Regenerar Código
+    const regenerateCodeBtnInfo = document.getElementById('regenerate-code-btn');
+    if (regenerateCodeBtnInfo) regenerateCodeBtnInfo.onclick = handleRegenerateCode;
+
+    // Botões de Membros (Promover/Remover)
+    document.querySelectorAll('.promote-member-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const uid = e.currentTarget.dataset.uid;
+            handlePromoteMember(uid);
+        };
+    });
+
+    document.querySelectorAll('.kick-member-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const uid = e.currentTarget.dataset.uid;
+            const name = e.currentTarget.dataset.name;
+            handleKickMember(uid, name);
+        };
+    });
+    // -----------------------------------------
+
     if (state.currentView === 'dashboard') {
         if (destroyChartsCallback) {
             destroyChartsCallback();
@@ -277,17 +344,6 @@ function attachEventListeners() {
         renderApp(); 
     };
 
-    document.querySelectorAll('.edit-category-button').forEach(button => {
-        button.onclick = (event) => {
-            const categoryToEdit = event.target.dataset.categoryName;
-            state.editingCategory = categoryToEdit;
-            state.confirmingDelete = false;
-            state.isModalOpen = true;
-            state.modalView = 'editCategory';
-            renderApp();
-        };
-    });
-
     const deleteCategoryButton = document.getElementById('delete-category-button');
     if (deleteCategoryButton) {
         deleteCategoryButton.onclick = () => {
@@ -331,12 +387,8 @@ function attachEventListeners() {
             toggleNotificationMenu();
         }
     });
-
-    // NOVO: Listeners para os botões dentro das notificações
-    // Como o conteúdo é dinâmico, adicionamos no document ou re-adicionamos ao renderizar.
-    // Usando delegação de eventos para simplificar:
     
-    // Botão Aceitar
+    // Botões de Notificação
     document.querySelectorAll('.accept-request-btn').forEach(btn => {
         btn.onclick = (e) => {
             const notifId = e.currentTarget.dataset.notifId;
@@ -345,7 +397,6 @@ function attachEventListeners() {
         };
     });
 
-    // Botão Recusar
     document.querySelectorAll('.reject-request-btn').forEach(btn => {
         btn.onclick = (e) => {
             const notifId = e.currentTarget.dataset.notifId;
@@ -353,34 +404,14 @@ function attachEventListeners() {
         };
     });
 
-    // Botão Fechar (X)
     document.querySelectorAll('.delete-notif-btn').forEach(btn => {
         btn.onclick = (e) => {
-            e.stopPropagation(); // Não fecha o menu
+            e.stopPropagation(); 
             const notifId = e.currentTarget.dataset.id;
             handleDeleteNotification(notifId);
         };
     });
 
-    // Botão Aceitar Solicitação (ADMIN)
-    document.querySelectorAll('.accept-request-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const notifId = e.currentTarget.dataset.notifId;
-            const notif = state.notifications.find(n => n.id === notifId);
-            if (notif) handleAcceptJoinRequest(notif);
-        };
-    });
-
-    // Botão Recusar Solicitação (ADMIN)
-    document.querySelectorAll('.reject-request-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const notifId = e.currentTarget.dataset.notifId;
-            const notif = state.notifications.find(n => n.id === notifId);
-            if (notif) handleRejectJoinRequest(notif); // Passando o objeto inteiro agora
-        };
-    });
-
-    // NOVO: Botão "Entrar Agora" (USUÁRIO)
     document.querySelectorAll('.enter-family-notif-btn').forEach(btn => {
         btn.onclick = (e) => {
             const notifId = e.currentTarget.dataset.notifId;
@@ -389,7 +420,7 @@ function attachEventListeners() {
         };
     });
 
-    // Listener para o link "Esqueceu a senha?" na tela de Login
+    // Auth Listeners
     const forgotPasswordLink = document.getElementById('forgot-password-link');
     if (forgotPasswordLink) {
         forgotPasswordLink.onclick = (e) => {
@@ -399,13 +430,11 @@ function attachEventListeners() {
         };
     }
 
-    // Listener para o formulário de Resetar Senha (Botão Enviar)
     const resetPasswordForm = document.getElementById('reset-password-form');
     if (resetPasswordForm) {
         resetPasswordForm.onsubmit = handleResetPassword;
     }
 
-    // Listener para o botão "Voltar ao Login" (texto pequeno) na tela de form de reset
     const backToLoginLink = document.getElementById('back-to-login-link');
     if (backToLoginLink) {
         backToLoginLink.onclick = () => {
@@ -414,10 +443,6 @@ function attachEventListeners() {
         };
     }
     
-    // IMPORTANTE: Esse botão já existia para o "signup-success", mas como usamos o mesmo ID 
-    // ou IDs parecidos, vamos garantir que funcione para ambos os fluxos de sucesso.
-    // O código anterior que fizemos já tratava o `back-to-login-success-button`.
-    // Verifique se o listener abaixo já existe no seu código, se não, adicione:
     const backToLoginSuccess = document.getElementById('back-to-login-success-button');
     if (backToLoginSuccess) {
         backToLoginSuccess.onclick = () => {
@@ -434,41 +459,81 @@ function attachEventListeners() {
             const btnText = toggleChartsButton.querySelector('span');
 
             if (container.classList.contains('hidden')) {
-                // EXIBIR
                 container.classList.remove('hidden');
                 icon.classList.add('rotate-180');
                 btnText.textContent = "Ocultar gráficos";
-                
-                // Renderiza os gráficos agora que o container tem tamanho
                 if (window.renderSecondaryCharts) window.renderSecondaryCharts();
-                
-                // Scroll suave até o container
                 container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
-                // OCULTAR
                 container.classList.add('hidden');
                 icon.classList.remove('rotate-180');
                 btnText.textContent = "Exibir mais gráficos";
             }
         };
     }
+
+    const openSettingsBtn = document.getElementById('open-settings-button');
+    if (openSettingsBtn) {
+        openSettingsBtn.onclick = () => {
+            state.isModalOpen = true;
+            state.modalView = 'settings';
+            state.settingsTab = 'profile'; 
+            document.getElementById('user-menu').classList.add('hidden');
+            renderApp();
+        };
+    }
+
+    // Configurações
+    const updateProfileForm = document.getElementById('update-profile-form');
+    if (updateProfileForm) updateProfileForm.onsubmit = handleUpdateProfile;
+
+    const changePasswordForm = document.getElementById('change-password-form');
+    if (changePasswordForm) changePasswordForm.onsubmit = handleChangePassword;
+
+    const togglePasswordBtn = document.getElementById('toggle-password-btn');
+    if (togglePasswordBtn) {
+        togglePasswordBtn.onclick = () => {
+            const formContainer = document.getElementById('password-form-container');
+            const chevron = document.getElementById('password-chevron');
+            if (formContainer.classList.contains('hidden')) {
+                formContainer.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                formContainer.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        };
+    }
+
+    // Listeners do Modal de Confirmação Global
+    const confirmYesBtn = document.getElementById('confirm-modal-yes');
+    if (confirmYesBtn) confirmYesBtn.onclick = handleConfirmAction;
+
+    const confirmCancelBtn = document.getElementById('confirm-modal-cancel');
+    if (confirmCancelBtn) confirmCancelBtn.onclick = closeConfirmation;
 }
 
 let unsubscribeNotifications = null;
 
 firebase.onAuthStateChanged(auth, async (user) => {
-    // A CORREÇÃO MÁGICA ESTÁ AQUI:
-    // Se estivermos no meio do processo de cadastro, ignoramos esse evento.
     if (state.isSigningUp) return; 
 
     if (user) {
-        state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0] };
+        // DETECTA SE É USER GOOGLE: Verifica se algum provedor é 'google.com'
+        const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+
+        state.user = { 
+            uid: user.uid, 
+            email: user.email, 
+            name: user.displayName || user.email.split('@')[0],
+            photoURL: user.photoURL,
+            isGoogle: isGoogle // SALVAMOS AQUI
+        };
+        
         state.userFamilies = await fetchUserFamilies();
         
-        // ... (seu código de notificação e URL params continua aqui) ...
         if (unsubscribeNotifications) unsubscribeNotifications(); 
         unsubscribeNotifications = subscribeToNotifications();
-        // ...
         
     } else {
         if (unsubscribeNotifications) unsubscribeNotifications();
@@ -477,7 +542,11 @@ firebase.onAuthStateChanged(auth, async (user) => {
         state.transactions = []; 
         state.userFamilies = []; 
         state.budgets = [];
-        // Removemos o reset forçado para 'auth' aqui para não sobrescrever o 'signup-success'
+        
+        state.isModalOpen = false;
+        state.modalView = '';
+        state.isNotificationMenuOpen = false;
+
         if (state.authView !== 'signup-success') {
             state.currentView = 'auth';
         }

@@ -12,7 +12,7 @@ import {
     GoogleAuthProvider, 
     signInWithPopup, 
     sendEmailVerification, 
-    sendPasswordResetEmail // <--- ADICIONE AQUI
+    sendPasswordResetEmail, // <--- ADICIONE AQUI
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 

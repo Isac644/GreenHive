@@ -1,17 +1,25 @@
 // state-and-handlers.js
+// state-and-handlers.js
 import { firebase, db, auth, googleProvider } from "./firebase-config.js";
 import { renderApp, showToast } from "./main.js";
-import { getFirestore, collection, addDoc, getDocs, doc, query, where, updateDoc, arrayUnion, getDoc, deleteDoc, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
+// ADICIONE 'arrayRemove' NA LINHA ABAIXO:
+import { getFirestore, collection, addDoc, getDocs, doc, query, where, updateDoc, arrayUnion, arrayRemove, getDoc, deleteDoc, writeBatch, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { 
+    updateProfile, 
+    updatePassword, 
+    EmailAuthProvider, 
+    reauthenticateWithCredential 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 export const state = {
+    // ... (mantenha os outros estados: user, family, transactions, etc...)
     user: null,
     family: null,
     userFamilies: [],
     transactions: [],
     budgets: [],
     userCategories: { expense: [], income: [] },
-    categoryColors: {}, // AGORA VAZIO. CORES VIRÃO DO FIRESTORE.
-     theme: localStorage.getItem('theme') || 'light',
+    categoryColors: {},
+    theme: localStorage.getItem('theme') || 'light',
     authView: 'login',
     currentView: 'auth',
     detailsFilterType: 'all',
@@ -22,19 +30,27 @@ export const state = {
     editingBudgetItemId: null,
     modalView: '',
     modalTransactionType: 'expense',
-    confirmingDelete: false,
+    confirmingDelete: false, // Esse é o antigo inline, pode manter por enquanto
     errorMessage: '',
-    // NOVO:
     familyAdmins: [],
     familyMembers: [],
-    modalView: '',
-    editingCategory: '', // NOVO: A categoria que está sendo editada
-    notifications: [], // NOVO: Para armazenar as notificações
-    joinRequestMessage: '', // NOVO: Para exibir msg de pendente no formulário
-    isNotificationMenuOpen: false, // NOVO: Controle do menu
+    editingCategory: '',
+    notifications: [],
+    joinRequestMessage: '',
+    isNotificationMenuOpen: false,
     isSigningUp: false,
+    settingsTab: 'profile',
+    modalParentView: '',
+    // NOVO: Estado do Modal de Confirmação Global
+    confirmationModal: {
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'danger', // 'danger' ou 'info'
+        onConfirm: null // Aqui guardaremos a função a ser executada
+    },
+    familyUnsubscribe: null // Guarda a função para parar de ouvir a família
 };
-
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
 export const DEFAULT_CATEGORIES_SETUP = {
     expense: ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde'],
@@ -129,12 +145,18 @@ export async function handleSignup(event) {
         return;
     }
     
-    // 1. BLOQUEIA O LISTENER: Isso impede que o main.js veja o login automático
     state.isSigningUp = true; 
 
     try {
         const userCredential = await firebase.createUserWithEmailAndPassword(auth, email, password);
         await firebase.updateProfile(userCredential.user, { displayName: name });
+
+        // NOVO: Salvar dados no Firestore para outros membros verem
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+            name: name,
+            email: email,
+            photoURL: null
+        });
 
         const actionCodeSettings = {
             url: window.location.href,
@@ -142,20 +164,14 @@ export async function handleSignup(event) {
         };
 
         await firebase.sendEmailVerification(userCredential.user, actionCodeSettings);
-
-        // O usuário foi logado automaticamente, mas o listener foi ignorado.
-        // Agora deslogamos silenciosamente.
         await firebase.signOut(auth);
 
-        // 2. LIBERA O LISTENER E MUDA A TELA
         state.isSigningUp = false; 
         state.authView = 'signup-success'; 
         renderApp();
 
     } catch (error) {
-        // EM CASO DE ERRO: Importante liberar o listener novamente
         state.isSigningUp = false;
-
         let errorMessage = "Ocorreu um erro desconhecido.";
         switch (error.code) {
             case 'auth/email-already-in-use': errorMessage = "Este email já está cadastrado."; break;
@@ -169,7 +185,17 @@ export async function handleSignup(event) {
 
 export async function handleGoogleLogin() {
     try {
-        await firebase.signInWithPopup(auth, googleProvider);
+        const result = await firebase.signInWithPopup(auth, googleProvider);
+        const user = result.user;
+
+        // NOVO: Sincronizar usuário Google com Firestore
+        // setDoc com { merge: true } atualiza ou cria se não existir, sem apagar outros campos
+        await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL
+        }, { merge: true });
+
     } catch (error) {
         console.error("Erro no login com Google:", error);
         showToast("Não foi possível fazer o login com o Google.", 'error');
@@ -177,6 +203,7 @@ export async function handleGoogleLogin() {
 }
 
 export async function handleLogout() {
+    if (state.familyUnsubscribe) state.familyUnsubscribe(); // <--- PARA DE OUVIR
     await firebase.signOut(auth);
 }
 
@@ -211,6 +238,9 @@ export async function handleCreateFamily(event) {
 }
 
 export function handleSwitchFamily() {
+    if (state.familyUnsubscribe) state.familyUnsubscribe(); // <--- PARA DE OUVIR
+    state.familyUnsubscribe = null;
+
     state.family = null;
     state.transactions = [];
     state.budgets = [];
@@ -218,10 +248,15 @@ export function handleSwitchFamily() {
     state.categoryColors = {};
     state.familyAdmins = [];
     state.familyMembers = [];
-    state.currentView = 'onboarding'; // Volta para a tela de seleção/criação
+    state.currentView = 'onboarding'; 
     state.isModalOpen = false;
-    renderApp();
-    showToast("Você saiu da família atual.", 'success');
+    
+    fetchUserFamilies().then(families => {
+        state.userFamilies = families;
+        renderApp();
+    });
+    
+    showToast("Você saiu da visualização da família.", 'success');
 }
 
 // ATUALIZADA: handleJoinFamily com verificação explícita
@@ -447,23 +482,13 @@ export async function handleJoinFamilyFromLink(code) {
 }
 
 export async function handleSelectFamily(familyId) {
-    await loadFamilyData(familyId);
+    await loadFamilyData(familyId); // Carrega os dados iniciais (Transações, etc)
+    
     if (state.family) {
+        subscribeToFamily(familyId); // <--- LIGA O MONITORAMENTO EM TEMPO REAL
         state.currentView = 'dashboard';
         renderApp();
     }
-}
-
-export function handleLeaveFamily() {
-    state.family = null;
-    state.transactions = [];
-    state.budgets = [];
-    state.currentView = 'onboarding';
-    fetchUserFamilies().then(families => {
-        state.userFamilies = families;
-        renderApp();
-        showToast("Você saiu da família.", 'success');
-    });
 }
 
 export async function handleAddTransaction(event) {
@@ -883,4 +908,343 @@ export async function handleResetPassword(event) {
         }
         showToast(errorMessage, 'error');
     }
+}
+
+// --- CONFIGURAÇÕES DE PERFIL E FAMÍLIA ---
+
+// Atualizar Perfil (Nome e Avatar/Emoji)
+export async function handleUpdateProfile(event) {
+    event.preventDefault();
+    const displayName = event.target.displayName.value;
+    const emoji = event.target.avatarEmoji.value;
+    const color = event.target.avatarColor.value;
+    const photoURL = `${emoji}|${color}`;
+
+    try {
+        await firebase.updateProfile(auth.currentUser, { 
+            displayName: displayName,
+            photoURL: photoURL 
+        });
+        
+        // NOVO: Sincroniza com Firestore
+        await updateDoc(doc(db, "users", state.user.uid), {
+            name: displayName,
+            photoURL: photoURL
+        });
+        
+        state.user.name = displayName;
+        state.user.photoURL = photoURL;
+        
+        showToast("Perfil atualizado com sucesso!", 'success');
+        renderApp(); 
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao atualizar perfil.", 'error');
+    }
+}
+
+// Alterar Senha
+export async function handleChangePassword(event) {
+    event.preventDefault();
+    const currentPassword = event.target.currentPassword.value;
+    const newPassword = event.target.newPassword.value;
+
+    try {
+        const user = auth.currentUser;
+        
+        // CORREÇÃO 1: Removido 'firebase.' antes de EmailAuthProvider
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        
+        // CORREÇÃO 2: Removido 'firebase.' antes de reauthenticateWithCredential
+        // Reautenticar por segurança (necessário antes de trocar senha)
+        await reauthenticateWithCredential(user, credential);
+        
+        // CORREÇÃO 3: Removido 'firebase.' antes de updatePassword
+        // Atualizar senha
+        await updatePassword(user, newPassword);
+        
+        showToast("Senha alterada com sucesso!", 'success');
+        event.target.reset();
+
+        // Opcional: Fecha o formulário visualmente após o sucesso
+        const formContainer = document.getElementById('password-form-container');
+        const chevron = document.getElementById('password-chevron');
+        if (formContainer) {
+            formContainer.classList.add('hidden');
+            if (chevron) chevron.classList.remove('rotate-180');
+        }
+
+    } catch (e) {
+        console.error(e);
+        if (e.code === 'auth/wrong-password') {
+            showToast("Senha atual incorreta.", 'error');
+        } else if (e.code === 'auth/weak-password') {
+            showToast("A nova senha deve ter pelo menos 6 caracteres.", 'error');
+        } else {
+            showToast("Erro ao alterar senha. Tente novamente.", 'error');
+        }
+    }
+}
+
+// (ADMIN) Renomear Família
+export async function handleUpdateFamilyName(event) {
+    event.preventDefault();
+    const newName = document.getElementById('edit-family-name-input').value;
+
+    try {
+        const familyRef = firebase.doc(db, "familyGroups", state.family.id);
+        await firebase.updateDoc(familyRef, { name: newName });
+        
+        state.family.name = newName;
+        showToast("Nome atualizado!", 'success');
+        
+        // Hack visual para alternar de volta para texto
+        document.getElementById('family-name-display').classList.remove('hidden');
+        document.getElementById('family-name-edit').classList.add('hidden');
+        document.getElementById('family-name-text').textContent = newName;
+        renderApp(); // Para atualizar o header também
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao atualizar nome.", 'error');
+    }
+}
+
+// (ADMIN) Gerar Novo Código
+export async function handleRegenerateCode() {
+    try {
+        const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const familyRef = firebase.doc(db, "familyGroups", state.family.id);
+        
+        await firebase.updateDoc(familyRef, { code: newCode });
+        
+        state.family.code = newCode;
+        showToast("Novo código de convite gerado!", 'success');
+        renderApp(); // Atualiza a UI onde o código aparece
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao gerar código.", 'error');
+    }
+}// state-and-handlers.js
+
+// ... (imports existentes)
+
+// --- NOVAS FUNÇÕES DE GERENCIAMENTO DE MEMBROS ---
+
+export async function handlePromoteMember(memberId) {
+    try {
+        const familyRef = firebase.doc(db, "familyGroups", state.family.id);
+        await firebase.updateDoc(familyRef, {
+            admins: firebase.arrayUnion(memberId)
+        });
+        // Atualiza estado local
+        state.familyAdmins.push(memberId);
+        renderApp(); // Re-renderiza para atualizar a UI
+        showToast("Membro promovido a Admin!", 'success');
+    } catch (e) {
+        console.error(e);
+        showToast("Erro ao promover membro.", 'error');
+    }
+}
+
+export function handleKickMember(memberId, memberName) {
+    openConfirmation(
+        "Remover Membro",
+        `Tem certeza que deseja remover <strong>${memberName}</strong> da família?`,
+        async () => {
+            try {
+                const familyRef = firebase.doc(db, "familyGroups", state.family.id);
+                await updateDoc(familyRef, {
+                    members: arrayRemove(memberId),
+                    admins: arrayRemove(memberId)
+                });
+                
+                state.familyMembers = state.familyMembers.filter(m => m.uid !== memberId);
+                state.familyAdmins = state.familyAdmins.filter(id => id !== memberId);
+                
+                // Não precisa chamar renderApp aqui pois o closeConfirmation chama depois
+                showToast(`${memberName} foi removido da família.`, 'success');
+            } catch (e) {
+                console.error(e);
+                showToast("Erro ao remover membro.", 'error');
+            }
+        }
+    );
+}
+
+export function handleDeleteFamily() {
+    openConfirmation(
+        "Excluir Família",
+        "ATENÇÃO: Isso excluirá <strong>PERMANENTEMENTE</strong> a família, todas as transações e históricos. <br><br>Essa ação não pode ser desfeita.",
+        async () => {
+            try {
+                const batch = firebase.writeBatch(db);
+                const familyId = state.family.id;
+
+                const transQuery = firebase.query(firebase.collection(db, "transactions"), firebase.where("familyGroupId", "==", familyId));
+                const transDocs = await firebase.getDocs(transQuery);
+                transDocs.forEach(doc => batch.delete(doc.ref));
+
+                const budgetsQuery = firebase.query(firebase.collection(db, "familyGroups", familyId, "budgets"));
+                const budgetDocs = await firebase.getDocs(budgetsQuery);
+                budgetDocs.forEach(doc => batch.delete(doc.ref));
+
+                const familyRef = firebase.doc(db, "familyGroups", familyId);
+                batch.delete(familyRef);
+
+                await batch.commit();
+
+                showToast("Família excluída.", 'success');
+                state.family = null;
+                state.transactions = [];
+                state.userFamilies = await fetchUserFamilies();
+                state.currentView = 'onboarding';
+                state.isModalOpen = false; // Fecha o modal da família
+                // O renderApp virá no closeConfirmation
+            } catch (e) {
+                console.error(e);
+                showToast("Erro ao excluir família.", 'error');
+            }
+        }
+    );
+}
+
+export function handleLeaveFamily() {
+    openConfirmation(
+        "Sair da Família",
+        "Tem certeza que deseja sair? Você perderá acesso aos dados e precisará de um novo convite para entrar novamente.",
+        async () => {
+            const familyId = state.family.id;
+            const userId = state.user.uid;
+            const familyRef = firebase.doc(db, "familyGroups", familyId);
+
+            try {
+                const familyDoc = await firebase.getDoc(familyRef);
+                const familyData = familyDoc.data();
+                const admins = familyData.admins;
+                const members = familyData.members;
+
+                if (members.length === 1) {
+                    // Se for o único, deleta tudo (Reutiliza lógica interna ou manual)
+                    // Aqui faremos manual para evitar abrir outro modal
+                    const batch = firebase.writeBatch(db);
+                    const transQuery = firebase.query(firebase.collection(db, "transactions"), firebase.where("familyGroupId", "==", familyId));
+                    const transDocs = await firebase.getDocs(transQuery);
+                    transDocs.forEach(doc => batch.delete(doc.ref));
+                    batch.delete(familyRef);
+                    await batch.commit();
+                } else if (admins.includes(userId) && admins.length === 1) {
+                    // Admin único saindo: Passa o bastão
+                    const otherMembers = members.filter(m => m !== userId);
+                    let nextAdminId = otherMembers[0]; // Simplificado
+                    
+                    await updateDoc(familyRef, {
+                        members: arrayRemove(userId),
+                        admins: arrayUnion(nextAdminId) 
+                    });
+                    await updateDoc(familyRef, { admins: arrayRemove(userId) });
+                    showToast("Você saiu. A administração foi passada adiante.", 'success');
+                } else {
+                    // Saída comum
+                    await updateDoc(familyRef, {
+                        members: arrayRemove(userId),
+                        admins: arrayRemove(userId)
+                    });
+                    showToast("Você saiu da família.", 'success');
+                }
+
+                state.family = null;
+                state.transactions = [];
+                state.currentView = 'onboarding';
+                state.userFamilies = await fetchUserFamilies();
+                state.isModalOpen = false; 
+            } catch (e) {
+                console.error(e);
+                showToast("Erro ao sair da família.", 'error');
+            }
+        }
+    );
+}
+
+export function openConfirmation(title, message, action, type = 'danger') {
+    state.confirmationModal = {
+        isOpen: true,
+        title,
+        message,
+        type,
+        onConfirm: action
+    };
+    renderApp();
+}
+
+// 2. Função chamada quando clica em "Sim" no modal
+export async function handleConfirmAction() {
+    if (state.confirmationModal.onConfirm) {
+        await state.confirmationModal.onConfirm();
+    }
+    closeConfirmation();
+}
+
+// 3. Função para fechar o modal
+export function closeConfirmation() {
+    state.confirmationModal = { isOpen: false, title: '', message: '', onConfirm: null };
+    renderApp();
+}
+
+function forceExitFamily(message) {
+    if (state.familyUnsubscribe) state.familyUnsubscribe();
+    state.familyUnsubscribe = null;
+    
+    state.family = null;
+    state.transactions = [];
+    state.budgets = [];
+    state.currentView = 'onboarding';
+    state.isModalOpen = false;
+    
+    // Busca as famílias novamente para atualizar a lista (caso tenha sido removido de uma)
+    fetchUserFamilies().then(families => {
+        state.userFamilies = families;
+        renderApp();
+        showToast(message, 'error'); // Toast vermelho de aviso
+    });
+}
+
+export function subscribeToFamily(familyId) {
+    // Se já estiver ouvindo outra, cancela a anterior
+    if (state.familyUnsubscribe) state.familyUnsubscribe();
+
+    const familyRef = doc(db, "familyGroups", familyId);
+
+    // Inicia o listener
+    state.familyUnsubscribe = onSnapshot(familyRef, async (snapshot) => {
+        // CENÁRIO 1: Família Excluída (Documento deixou de existir)
+        if (!snapshot.exists()) {
+            forceExitFamily("A família que você estava acessando foi excluída.");
+            return;
+        }
+
+        const data = snapshot.data();
+
+        // CENÁRIO 2: Usuário Removido (Seu ID não está mais na lista de membros)
+        if (!data.members.includes(state.user.uid)) {
+            forceExitFamily("Você foi removido desta família.");
+            return;
+        }
+
+        // CENÁRIO 3: Atualização Normal (Nome mudou, código mudou, novo membro entrou)
+        // Só atualizamos o estado se o usuário ainda estiver logado nessa família
+        if (state.family && state.family.id === familyId) {
+            state.family = { id: familyId, ...data };
+            state.familyAdmins = data.admins || [];
+            
+            // Se a lista de membros mudou de tamanho, recarregamos os dados dos membros
+            // para pegar nome/foto dos novos integrantes
+            if (state.familyMembers.length !== data.members.length) {
+                const memberPromises = data.members.map(uid => getDoc(doc(db, "users", uid)));
+                const memberDocs = await Promise.all(memberPromises);
+                state.familyMembers = memberDocs.map(d => ({ uid: d.id, ...d.data() }));
+            }
+
+            renderApp(); // Atualiza a tela em tempo real (ex: novo nome da família aparece na hora)
+        }
+    });
 }

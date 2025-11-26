@@ -37,8 +37,6 @@ export function renderHeader() {
             notificationsListHTML = `<div class="p-4 text-center text-gray-500 text-sm">Nenhuma notificação nova.</div>`;
         } else {
             notificationsListHTML = state.notifications.map(notif => {
-                
-                // 1. TIPO: SOLICITAÇÃO DE ENTRADA (Para o Admin)
                 if (notif.type === 'join_request') {
                     return `
                     <div class="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 relative group">
@@ -52,8 +50,6 @@ export function renderHeader() {
                         </div>
                     </div>`;
                 }
-
-                // 2. TIPO: SOLICITAÇÃO ACEITA (Para o Usuário)
                 if (notif.type === 'request_accepted') {
                     return `
                     <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 relative">
@@ -66,8 +62,6 @@ export function renderHeader() {
                         </button>
                     </div>`;
                 }
-
-                // 3. TIPO: SOLICITAÇÃO RECUSADA (Para o Usuário)
                 if (notif.type === 'request_rejected') {
                     return `
                     <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 relative">
@@ -77,13 +71,22 @@ export function renderHeader() {
                         </p>
                     </div>`;
                 }
-
                 return '';
             }).join('');
         }
     }
 
-    // ... (Resto do código do header permanece igual: userMenu, themeToggle, etc.)
+    let userAvatar = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-300">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>`;
+        
+    if (state.user.photoURL && state.user.photoURL.includes('|')) {
+        const [emoji, bg] = state.user.photoURL.split('|');
+        userAvatar = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-lg shadow-sm border border-gray-200" style="background-color: ${bg};">${emoji}</div>`;
+    }
+
     const dropdownHTML = state.isNotificationMenuOpen 
         ? `<div class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
             <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300 text-sm">Notificações</div>
@@ -102,11 +105,24 @@ export function renderHeader() {
                 </div>
                 <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">${ThemeIconSVG()}</button>
                 <div class="relative">
-                    <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-300"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center">
+                        ${userAvatar}
                     </button>
-                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border dark:border-gray-700">
-                        <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Sair da Conta</button>
+                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border dark:border-gray-700 animate-fade-in z-50">
+                        <div class="px-4 py-2 border-b dark:border-gray-700">
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">${state.user.name}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${state.user.email}</p>
+                        </div>
+                        
+                        <button id="open-settings-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            Configurações
+                        </button>
+
+                        <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            Sair da Conta
+                        </button>
                     </div>
                 </div>
             </div>
@@ -122,7 +138,6 @@ export function renderAuthPage() {
         content = renderSignupFormHTML();
     } else if (state.authView === 'signup-success') {
         content = renderSignupSuccessHTML();
-    // NOVOS CASOS:
     } else if (state.authView === 'forgot-password') {
         content = renderForgotPasswordFormHTML();
     } else if (state.authView === 'forgot-password-success') {
@@ -206,6 +221,69 @@ export function renderSignupFormHTML() {
 <p class="mt-8 text-center text-sm text-gray-600">Já tem uma conta?
     <button id="switch-to-login" class="font-medium text-green-600 hover:text-green-500">Faça login</button>
 </p>`;
+}
+
+function renderSignupSuccessHTML() {
+    return `
+    <div class="text-center animate-fade-in">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Verifique seu Email</h2>
+        <div class="text-gray-600 mb-8 space-y-2">
+            <p>Enviamos um link de confirmação para o seu endereço de email.</p>
+            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
+                <strong>Atenção:</strong> Caso não encontre o email na caixa de entrada, verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
+            </p>
+            <p>Por favor, volte ao login após a confirmação.</p>
+        </div>
+        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
+            Voltar para Login
+        </button>
+    </div>`;
+}
+
+export function renderForgotPasswordFormHTML() {
+    return `<h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Recuperar Senha</h2>
+    <p class="text-gray-600 text-center mb-6 text-sm">Insira seu email para receber o link de redefinição.</p>
+    <form id="reset-password-form" novalidate>
+        <div class="space-y-6">
+            <div>
+                <label for="email-reset" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input id="email-reset" name="email" type="email" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="voce@exemplo.com" />
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700">Enviar Link</button>
+            </div>
+        </div>
+    </form>
+    <p class="mt-8 text-center text-sm text-gray-600">
+        Lembrou a senha?
+        <button id="back-to-login-link" class="font-medium text-green-600 hover:text-green-500">Voltar ao Login</button>
+    </p>`;
+}
+
+export function renderForgotPasswordSuccessHTML() {
+    return `
+    <div class="text-center animate-fade-in">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
+            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Email Enviado!</h2>
+        <div class="text-gray-600 mb-8 space-y-2">
+            <p>Se houver uma conta associada a este endereço, enviamos as instruções de recuperação.</p>
+            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
+                <strong>Dica:</strong> Verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
+            </p>
+        </div>
+        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
+            Voltar para Login
+        </button>
+    </div>`;
 }
 
 export function renderFamilyOnboardingPage() {
@@ -413,62 +491,144 @@ export function renderBudgetModal() {
 export function renderFamilyInfoModal() {
     if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
 
-    const memberListHTML = state.familyMembers.map(member => {
-        const isAdmin = state.familyAdmins.includes(member.uid);
-        const adminTag = isAdmin ? `<span class="ml-2 bg-green-200 text-green-800 text-xs font-medium px-2 py-0.5 rounded-full dark:bg-green-800 dark:text-green-200">Admin</span>` : '';
-        const isCurrentUser = member.uid === state.user.uid;
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
 
-        const memberName = member.name || 'Anônimo'; 
-        const userName = isCurrentUser ? `${memberName} (você)` : memberName;
+    const memberListHTML = state.familyMembers.map(member => {
+        const isMemberAdmin = state.familyAdmins.includes(member.uid);
+        const isCurrentUser = member.uid === state.user.uid;
+        
+        // CORREÇÃO AQUI: Lógica de Fallback para o nome e foto
+        // Se o dado do banco (member) for vazio, tenta usar o state.user (se for o próprio usuário)
+        const dbName = member.name;
+        const localName = isCurrentUser ? state.user.name : 'Anônimo';
+        const finalName = dbName || localName;
+        
+        const displayName = isCurrentUser ? `${finalName} (você)` : finalName;
+
+        const dbPhoto = member.photoURL;
+        const localPhoto = isCurrentUser ? state.user.photoURL : null;
+        const finalPhoto = dbPhoto || localPhoto;
+
+        // Renderização do Avatar
+        let avatarHTML = `<div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-lg mr-3 select-none">${finalName.charAt(0).toUpperCase()}</div>`;
+        if (finalPhoto && finalPhoto.includes('|')) {
+            const [emoji, bg] = finalPhoto.split('|');
+            avatarHTML = `<div class="h-10 w-10 rounded-full flex items-center justify-center text-xl mr-3 shadow-sm select-none" style="background-color: ${bg};">${emoji}</div>`;
+        } else if (finalPhoto) {
+             // Caso seja foto do Google (URL normal)
+             avatarHTML = `<img src="${finalPhoto}" class="h-10 w-10 rounded-full mr-3 shadow-sm select-none object-cover" />`;
+        }
+
+        // Cálculo de Saldo
+        const memberBalance = state.transactions
+            .filter(t => t.userId === member.uid)
+            .reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+        
+        const balanceColor = memberBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+
+        // Tags e Botões
+        const adminTag = isMemberAdmin ? `<span class="ml-2 bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700">Admin</span>` : '';
+        
+        let actionButtons = '';
+        if (isAdmin && !isCurrentUser) {
+            if (!isMemberAdmin) {
+                actionButtons += `
+                <button class="promote-member-btn p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded transition" title="Tornar Admin" data-uid="${member.uid}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </button>`;
+            }
+            actionButtons += `
+            <button class="kick-member-btn p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition" title="Remover da Família" data-uid="${member.uid}" data-name="${finalName}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" /></svg>
+            </button>`;
+        }
 
         return `
-            <li class="flex items-center justify-between p-3 border-b border-gray-200 last:border-b-0 dark:border-gray-600">
+            <li class="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <div class="flex items-center">
-                    <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-sm mr-3">
-                      ${userName.charAt(0)}
+                    ${avatarHTML}
+                    <div>
+                        <div class="flex items-center">
+                            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${displayName}</p>
+                            ${adminTag}
+                        </div>
+                        <p class="text-xs font-medium ${balanceColor}">R$ ${memberBalance.toFixed(2)}</p>
                     </div>
-                    <p class="font-medium text-gray-800 dark:text-gray-200">${userName}</p>
-                    ${adminTag}
+                </div>
+                <div class="flex items-center gap-1">
+                    ${actionButtons}
                 </div>
             </li>
         `;
     }).join('');
 
+    // Botões de Admin (Nome e Código)
+    const editNameButton = isAdmin ? `<button id="edit-family-name-btn" class="ml-2 text-gray-400 hover:text-blue-500 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>` : '';
+    const regenerateCodeButton = isAdmin ? `<button id="regenerate-code-btn" class="p-2 text-gray-500 hover:text-green-600 transition" title="Gerar novo código"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>` : '';
+    
+    const deleteFamilyButton = isAdmin ? 
+        `<button id="delete-family-button" class="w-full py-3 px-4 rounded-lg font-bold text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition mt-3 border border-red-200 dark:border-red-800">Excluir Família (Permanente)</button>` : '';
+
     return `
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
-            <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content dark:bg-gray-800">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-100">Informações da Família</h2>
-                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
+        <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 modal-overlay p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden modal-content dark:bg-gray-800 flex flex-col">
+                
+                <div class="p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-start">
+                    <div class="w-full">
+                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Gerenciar Família</p>
+                        
+                        <div id="family-name-display" class="flex items-center">
+                            <h2 id="family-name-text" class="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">${state.family.name}</h2>
+                            ${editNameButton}
+                        </div>
+
+                        <form id="family-name-edit" class="hidden flex items-center gap-2 w-full mt-1">
+                            <input id="edit-family-name-input" type="text" value="${state.family.name}" class="flex-1 px-2 py-1 text-lg border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                            <button type="submit" class="p-1 text-white bg-green-500 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></button>
+                            <button type="button" id="cancel-name-edit" class="p-1 text-gray-500 bg-gray-200 rounded hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
+                        </form>
+                    </div>
+                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700 -mt-2 -mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500 dark:text-gray-400"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
-                <div class="space-y-6">
-                    <div>
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Nome da Família</p>
-                        <p class="text-lg font-bold text-gray-800 dark:text-gray-200">${state.family.name}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Código de Convite</p>
-                        <div class="flex items-center justify-between p-2 bg-gray-100 rounded-lg dark:bg-gray-700">
-                            <p class="text-xl font-bold text-gray-800 tracking-widest dark:text-gray-200">${state.family.code}</p>
-                            <button id="copy-code-button" class="p-2 rounded-md hover:bg-gray-200 transition dark:hover:bg-gray-600">
-                                ${CopyIconSVG}
-                            </button>
+
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                    
+                    <div class="mb-6">
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Código de Convite</p>
+                        <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg p-1 pl-4 border border-gray-200 dark:border-gray-600">
+                            <p class="text-xl font-mono font-bold text-gray-800 dark:text-gray-100 tracking-widest">${state.family.code}</p>
+                            <div class="flex">
+                                ${regenerateCodeButton}
+                                <button id="copy-code-button" class="p-2 text-gray-500 hover:text-blue-600 transition" title="Copiar">
+                                    ${CopyIconSVG}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Membros</p>
-                        <ul class="bg-gray-50 rounded-lg divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
+
+                    <div class="mb-6">
+                        <div class="flex justify-between items-end mb-2">
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Membros (${state.familyMembers.length})</p>
+                        </div>
+                        <ul class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                             ${memberListHTML}
                         </ul>
                     </div>
-                </div>
-                <div class="mt-8 flex justify-end">
-                    <button id="switch-family-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition">Trocar de Família</button>
+
+                    <div class="space-y-3 mt-4 pt-4 border-t dark:border-gray-700">
+                        <button id="switch-family-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-md transition flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            Trocar de Família
+                        </button>
+                        
+                        <button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 transition">
+                            Sair da Família
+                        </button>
+
+                        ${deleteFamilyButton}
+                    </div>
                 </div>
             </div>
         </div>
@@ -579,13 +739,17 @@ export function renderEditCategoryModal() {
 
 export function renderMainContent() {
     if (!state.family) return '';
-    const navTabs = `<div class="mb-8 border-b">
+
+    // Lógica das Abas de Navegação
+    const navTabs = `<div class="mb-8 border-b border-gray-200 dark:border-gray-700">
     <nav class="flex -mb-px space-x-8">
-        <button data-view="dashboard" class="nav-tab ${state.currentView === 'dashboard' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Dashboard</button>
-        <button data-view="records" class="nav-tab ${state.currentView === 'records' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Registros</button>
-        <button data-view="budget" class="nav-tab ${state.currentView === 'budget' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Orçamento</button>
+        <button data-view="dashboard" class="nav-tab ${state.currentView === 'dashboard' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Dashboard</button>
+        <button data-view="records" class="nav-tab ${state.currentView === 'records' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Registros</button>
+        <button data-view="budget" class="nav-tab ${state.currentView === 'budget' ? 'border-green-500 text-green-600 dark:text-green-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">Orçamento</button>
     </nav>
 </div>`;
+
+    // Decisão do que renderizar no corpo
     let viewContent = '';
     if (state.currentView === 'dashboard') viewContent = renderFamilyDashboard();
     else if (state.currentView === 'records') viewContent = renderRecordsPage();
@@ -594,72 +758,25 @@ export function renderMainContent() {
     return `<div class="w-full max-w-6xl mx-auto px-4 py-8">
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
             <div>
-                <button id="family-info-button" class="text-2xl font-bold text-gray-800 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition cursor-pointer">${state.family.name}</button>
+                <button id="family-info-button" class="text-2xl font-bold text-gray-800 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition cursor-pointer flex items-center gap-2 group">
+                    ${state.family.name}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-500 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Bem-vindo(a), ${state.user.name}!</p>
             </div>
-            <button id="leave-family-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-red-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Sair da Família</button>
+            <button id="switch-family-header-button" class="mt-4 sm:mt-0 text-sm font-medium text-gray-600 hover:text-blue-600 transition bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                Trocar Família
+            </button>
         </header>
+        
         ${navTabs}
-        <div id="view-content" class="content-fade-in">${viewContent}</div>
-    </div>`;
-}
-
-/*
-export function renderFamilyInfoModal() {
-    if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
-    
-    // Ícone de usuário para a lista de membros
-    const userIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-
-    const membersHTML = state.family.members.map(member => `<div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50">
-        <div class="flex items-center gap-2">
-            ${userIcon}
-            <p class="text-gray-800 dark:text-black">${member.uid === state.user.uid ? `${state.user.name} (Você)` : (member.name || member.uid.substring(0,8))}</p>
-        </div>
-        <span class="text-xs font-semibold px-2 py-1 rounded-full text-white bg-gray-600">${member.role}</span>
-    </div>`).join('');
-    
-    return `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4">
-        <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-semibold text-gray-700">Informações da Família</h2>
-                <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                    <div>
-                        <p class="text-sm font-medium text-gray-700">Nome da Família</p>
-                        <p class="text-xl font-semibold text-gray-800">${state.family.name}</p>
-                    </div>
-                    <div class="mt-2 md:mt-0">
-                        <p class="text-sm font-medium text-gray-700">Código de Convite</p>
-                        <div class="flex items-center gap-2 mt-1">
-                            <p id="family-code" class="text-xl font-bold text-gray-800">${state.family.code}</p>
-                            <button id="copy-code-button-modal" class="px-3 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg flex items-center gap-1">
-                                <img src="assets/copy_icon.png" alt="Copiar" class="h-4 w-4 icon-invert" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <p class="text-sm font-medium text-gray-700 mb-2">Membros</p>
-                    <div class="divide-y">${membersHTML}</div>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700">
-                        Sair da Família
-                    </button>
-                </div>
-            </div>
+        
+        <div id="view-content" class="content-fade-in min-h-[500px]">
+            ${viewContent}
         </div>
     </div>`;
 }
-*/
 
 export function renderFamilyDashboard() {
     const month = state.displayedMonth.getMonth();
@@ -922,7 +1039,6 @@ export function renderBudgetPage() {
         return true;
     });
 
-    // *** ALTERAÇÃO AQUI: Verifica se é Admin ***
     const isAdmin = state.familyAdmins.includes(state.user.uid);
 
     const budgetItemsHTML = activeBudgets.map(budget => {
@@ -950,9 +1066,6 @@ export function renderBudgetPage() {
                 <p class="text-xs text-right text-gray-500 mt-1">Alcançado: R$ ${earned.toFixed(2)} de R$ ${goal.toFixed(2)}</p>`;
         }
 
-        // *** ALTERAÇÃO AQUI: Define classes interativas apenas para admin ***
-        // Se for admin: adiciona 'budget-item' (para o clique funcionar) e hover visual.
-        // Se não for admin: remove 'budget-item' e deixa cursor padrão.
         const interactionClasses = isAdmin 
             ? 'budget-item cursor-pointer hover:bg-gray-100' 
             : 'cursor-default';
@@ -963,7 +1076,6 @@ export function renderBudgetPage() {
             </div>`;
     }).join('');
 
-    // *** ALTERAÇÃO AQUI: Cria o HTML do botão apenas se for Admin ***
     const addButtonHTML = isAdmin 
         ? `<button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>`
         : '';
@@ -1158,104 +1270,6 @@ export function renderPersonSpendingChart() {
     });
 }
 
-export function renderCharts() {
-    const chartInstances = {};
-    
-    // Renderiza SEMPRE os principais
-    chartInstances.monthly = renderMonthlyChart();
-    chartInstances.budget = renderBudgetPerformanceChart(); // NOVO
-    
-    // Os gráficos secundários só são renderizados se o container estiver visível
-    // (Isso será tratado no main.js, mas aqui deixamos a função pronta para destruir tudo)
-    
-    // Função auxiliar para renderizar os secundários sob demanda
-    window.renderSecondaryCharts = () => {
-        chartInstances.annual = renderAnnualChart();
-        chartInstances.comparison = renderComparisonChart();
-        chartInstances.personSpending = renderPersonSpendingChart();
-        chartInstances.daily = renderDailyEvolutionChart(); // NOVO
-    };
-
-    const destroyAllCharts = () => {
-        Object.values(chartInstances).forEach(chart => {
-            if (chart) chart.destroy();
-        });
-        // Também destrói os secundários se foram criados via window
-        const secIds = ['annual-balance-chart', 'comparison-chart', 'person-spending-chart', 'daily-evolution-chart'];
-        secIds.forEach(id => {
-            const canvas = document.getElementById(id);
-            if(canvas && Chart.getChart(canvas)) Chart.getChart(canvas).destroy();
-        });
-    };
-
-    return destroyAllCharts;
-}
-
-function renderSignupSuccessHTML() {
-    return `
-    <div class="text-center animate-fade-in">
-        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
-            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-            </svg>
-        </div>
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Verifique seu Email</h2>
-        <div class="text-gray-600 mb-8 space-y-2">
-            <p>Enviamos um link de confirmação para o seu endereço de email.</p>
-            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
-                <strong>Atenção:</strong> Caso não encontre o email na caixa de entrada, verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
-            </p>
-            <p>Por favor, volte ao login após a confirmação.</p>
-        </div>
-        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
-            Voltar para Login
-        </button>
-    </div>`;
-}
-
-export function renderForgotPasswordFormHTML() {
-    return `<h2 class="text-2xl font-semibold text-center text-gray-700 mb-6">Recuperar Senha</h2>
-    <p class="text-gray-600 text-center mb-6 text-sm">Insira seu email para receber o link de redefinição.</p>
-    <form id="reset-password-form" novalidate>
-        <div class="space-y-6">
-            <div>
-                <label for="email-reset" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input id="email-reset" name="email" type="email" required class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm" placeholder="voce@exemplo.com" />
-            </div>
-            <div>
-                <button type="submit" class="w-full flex justify-center py-3 px-4 border-transparent rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700">Enviar Link</button>
-            </div>
-        </div>
-    </form>
-    <p class="mt-8 text-center text-sm text-gray-600">
-        Lembrou a senha?
-        <button id="back-to-login-link" class="font-medium text-green-600 hover:text-green-500">Voltar ao Login</button>
-    </p>`;
-}
-
-export function renderForgotPasswordSuccessHTML() {
-    return `
-    <div class="text-center animate-fade-in">
-        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
-            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-            </svg>
-        </div>
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Email Enviado!</h2>
-        <div class="text-gray-600 mb-8 space-y-2">
-            <p>Se houver uma conta associada a este endereço, enviamos as instruções de recuperação.</p>
-            <p class="text-sm bg-yellow-50 text-yellow-800 p-3 rounded-lg border border-yellow-200">
-                <strong>Dica:</strong> Verifique também sua pasta de <strong>Spam</strong> ou <strong>Lixo Eletrônico</strong>.
-            </p>
-        </div>
-        <button id="back-to-login-success-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-md">
-            Voltar para Login
-        </button>
-    </div>`;
-}
-
-
-
 export function renderBudgetPerformanceChart() {
     const chartCanvas = document.getElementById('budget-performance-chart');
     const noDataElement = document.getElementById('budget-performance-chart-no-data');
@@ -1407,3 +1421,188 @@ export function renderDailyEvolutionChart() {
         }
     });
 }   
+
+export function renderCharts() {
+    const chartInstances = {};
+    
+    // Renderiza SEMPRE os principais
+    chartInstances.monthly = renderMonthlyChart();
+    chartInstances.budget = renderBudgetPerformanceChart(); // NOVO
+    
+    // Os gráficos secundários só são renderizados se o container estiver visível
+    // (Isso será tratado no main.js, mas aqui deixamos a função pronta para destruir tudo)
+    
+    // Função auxiliar para renderizar os secundários sob demanda
+    window.renderSecondaryCharts = () => {
+        chartInstances.annual = renderAnnualChart();
+        chartInstances.comparison = renderComparisonChart();
+        chartInstances.personSpending = renderPersonSpendingChart();
+        chartInstances.daily = renderDailyEvolutionChart(); // NOVO
+    };
+
+    const destroyAllCharts = () => {
+        Object.values(chartInstances).forEach(chart => {
+            if (chart) chart.destroy();
+        });
+        // Também destrói os secundários se foram criados via window
+        const secIds = ['annual-balance-chart', 'comparison-chart', 'person-spending-chart', 'daily-evolution-chart'];
+        secIds.forEach(id => {
+            const canvas = document.getElementById(id);
+            if(canvas && Chart.getChart(canvas)) Chart.getChart(canvas).destroy();
+        });
+    };
+
+    return destroyAllCharts;
+}
+
+export function renderSettingsModal() {
+    // 1. Proteção básica
+    if (!state.user) return ''; 
+    if (!state.isModalOpen || state.modalView !== 'settings') return '';
+
+    // 2. Lógica do Avatar Atual
+    let currentEmoji = '👤';
+    let currentColor = '#10B981'; 
+    if (state.user.photoURL && state.user.photoURL.includes('|')) {
+        const parts = state.user.photoURL.split('|');
+        currentEmoji = parts[0];
+        currentColor = parts[1];
+    }
+
+    // 3. Listas de Emojis
+    const primaryEmojis = ['👤', '🧑‍💼', '🦸', '🦄', '🚀', '🎨', '🎮', '💸'];
+    const secondaryEmojis = [
+        '🐶', '🐱', '🦊', '🦁', '🐸', '🦉', 
+        '🌻', '🌵', '🌲', '🍄', '🌊', '🔥', 
+        '🍔', '🍕', '🍦', '☕', '🍺', '🍿', 
+        '⚽', '🏀', '🎸', '📷', '🚲', '✈️', 
+        '💻', '📱', '💡', '📚', '✏️', '💼', 
+        '⭐', '💎', '🛎️', '🗝️', '🎁', '🧸'
+    ];
+
+    const generateEmojiOptions = (emojiList) => emojiList.map(e => 
+        `<label class="cursor-pointer">
+            <input type="radio" name="avatarEmoji" value="${e}" class="sr-only peer/emoji" ${e === currentEmoji ? 'checked' : ''}>
+            <div class="w-10 h-10 flex items-center justify-center text-xl rounded-lg border-2 border-transparent peer-checked/emoji:border-green-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                ${e}
+            </div>
+        </label>`
+    ).join('');
+
+    const primaryOptionsHTML = generateEmojiOptions(primaryEmojis);
+    const secondaryOptionsHTML = generateEmojiOptions(secondaryEmojis);
+
+    // 4. Seção de Seleção de Avatar (com "Mostrar Mais")
+    const emojiSelectionSection = `
+        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="flex flex-wrap gap-2 mb-3">
+                ${primaryOptionsHTML}
+            </div>
+            <input type="checkbox" id="toggle-more-emojis" class="sr-only peer/toggle">
+            <label for="toggle-more-emojis" class="text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 cursor-pointer flex items-center gap-1 font-medium select-none">
+                <span class="block peer-checked/toggle:hidden">Mostrar mais opções</span>
+                <span class="hidden peer-checked/toggle:block">Mostrar menos</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform peer-checked/toggle:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </label>
+            <div class="hidden peer-checked/toggle:flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 animate-fade-in">
+                ${secondaryOptionsHTML}
+            </div>
+        </div>
+    `;
+
+    // 5. Conteúdo Principal (Perfil + Senha)
+    const profileContent = `
+        <form id="update-profile-form" class="space-y-6 animate-fade-in">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Escolha seu Avatar</label>
+                ${emojiSelectionSection}
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cor de Fundo</label>
+                    <div class="flex items-center gap-3">
+                        <input type="color" name="avatarColor" value="${currentColor}" class="h-10 w-20 rounded cursor-pointer border-2 border-gray-300 dark:border-gray-600 p-1" title="Escolher cor">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Clique para personalizar a cor</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome de Exibição</label>
+                <input name="displayName" type="text" value="${state.user.name}" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg" required />
+            </div>
+            <button type="submit" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700 transition shadow-sm font-bold">Salvar Perfil</button>
+        </form>
+
+        ${!state.user.isGoogle ? `
+        <hr class="my-6 border-gray-200 dark:border-gray-600">
+        <button id="toggle-password-btn" class="flex items-center justify-between w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition group">
+            <span class="font-semibold text-gray-700 dark:text-gray-200">Alterar Senha</span>
+            <svg id="password-chevron" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div id="password-form-container" class="hidden mt-4 animate-fade-in p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+            <form id="change-password-form" class="space-y-4">
+                <input name="currentPassword" type="password" placeholder="Senha Atual" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg" required />
+                <input name="newPassword" type="password" placeholder="Nova Senha" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg" required />
+                <button type="submit" class="w-full py-2 px-4 rounded-lg font-medium text-white bg-gray-600 hover:bg-gray-700 transition">Atualizar Senha</button>
+            </form>
+        </div>` : ''}
+    `;
+
+    // 6. Estrutura do Modal (Simplificada, sem abas)
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden modal-content dark:bg-gray-800 flex flex-col">
+                <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Meu Perfil</h2>
+                    <button id="close-modal-button" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div id="settings-content" class="p-6 overflow-y-auto custom-scrollbar">
+                    ${profileContent}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderConfirmationModal() {
+    if (!state.confirmationModal.isOpen) return '';
+
+    const { title, message, type } = state.confirmationModal;
+    
+    // Cores baseadas no tipo (danger = vermelho, info = azul/verde)
+    const iconColor = type === 'danger' ? 'text-red-600 bg-red-100 dark:bg-red-900/30' : 'text-blue-600 bg-blue-100';
+    const confirmBtnColor = type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700';
+    const iconSvg = type === 'danger' 
+        ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] modal-overlay p-4 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 transform transition-all scale-100">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center ${iconColor}">
+                        ${iconSvg}
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                        ${title}
+                    </h3>
+                </div>
+                
+                <div class="mt-2">
+                    <p class="text-sm text-gray-500 dark:text-gray-300">
+                        ${message}
+                    </p>
+                </div>
+
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button id="confirm-modal-cancel" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Cancelar
+                    </button>
+                    <button id="confirm-modal-yes" class="px-4 py-2 rounded-lg text-sm font-medium text-white ${confirmBtnColor} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
