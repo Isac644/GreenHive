@@ -729,21 +729,162 @@ export function renderInstallmentModal() {
 }
 
 export function renderFamilyDashboard() {
-    const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
+    const month = state.displayedMonth.getMonth(); 
+    const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    
+    // Cálculos
     const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
     summary.balance = summary.income - summary.expenses;
+    
+    const userTransactions = monthlyTransactions.filter(t => t.userId === state.user.uid);
+    const userSummary = userTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
+    userSummary.balance = userSummary.income - userSummary.expenses;
+
     const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
     const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
     const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => {
         const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === b.category).reduce((sum, t) => sum + t.amount, 0);
         return acc + spent;
     }, 0);
+    
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : '';
 
-    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Saldo dos Membros</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button class="copy-code-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
+    // Estilos de Texto Ajustados (Responsivos)
+    const titleClass = "text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider opacity-80 mb-1";
+    // valueClass: Reduzi um pouco no mobile (text-2xl) para caber valores maiores, scale-up no PC
+    const valueClass = "font-bold text-2xl sm:text-3xl truncate tracking-tight leading-none mb-2";
+    const subTitleClass = "text-[10px] font-bold text-gray-900 dark:text-gray-100 opacity-70 uppercase mr-1";
+    const subValueClass = "font-bold text-sm sm:text-base truncate";
+
+    return `
+    <div class="animate-fade-in space-y-6">
+        
+        <div class="w-full bg-white dark:bg-gray-800 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            <button id="prev-month-chart-button" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+            <h3 class="text-sm font-bold capitalize text-gray-800 dark:text-gray-100">${monthName} de ${year}</h3>
+            <button id="next-month-chart-button" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <div class="flex flex-col gap-6 h-full">
+                
+                <div class="flex flex-col gap-4">
+                    
+                    <div class="w-full bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border-l-4 border-blue-500 flex flex-col justify-center min-h-[120px]">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="${titleClass}">Saldo da Família</p>
+                                <p class="${valueClass} text-blue-600 dark:text-blue-400">R$ ${summary.balance.toFixed(2)}</p>
+                            </div>
+                            <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-500 hidden sm:block">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                        </div>
+                        <div class="flex items-center mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <span class="${subTitleClass}">Você:</span>
+                            <span class="${subValueClass} ${userSummary.balance >= 0 ? 'text-blue-500' : 'text-red-500'}">R$ ${userSummary.balance.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border-l-4 border-green-500 flex flex-col justify-center h-full min-h-[120px]">
+                            <p class="${titleClass}">Receita</p>
+                            <p class="${valueClass} text-green-600 dark:text-green-400">R$ ${summary.income.toFixed(2)}</p>
+                            <div class="flex items-center mt-auto pt-2 border-t border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <span class="${subTitleClass}">Você:</span>
+                                <span class="${subValueClass} text-green-600/80 dark:text-green-400/80">R$ ${userSummary.income.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border-l-4 border-red-500 flex flex-col justify-center h-full min-h-[120px]">
+                            <p class="${titleClass}">Despesa</p>
+                            <p class="${valueClass} text-red-600 dark:text-red-400">R$ ${summary.expenses.toFixed(2)}</p>
+                            <div class="flex items-center mt-auto pt-2 border-t border-gray-100 dark:border-gray-700 overflow-hidden">
+                                <span class="${subTitleClass}">Você:</span>
+                                <span class="${subValueClass} text-red-600/80 dark:text-red-400/80">R$ ${userSummary.expenses.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg flex-1 min-h-[250px] border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-base font-bold text-gray-800 dark:text-gray-100 mb-2">Saldo dos Membros</h3>
+                    <div class="relative w-full h-full max-h-[300px]">
+                        <canvas id="person-spending-chart"></canvas>
+                        <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-6 h-full">
+                
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg flex-1 min-h-[200px] border border-gray-100 dark:border-gray-700">
+                    <div class="mb-2">
+                        <h3 class="text-base font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
+                        <div class="flex justify-between text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wide">
+                            <span>Planejado: R$ ${totalBudget.toFixed(2)}</span>
+                            <span>Gasto: R$ ${totalSpentInBudgets.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[180px]">
+                        <canvas id="budget-performance-chart"></canvas>
+                        <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg flex-1 min-h-[200px] border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-base font-bold text-gray-800 dark:text-gray-100 mb-2">Evolução Diária</h3>
+                    <div class="relative w-full h-[180px]">
+                        <canvas id="daily-evolution-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Balanço Anual (${year})</h3>
+            <div class="h-64 relative w-full">
+                <canvas id="annual-balance-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>
+                    ${manageCategoriesButton} 
+                </div>
+                <div class="h-64 relative w-full">
+                    <canvas id="monthly-expenses-chart"></canvas>
+                    <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Comparativo Mês Anterior</h3>
+                <div class="h-64 relative w-full">
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+            <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Convite da Família</h3>
+            <div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
+                <p class="text-2xl font-mono font-bold text-gray-800 dark:text-gray-100 tracking-widest mb-4 sm:mb-0">${state.family.code}</p>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button class="copy-code-btn flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition">Copiar</button>
+                    <button id="share-link-button" class="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition">Compartilhar</button>
+                </div>
+            </div>
+        </div>
+
+    </div>`;
 }
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth();
@@ -1326,27 +1467,22 @@ export function renderDailyEvolutionChart() {
 export function renderCharts() {
     const chartInstances = {};
     
-    // Renderiza SEMPRE os principais
-    chartInstances.monthly = renderMonthlyChart();
-    chartInstances.budget = renderBudgetPerformanceChart(); // NOVO
+    // Renderiza TODOS os gráficos imediatamente
+    // (Verifique se os IDs no HTML acima batem com os IDs aqui)
     
-    // Os gráficos secundários só são renderizados se o container estiver visível
-    // (Isso será tratado no main.js, mas aqui deixamos a função pronta para destruir tudo)
-    
-    // Função auxiliar para renderizar os secundários sob demanda
-    window.renderSecondaryCharts = () => {
-        chartInstances.annual = renderAnnualChart();
-        chartInstances.comparison = renderComparisonChart();
-        chartInstances.personSpending = renderPersonSpendingChart();
-        chartInstances.daily = renderDailyEvolutionChart(); // NOVO
-    };
+    chartInstances.monthly = renderMonthlyChart(); // Categoria
+    chartInstances.budget = renderBudgetPerformanceChart(); // Orçamento
+    chartInstances.personSpending = renderPersonSpendingChart(); // Saldo Membros
+    chartInstances.annual = renderAnnualChart(); // Anual
+    chartInstances.comparison = renderComparisonChart(); // Comparativo
+    chartInstances.daily = renderDailyEvolutionChart(); // Diário
 
     const destroyAllCharts = () => {
         Object.values(chartInstances).forEach(chart => {
             if (chart) chart.destroy();
         });
-        // Também destrói os secundários se foram criados via window
-        const secIds = ['annual-balance-chart', 'comparison-chart', 'person-spending-chart', 'daily-evolution-chart'];
+        // Garante limpeza extra
+        const secIds = ['annual-balance-chart', 'comparison-chart', 'person-spending-chart', 'daily-evolution-chart', 'monthly-expenses-chart', 'budget-performance-chart'];
         secIds.forEach(id => {
             const canvas = document.getElementById(id);
             if(canvas && Chart.getChart(canvas)) Chart.getChart(canvas).destroy();
