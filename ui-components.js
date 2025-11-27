@@ -887,8 +887,11 @@ export function renderFamilyDashboard() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : '';
 
-    // REMOVIDO animate-fade-in DA DIV ABAIXO
-    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
+    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg">
+    
+    <h3 class="text-lg font-semibold text-gray-700 mb-4">Saldo dos Membros</h3>
+    
+    <div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
 }
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear(); const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' }); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1025,62 +1028,192 @@ export function renderPersonSpendingChart() {
     const noDataElement = document.getElementById('person-spending-chart-no-data');
     if (!chartCanvas || !noDataElement) return null;
 
-    const monthlyExpenses = state.transactions.filter(t => {
+    const month = state.displayedMonth.getMonth();
+    const year = state.displayedMonth.getFullYear();
+    
+    // 1. Filtra transações
+    const monthlyTransactions = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
-        return t.type === 'expense' && tDate.getMonth() === state.displayedMonth.getMonth() && tDate.getFullYear() === state.displayedMonth.getFullYear();
+        return tDate.getMonth() === month && tDate.getFullYear() === year;
     });
 
-    if (monthlyExpenses.length === 0) {
+    if (monthlyTransactions.length === 0) {
         chartCanvas.style.display = 'none';
         noDataElement.style.display = 'flex';
-        noDataElement.innerHTML = `Ainda não foram registrados gastos para esse mês.`;
+        noDataElement.innerHTML = `Sem movimentações neste mês.`;
         return null;
     } else {
         chartCanvas.style.display = 'block';
         noDataElement.style.display = 'none';
     }
 
-    const spendingData = monthlyExpenses.reduce((acc, t) => {
-        const userName = t.userName || 'Desconhecido';
-        acc[userName] = (acc[userName] || 0) + t.amount;
-        return acc;
-    }, {});
+    // 2. Prepara os dados
+    const memberStats = {};
+    
+    state.familyMembers.forEach(m => {
+        let icon = '👤';
+        let color = '#9CA3AF'; 
+        
+        if (m.photoURL && m.photoURL.includes('|')) {
+            const parts = m.photoURL.split('|');
+            icon = parts[0];
+            color = parts[1];
+        } else if (m.photoURL) {
+            icon = '📷'; 
+        }
+        
+        memberStats[m.uid] = { 
+            name: m.name.split(' ')[0], 
+            icon: icon,
+            color: color,
+            income: 0, 
+            expense: 0 
+        };
+    });
 
-    const labels = Object.keys(spendingData);
-    const data = Object.values(spendingData);
-    const colors = labels.map((_, index) => PALETTE_COLORS[index % PALETTE_COLORS.length]);
+    monthlyTransactions.forEach(t => {
+        const uid = t.userId;
+        if (!memberStats[uid]) {
+            memberStats[uid] = { name: 'Ex-membro', icon: '👻', color: '#9CA3AF', income: 0, expense: 0 };
+        }
+        if (t.type === 'income') memberStats[uid].income += t.amount;
+        else memberStats[uid].expense += t.amount;
+    });
+
+    const incomes = [];
+    const expenses = [];
+    const balances = [];
+    const userData = []; 
+
+    Object.values(memberStats).forEach(s => {
+        const balance = s.income - s.expense;
+        incomes.push(s.income);
+        expenses.push(s.expense);
+        balances.push(balance);
+        
+        userData.push({ 
+            name: s.name, 
+            icon: s.icon, 
+            color: s.color,
+            balance: balance 
+        });
+    });
+
     const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+
+    // 3. Plugin Customizado
+    const avatarAxisPlugin = {
+        id: 'avatarAxis',
+        afterDraw: (chart) => {
+            const { ctx, scales: { x } } = chart;
+            
+            x.ticks.forEach((tick, index) => {
+                // Proteção para evitar erro se não tiver dados suficientes
+                if (!chart.data.userData || !chart.data.userData[index]) return;
+
+                const xPos = x.getPixelForTick(index);
+                const yPos = x.bottom + 25; // Ajustado para baixo
+                const user = chart.data.userData[index];
+
+                // 1. Círculo
+                ctx.beginPath();
+                ctx.arc(xPos, yPos, 18, 0, 2 * Math.PI);
+                ctx.fillStyle = user.color;
+                ctx.fill();
+                ctx.closePath();
+
+                // 2. Emoji
+                ctx.font = '20px Arial';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(user.icon, xPos, yPos + 1);
+
+                // 3. Nome
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillStyle = textColor;
+                ctx.fillText(user.name, xPos, yPos + 30);
+
+                // 4. Saldo
+                const balanceFormatted = "Saldo: R$ " + user.balance.toFixed(2);
+                ctx.font = 'normal 11px sans-serif';
+                ctx.fillStyle = '#3B82F6'; // Azul
+                ctx.fillText(balanceFormatted, xPos, yPos + 45);
+            });
+        }
+    };
 
     if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
 
     return new Chart(chartCanvas.getContext('2d'), {
-        type: 'doughnut',
+        type: 'bar',
         data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: colors,
-                borderColor: state.theme === 'dark' ? '#1f2937' : '#f9fafb',
-                borderWidth: 4
-            }]
+            labels: userData.map(u => u.name), 
+            userData: userData, // Passando dados para o plugin
+            datasets: [
+                {
+                    label: 'Saldo',
+                    data: balances,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)', 
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                },
+                {
+                    label: 'Receita',
+                    data: incomes,
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                },
+                {
+                    label: 'Despesa',
+                    data: expenses,
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
+                }
+            ]
         },
+        plugins: [avatarAxisPlugin], 
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    // AUMENTADO PARA 80 PARA GARANTIR ESPAÇO
+                    bottom: 80 
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: textColor }
+                },
+                x: {
+                    ticks: { display: false }, 
+                    grid: { display: false }
+                }
+            },
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: 'top',
                     labels: { color: textColor }
                 },
-                datalabels: {
-                    formatter: (value, ctx) => {
-                        const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                        const percentage = total > 0 ? (value / total * 100).toFixed(0) + '%' : '0%';
-                        return percentage;
-                    },
-                    color: '#fff',
-                    font: { weight: 'bold' }
-                }
+                tooltip: {
+                    callbacks: {
+                        title: (context) => {
+                            const index = context[0].dataIndex;
+                            return context[0].chart.data.userData[index]?.name || '';
+                        }
+                    }
+                },
+                datalabels: { display: false }
             }
         }
     });
