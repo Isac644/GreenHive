@@ -278,9 +278,6 @@ function attachEventListeners() {
     }
 
     // Filtros
-    const openFilterBtn = document.getElementById('open-filter-modal-btn'); 
-    if (openFilterBtn) openFilterBtn.onclick = handleOpenFilters; // AGORA CHAMA A NOVA FUNÇÃO
-    
     const clearFilterBtn = document.getElementById('clear-filters-btn'); 
     if (clearFilterBtn) clearFilterBtn.onclick = handleClearFilters;
     
@@ -295,6 +292,34 @@ function attachEventListeners() {
     document.querySelectorAll('.calendar-day-filter').forEach(btn => {
         btn.onclick = (e) => handleToggleFilterDate(parseInt(e.currentTarget.dataset.day));
     });
+
+    document.querySelectorAll('.debt-item').forEach(b => {
+        b.onclick = e => { 
+            state.editingDebtId = e.currentTarget.dataset.debtId; 
+            state.isModalOpen = true; 
+            state.modalView = 'debt'; 
+            renderApp(); 
+        };
+    });
+    
+    document.querySelectorAll('.installment-item').forEach(b => {
+        b.onclick = e => { 
+            state.editingInstallmentId = e.currentTarget.dataset.installmentId; 
+            state.isModalOpen = true; 
+            state.modalView = 'installment'; 
+            renderApp(); 
+        };
+    });
+
+    // ...
+
+    // Filtro (Reforçando)
+    const openFilterBtn = document.getElementById('open-filter-modal-btn'); 
+    if (openFilterBtn) {
+        openFilterBtn.onclick = () => {
+            handleOpenFilters(); // Certifique-se que handleOpenFilters está importado
+        };
+    }
 }
 
 let unsubscribeNotifications = null;

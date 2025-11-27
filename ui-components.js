@@ -288,6 +288,8 @@ export function renderMainContent() {
 }
 
 export function renderFamilyDashboard() {
+    // ... (Mantenha toda a parte inicial de cálculos e variáveis igual ao que você já tem) ...
+    // Copie do seu código anterior até a linha 'const valueClass = ...'
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
@@ -305,8 +307,9 @@ export function renderFamilyDashboard() {
     const titleClass = "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
     const valueClass = "font-heading font-bold text-3xl sm:text-4xl tracking-tight mb-3";
 
+    // CORREÇÃO: Removi 'animate-fade-in' da div principal abaixo
     return `
-    <div class="animate-fade-in space-y-8">
+    <div class="space-y-8">
         
         <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto">
             <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
@@ -474,37 +477,26 @@ export function renderBudgetPage() {
 export function renderDebtsPage() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     
-    // Estilo base para cards de dívida/parcela
-    const cardStyle = "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all relative overflow-hidden group";
+    // Define classe de interação SE puder editar
+    const getCardStyle = (canEdit) => {
+        const base = "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all relative overflow-hidden group";
+        return canEdit ? `${base} cursor-pointer hover:shadow-md hover:border-brand-200 dark:hover:border-gray-600 hover:-translate-y-0.5` : base;
+    };
 
     // Dívidas
     const debtsHTML = state.debts.map(d => {
         const canEdit = isAdmin || d.userId === state.user.uid;
         const memberName = state.familyMembers.find(m => m.uid === d.debtorId)?.name.split(' ')[0] || '???';
-        
-        const paid = state.transactions
-            .filter(t => t.linkedDebtId === d.id && t.type === 'expense')
-            .reduce((sum, t) => sum + t.amount, 0);
-        
+        const paid = state.transactions.filter(t => t.linkedDebtId === d.id && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         const progress = Math.min((paid / d.totalValue) * 100, 100);
         
-        // Status Badge
-        let status = 'Pendente'; 
-        let statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-        
-        if (paid >= d.totalValue) { 
-            status = 'Pago'; 
-            statusClass = 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'; 
-        } else if (d.dueDate && new Date(d.dueDate) < new Date()) { 
-            status = 'Atrasado'; 
-            statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'; 
-        }
+        let status = 'Pendente'; let statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+        if (paid >= d.totalValue) { status = 'Pago'; statusClass = 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'; }
+        else if (d.dueDate && new Date(d.dueDate) < new Date()) { status = 'Atrasado'; statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'; }
 
-        const editBtn = canEdit ? `<button class="edit-debt-btn absolute top-4 right-4 p-2 text-gray-300 hover:text-brand-500 bg-transparent hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full transition opacity-0 group-hover:opacity-100" data-id="${d.id}"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>` : '';
-
+        // CORREÇÃO: Adicionada classe 'debt-item' e removido botão de lápis
         return `
-        <div class="${cardStyle}">
-            ${editBtn}
+        <div class="${getCardStyle(canEdit)} ${canEdit ? 'debt-item' : ''}" data-debt-id="${d.id}">
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Dívida</span>
@@ -515,7 +507,6 @@ export function renderDebtsPage() {
                     </div>
                 </div>
             </div>
-            
             <div class="space-y-2">
                 <div class="flex justify-between text-sm font-bold">
                     <span class="text-gray-500 dark:text-gray-400">Pago: <span class="text-gray-900 dark:text-white">R$ ${paid.toFixed(2)}</span></span>
@@ -533,7 +524,6 @@ export function renderDebtsPage() {
     const installmentsHTML = state.installments.map(i => {
         const canEdit = isAdmin || i.userId === state.user.uid;
         const memberName = state.familyMembers.find(m => m.uid === i.debtorId)?.name.split(' ')[0] || '???';
-        
         const linkedTrans = state.transactions.filter(t => t.linkedInstallmentId === i.id);
         const paidCount = linkedTrans.length;
         
@@ -545,17 +535,15 @@ export function renderDebtsPage() {
         }
 
         const progress = Math.min((paidCount / i.installmentsCount) * 100, 100);
-        const editBtn = canEdit ? `<button class="edit-installment-btn absolute top-4 right-4 p-2 text-gray-300 hover:text-brand-500 bg-transparent hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full transition opacity-0 group-hover:opacity-100" data-id="${i.id}"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></button>` : '';
 
+        // CORREÇÃO: Adicionada classe 'installment-item' e removido botão de lápis
         return `
-        <div class="${cardStyle}">
-            ${editBtn}
+        <div class="${getCardStyle(canEdit)} ${canEdit ? 'installment-item' : ''}" data-installment-id="${i.id}">
             <div class="mb-4">
                 <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Parcelamento</span>
                 <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-1">${i.name}</h4>
                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg">Devedor: ${memberName}</span>
             </div>
-
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl text-center border border-gray-100 dark:border-gray-700">
                     <p class="text-[10px] font-bold text-gray-400 uppercase">Parcelas</p>
@@ -566,7 +554,6 @@ export function renderDebtsPage() {
                     <p class="font-heading font-bold text-lg text-gray-800 dark:text-white">R$ ${i.valuePerInstallment.toFixed(0)}</p>
                 </div>
             </div>
-
             <div class="space-y-2">
                 <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                     <div class="bg-purple-500 h-full rounded-full" style="width: ${progress}%"></div>
@@ -1183,6 +1170,7 @@ function renderMonthlyChart() {
             }]
         },
         options: {
+            animation: { duration: state.shouldAnimate ? 1000 : 0 },
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -1223,6 +1211,7 @@ function renderBudgetPerformanceChart() {
             ]
         },
         options: {
+            animation: { duration: state.shouldAnimate ? 1000 : 0 },
             responsive: true, maintainAspectRatio: false,
             scales: { y: { beginAtZero: true, grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor } } },
             plugins: { legend: { display: false }, datalabels: { display: false } }
@@ -1295,6 +1284,7 @@ function renderPersonSpendingChart() {
         },
         plugins: [avatarPlugin],
         options: {
+            animation: { duration: state.shouldAnimate ? 1000 : 0 },
             responsive: true, maintainAspectRatio: false,
             layout: { padding: { bottom: 60 } },
             scales: { y: { beginAtZero: true, grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { display: false } },
@@ -1317,7 +1307,8 @@ function renderAnnualChart() {
     return new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'], datasets: [{ label: 'Receita', data: income, backgroundColor: '#10b981', borderRadius: 2 }, { label: 'Despesa', data: expense, backgroundColor: '#ef4444', borderRadius: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor } } }, plugins: { legend: { position: 'top', labels: { color: textColor, usePointStyle: true } }, datalabels: { display: false } } }
+        options: {
+            animation: { duration: state.shouldAnimate ? 1000 : 0 }, responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor } } }, plugins: { legend: { position: 'top', labels: { color: textColor, usePointStyle: true } }, datalabels: { display: false } } }
     });
 }
 
@@ -1331,7 +1322,8 @@ function renderComparisonChart() {
     return new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels: [prev.toLocaleString('pt-BR',{month:'short'}), curr.toLocaleString('pt-BR',{month:'short'})], datasets: [{ label: 'Gastos', data: [getExp(prev), getExp(curr)], backgroundColor: ['#9ca3af', '#ef4444'], borderRadius: 8, barThickness: 40 }] },
-        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, y: { grid: { display: false }, ticks: { color: textColor, font: { size: 14, weight: 'bold' } } } }, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: textColor, formatter: v => `R$ ${v.toFixed(0)}` } } }
+        options: { 
+            animation: { duration: state.shouldAnimate ? 1000 : 0 },responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, y: { grid: { display: false }, ticks: { color: textColor, font: { size: 14, weight: 'bold' } } } }, plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: textColor, formatter: v => `R$ ${v.toFixed(0)}` } } }
     });
 }
 
@@ -1351,7 +1343,8 @@ function renderDailyEvolutionChart() {
     return new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: { labels, datasets: [{ label: 'Acumulado', data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor, maxTicksLimit: 10 } } }, plugins: { legend: { display: false }, datalabels: { display: false } } }
+        options: { 
+            animation: { duration: state.shouldAnimate ? 1000 : 0 },responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor, maxTicksLimit: 10 } } }, plugins: { legend: { display: false }, datalabels: { display: false } } }
     });
 }
 
