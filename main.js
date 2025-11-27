@@ -13,6 +13,13 @@ const root = document.getElementById('root');
 const toastContainer = document.getElementById('toast-container');
 let destroyChartsCallback = null;
 
+// CAPTURA DO CÓDIGO NO INÍCIO
+const urlParams = new URLSearchParams(window.location.search);
+const inviteCodeFromUrl = urlParams.get('code');
+if (inviteCodeFromUrl) {
+    sessionStorage.setItem('pendingInviteCode', inviteCodeFromUrl);
+}
+
 export function showToast(message, type) {
     const toast = document.createElement('div');
     toast.className = `toast ${type} animate-fade-in`;
@@ -23,8 +30,6 @@ export function showToast(message, type) {
 }
 
 export function renderApp() {
-
-    // NOVO: Se estiver carregando, mostra tela de load e para por aqui
     if (state.isLoading) {
         root.innerHTML = renderLoadingScreen();
         return;
@@ -83,8 +88,10 @@ function attachEventListeners() {
     // Main Navigation
     document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
         const newView = e.currentTarget.dataset.view;
-        if (state.currentView !== newView) { state.currentView = newView; renderApp(); }
+        if (state.currentView !== newView) { state.shouldAnimate = true; state.currentView = newView; renderApp(); }
     });
+    const detailsBtn = document.getElementById('details-button'); if (detailsBtn) detailsBtn.onclick = () => { state.shouldAnimate = true; state.currentView = 'records'; renderApp(); };
+
     // Transaction Modal
     const openModalBtn = document.getElementById('open-modal-button'); if (openModalBtn) openModalBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'transaction'; state.editingTransactionId = null; state.modalTransactionType = 'expense'; renderApp(); };
     document.querySelectorAll('.transaction-item').forEach(i => i.onclick = e => { state.editingTransactionId = e.currentTarget.dataset.transactionId; state.isModalOpen = true; state.modalView = 'transaction'; renderApp(); });
@@ -100,20 +107,23 @@ function attachEventListeners() {
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
     const delBudgetBtn = document.getElementById('delete-budget-button'); if (delBudgetBtn) delBudgetBtn.onclick = () => { state.confirmingDelete = true; renderApp(); };
     
-    // Dívidas e Parcelas (NOVOS LISTENERS)
+    // Dívidas e Parcelas
     const addDebtBtn = document.getElementById('add-debt-btn'); if(addDebtBtn) addDebtBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'debt'; state.editingDebtId = null; renderApp(); };
     document.querySelectorAll('.edit-debt-btn').forEach(b => b.onclick = e => { state.editingDebtId = e.currentTarget.dataset.id; state.isModalOpen = true; state.modalView = 'debt'; renderApp(); });
     const debtForm = document.getElementById('debt-form'); if(debtForm) debtForm.onsubmit = handleSaveDebt;
-    const delDebtBtn = document.getElementById('delete-debt-modal-btn'); if(delDebtBtn) delDebtBtn.onclick = handleDeleteDebt;
+    const delDebtBtn = document.getElementById('delete-debt-modal-btn'); if(delDebtBtn) delDebtBtn.onclick = () => { state.confirmingDelete = true; renderApp(); };
 
     const addInstBtn = document.getElementById('add-installment-btn'); if(addInstBtn) addInstBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'installment'; state.editingInstallmentId = null; renderApp(); };
     document.querySelectorAll('.edit-installment-btn').forEach(b => b.onclick = e => { state.editingInstallmentId = e.currentTarget.dataset.id; state.isModalOpen = true; state.modalView = 'installment'; renderApp(); });
     const instForm = document.getElementById('installment-form'); if(instForm) instForm.onsubmit = handleSaveInstallment;
-    const delInstBtn = document.getElementById('delete-installment-modal-btn'); if(delInstBtn) delInstBtn.onclick = handleDeleteInstallment;
+    const delInstBtn = document.getElementById('delete-installment-modal-btn'); if(delInstBtn) delInstBtn.onclick = () => { state.confirmingDelete = true; renderApp(); };
 
     // Common Modal Actions
     document.querySelectorAll('#close-modal-button').forEach(b => b.onclick = () => { state.isModalOpen = false; state.editingTransactionId = null; state.editingBudgetItemId = null; state.editingDebtId = null; state.editingInstallmentId = null; state.confirmingDelete = false; renderApp(); });
-    // Family Info Modal
+    const confirmYes = document.getElementById('confirm-delete-yes'); if (confirmYes) confirmYes.onclick = async () => { const orig = confirmYes.innerText; confirmYes.innerText = "..."; if (state.editingCategory) await handleDeleteCategory(); else if (state.editingTransactionId) await handleDeleteTransaction(); else if (state.editingBudgetItemId) await handleDeleteBudget(); else if (state.editingDebtId) await handleDeleteDebt(); else if (state.editingInstallmentId) await handleDeleteInstallment(); if(state.isModalOpen) { state.confirmingDelete = false; renderApp(); } };
+    const confirmNo = document.getElementById('confirm-delete-no'); if (confirmNo) confirmNo.onclick = () => { state.confirmingDelete = false; renderApp(); };
+
+    // Family Info
     const famInfoBtn = document.getElementById('family-info-button'); if (famInfoBtn) famInfoBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'familyInfo'; renderApp(); };
     const switchFamHead = document.getElementById('switch-family-header-button'); if (switchFamHead) switchFamHead.onclick = handleSwitchFamily;
     const switchFamMod = document.getElementById('switch-family-button'); if (switchFamMod) switchFamMod.onclick = handleSwitchFamily;
@@ -124,7 +134,13 @@ function attachEventListeners() {
     const famNameForm = document.getElementById('family-name-edit'); if(famNameForm) famNameForm.onsubmit = handleUpdateFamilyName;
     const regenCodeBtn = document.getElementById('regenerate-code-btn'); if(regenCodeBtn) regenCodeBtn.onclick = handleRegenerateCode;
     
+    // CORREÇÃO: Copy Code via Classe
+    document.querySelectorAll('.copy-code-btn').forEach(button => {
+        button.onclick = () => navigator.clipboard.writeText(state.family.code).then(() => showToast('Código copiado!', 'success'));
+    });
+
     document.querySelectorAll('.promote-member-btn').forEach(b => b.onclick = e => handlePromoteMember(e.currentTarget.dataset.uid));
+    document.querySelectorAll('.demote-member-btn').forEach(b => b.onclick = e => handleDemoteMember(e.currentTarget.dataset.uid));
     document.querySelectorAll('.kick-member-btn').forEach(b => b.onclick = e => handleKickMember(e.currentTarget.dataset.uid, e.currentTarget.dataset.name));
 
     // Categories
@@ -169,97 +185,14 @@ function attachEventListeners() {
     } else if (destroyChartsCallback) {
         destroyChartsCallback(); destroyChartsCallback = null;
     }
-
-    // Promover
-    document.querySelectorAll('.promote-member-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const uid = e.currentTarget.dataset.uid;
-            handlePromoteMember(uid);
-        };
-    });
-
-    // NOVO: Rebaixar (Remover Admin)
-    document.querySelectorAll('.demote-member-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const uid = e.currentTarget.dataset.uid;
-            handleDemoteMember(uid);
-        };
-    });
-
-    // Remover (Kick)
-    document.querySelectorAll('.kick-member-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            const uid = e.currentTarget.dataset.uid;
-            const name = e.currentTarget.dataset.name;
-            handleKickMember(uid, name);
-        };
-    });
-
-    document.querySelectorAll('.demote-member-btn').forEach(b => b.onclick = e => handleDemoteMember(e.currentTarget.dataset.uid));
-
-    document.querySelectorAll('#close-modal-button').forEach(b => b.onclick = () => { 
-        state.isModalOpen = false; 
-        state.editingTransactionId = null; 
-        state.editingBudgetItemId = null; 
-        state.editingDebtId = null; 
-        state.editingInstallmentId = null; 
-        state.confirmingDelete = false; 
-        renderApp(); 
-    });
-
-    const confirmYes = document.getElementById('confirm-delete-yes'); 
-    if (confirmYes) confirmYes.onclick = async () => { // Note o ASYNC aqui
-        // Remove o loading visual ou previne duplo clique se quiser
-        const originalText = confirmYes.innerText;
-        confirmYes.innerText = "...";
-        
-        if (state.editingCategory) {
-            await handleDeleteCategory();
-        } else if (state.editingTransactionId) {
-            await handleDeleteTransaction();
-        } else if (state.editingBudgetItemId) {
-            await handleDeleteBudget();
-        }
-        
-        // Só reseta o estado se o modal ainda estiver aberto (caso de erro)
-        // Se deu sucesso, a própria função delete já fechou o modal e chamou renderApp
-        if (state.isModalOpen) {
-            state.confirmingDelete = false;
-            renderApp();
-        }
-    };
-
-    const confirmNo = document.getElementById('confirm-delete-no'); 
-    if (confirmNo) confirmNo.onclick = () => { 
-        state.confirmingDelete = false; 
-        renderApp(); 
-    };
-
-    document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
-        const newView = e.currentTarget.dataset.view;
-        if (state.currentView !== newView) {
-            state.shouldAnimate = true; // ATIVA A ANIMAÇÃO PARA A TROCA DE TELA
-            state.currentView = newView; 
-            renderApp(); 
-        }
-    });
-    
-    // Botão "Ver Registros" no Dashboard
-    const detailsBtn = document.getElementById('details-button'); 
-    if (detailsBtn) detailsBtn.onclick = () => { 
-        state.shouldAnimate = true; // ATIVA A ANIMAÇÃO
-        state.currentView = 'records'; 
-        renderApp(); 
-    };
 }
 
 let unsubscribeNotifications = null;
 firebase.onAuthStateChanged(auth, async (user) => {
     if (state.isSigningUp) return;
     
-    // Garante loading true ao iniciar a verificação
     state.isLoading = true;
-    renderApp(); // Mostra o spinner imediatamente
+    renderApp();
 
     if (user) {
         const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
@@ -270,50 +203,34 @@ firebase.onAuthStateChanged(auth, async (user) => {
         if (unsubscribeNotifications) unsubscribeNotifications();
         unsubscribeNotifications = subscribeToNotifications();
         
+        // LÓGICA DE CÓDIGO PENDENTE
+        const pendingCode = sessionStorage.getItem('pendingInviteCode');
         const lastFamilyId = localStorage.getItem('greenhive_last_family');
-        const urlParams = new URLSearchParams(window.location.search);
-        const inviteCode = urlParams.get('code');
         
-        if (inviteCode && !state.family) {
-            const success = await handleJoinFamilyFromLink(inviteCode);
-            if (success || inviteCode) history.replaceState(null, '', window.location.pathname);
-            // handleSelectFamily já foi chamado dentro do Join, ele cuida do loading = false
+        if (pendingCode) {
+            const success = await handleJoinFamilyFromLink(pendingCode);
+            sessionStorage.removeItem('pendingInviteCode'); 
+            history.replaceState(null, '', window.location.pathname);
         } else if (lastFamilyId) {
-            // Verifica acesso
             const hasAccess = state.userFamilies.some(f => f.id === lastFamilyId);
             if (hasAccess) {
-                // IMPORTANTE: Entra na família e NÃO chama renderApp() aqui manualmente.
-                // Deixa o 'state.isLoading = true' ativo.
-                // O listener 'subscribeToFamilyData' vai baixar os dados e setar 'isLoading = false'
                 handleSelectFamily(lastFamilyId);
             } else {
-                // Sem acesso, limpa e mostra seleção
                 localStorage.removeItem('greenhive_last_family');
                 state.isLoading = false;
                 renderApp();
             }
         } else {
-            // Sem família anterior, mostra seleção
             state.isLoading = false;
             renderApp();
         }
 
     } else {
         if (unsubscribeNotifications) unsubscribeNotifications();
-        state.user = null; 
-        state.family = null; 
-        state.transactions = []; 
-        state.userFamilies = []; 
-        state.budgets = []; 
-        state.debts = []; 
-        state.installments = [];
-        state.isModalOpen = false; 
-        state.modalView = ''; 
-        state.isNotificationMenuOpen = false;
-        
+        state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = []; state.debts = []; state.installments = [];
+        state.isModalOpen = false; state.modalView = ''; state.isNotificationMenuOpen = false;
         if (state.authView !== 'signup-success') state.currentView = 'auth';
-        
-        state.isLoading = false; // Para de carregar para mostrar login
+        state.isLoading = false;
         renderApp();
     }
 });

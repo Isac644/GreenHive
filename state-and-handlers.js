@@ -1167,34 +1167,36 @@ export async function handleEnterFamilyFromNotification(notification) {
 export async function handleJoinFamilyFromLink(code) {
     const uppercaseCode = code.toUpperCase();
     
-    // Evita que usuários já em uma família tentem entrar em outra automaticamente
-    if (state.family) return false;
-    
     try {
-        const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("code", "==", uppercaseCode));
-        const querySnapshot = await firebase.getDocs(q);
+        const q = query(collection(db, "familyGroups"), where("code", "==", uppercaseCode));
+        const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            // Falha silenciosa, pois o código pode estar errado
+            showToast("Link de convite inválido ou expirado.", 'error');
             return false;
         }
         
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
+        const familyData = familyDoc.data();
         
-        // Se o usuário não estiver na lista de membros, adiciona
-        if (!familyDoc.data().members.includes(state.user.uid)) {
-            await firebase.updateDoc(firebase.doc(db, "familyGroups", familyId), { members: firebase.arrayUnion(state.user.uid) });
+        // Se já é membro, apenas carrega
+        if (familyData.members.includes(state.user.uid)) {
+            await handleSelectFamily(familyId);
+            showToast(`Você já faz parte da família "${familyData.name}".`, 'success');
+            return true;
         }
         
-        // Seleciona e carrega a nova família
+        // Se não é membro, adiciona diretamente
+        await updateDoc(doc(db, "familyGroups", familyId), { members: arrayUnion(state.user.uid) });
+        
         await handleSelectFamily(familyId);
-        showToast("Você entrou na família via link de convite!", 'success');
+        showToast(`Você entrou na família "${familyData.name}"!`, 'success');
         return true;
         
     } catch (e) {
-        console.error("Erro ao entrar na família via link:", e);
-        showToast("Erro ao tentar entrar na família via link.", 'error');
+        console.error("Erro ao entrar via link:", e);
+        showToast("Erro ao processar link de convite.", 'error');
         return false;
     }
 }

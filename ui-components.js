@@ -467,159 +467,36 @@ export function renderBudgetModal() {
 
 export function renderFamilyInfoModal() {
     if (!state.isModalOpen || state.modalView !== 'familyInfo') return '';
-
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-
     const memberListHTML = state.familyMembers.map(member => {
         const isMemberAdmin = state.familyAdmins.includes(member.uid);
         const isCurrentUser = member.uid === state.user.uid;
-        
-        // Fallback de dados
         const dbName = member.name;
         const localName = isCurrentUser ? state.user.name : 'Anônimo';
         const finalName = dbName || localName;
         const displayName = isCurrentUser ? `${finalName} (você)` : finalName;
-
         const dbPhoto = member.photoURL;
         const localPhoto = isCurrentUser ? state.user.photoURL : null;
         const finalPhoto = dbPhoto || localPhoto;
-
-        // Avatar
         let avatarHTML = `<div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-lg mr-3 select-none">${finalName.charAt(0).toUpperCase()}</div>`;
-        if (finalPhoto && finalPhoto.includes('|')) {
-            const [emoji, bg] = finalPhoto.split('|');
-            avatarHTML = `<div class="h-10 w-10 rounded-full flex items-center justify-center text-xl mr-3 shadow-sm select-none" style="background-color: ${bg};">${emoji}</div>`;
-        } else if (finalPhoto) {
-             avatarHTML = `<img src="${finalPhoto}" class="h-10 w-10 rounded-full mr-3 shadow-sm select-none object-cover" />`;
-        }
-
-        // Saldo
-        const memberBalance = state.transactions
-            .filter(t => t.userId === member.uid)
-            .reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
-        
+        if (finalPhoto && finalPhoto.includes('|')) { const [emoji, bg] = finalPhoto.split('|'); avatarHTML = `<div class="h-10 w-10 rounded-full flex items-center justify-center text-xl mr-3 shadow-sm select-none" style="background-color: ${bg};">${emoji}</div>`; }
+        else if (finalPhoto) { avatarHTML = `<img src="${finalPhoto}" class="h-10 w-10 rounded-full mr-3 shadow-sm select-none object-cover" />`; }
+        const memberBalance = state.transactions.filter(t => t.userId === member.uid).reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
         const balanceColor = memberBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-
-        // Tag de Admin
         const adminTag = isMemberAdmin ? `<span class="ml-2 bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700">Admin</span>` : '';
-        
-        // Botões de Ação
         let actionButtons = '';
         if (isAdmin && !isCurrentUser) {
-            // LÓGICA ALTERADA AQUI:
-            if (!isMemberAdmin) {
-                // Se NÃO é admin -> Botão Promover (Seta para cima / Escudo Check)
-                actionButtons += `
-                <button class="promote-member-btn p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition" title="Tornar Admin" data-uid="${member.uid}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                </button>`;
-            } else {
-                // Se JÁ É admin -> Botão Rebaixar (Escudo com X ou menos)
-                actionButtons += `
-                <button class="demote-member-btn p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition" title="Remover Admin" data-uid="${member.uid}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </button>`;
-            }
-
-            // Botão Kick (Sempre aparece para admin gerenciar outros)
-            actionButtons += `
-            <button class="kick-member-btn p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition" title="Remover da Família" data-uid="${member.uid}" data-name="${finalName}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" /></svg>
-            </button>`;
+            if (!isMemberAdmin) { actionButtons += `<button class="promote-member-btn p-1.5 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded transition" title="Tornar Admin" data-uid="${member.uid}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg></button>`; }
+            else { actionButtons += `<button class="demote-member-btn p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition" title="Remover Admin" data-uid="${member.uid}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></button>`; }
+            actionButtons += `<button class="kick-member-btn p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition" title="Remover da Família" data-uid="${member.uid}" data-name="${finalName}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" /></svg></button>`;
         }
-
-        return `
-            <li class="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div class="flex items-center">
-                    ${avatarHTML}
-                    <div>
-                        <div class="flex items-center">
-                            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${displayName}</p>
-                            ${adminTag}
-                        </div>
-                        <p class="text-xs font-medium ${balanceColor}">R$ ${memberBalance.toFixed(2)}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1">
-                    ${actionButtons}
-                </div>
-            </li>
-        `;
+        return `<li class="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"><div class="flex items-center">${avatarHTML}<div><div class="flex items-center"><p class="font-semibold text-gray-800 dark:text-gray-200 text-sm">${displayName}</p>${adminTag}</div><p class="text-xs font-medium ${balanceColor}">R$ ${memberBalance.toFixed(2)}</p></div></div><div class="flex items-center gap-1">${actionButtons}</div></li>`;
     }).join('');
-
-    // Botões de Admin (Nome e Código) - Mantido igual
     const editNameButton = isAdmin ? `<button id="edit-family-name-btn" class="ml-2 text-gray-400 hover:text-blue-500 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>` : '';
     const regenerateCodeButton = isAdmin ? `<button id="regenerate-code-btn" class="p-2 text-gray-500 hover:text-green-600 transition" title="Gerar novo código"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>` : '';
-    
-    const deleteFamilyButton = isAdmin ? 
-        `<button id="delete-family-button" class="w-full py-3 px-4 rounded-lg font-bold text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition mt-3 border border-red-200 dark:border-red-800">Excluir Família (Permanente)</button>` : '';
+    const deleteFamilyButton = isAdmin ? `<button id="delete-family-button" class="w-full py-3 px-4 rounded-lg font-bold text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition mt-3 border border-red-200 dark:border-red-800">Excluir Família (Permanente)</button>` : '';
 
-    return `
-        <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 modal-overlay p-4 backdrop-blur-sm">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden modal-content dark:bg-gray-800 flex flex-col">
-                
-                <div class="p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-start">
-                    <div class="w-full">
-                        <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Gerenciar Família</p>
-                        
-                        <div id="family-name-display" class="flex items-center">
-                            <h2 id="family-name-text" class="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">${state.family.name}</h2>
-                            ${editNameButton}
-                        </div>
-
-                        <form id="family-name-edit" class="hidden flex items-center gap-2 w-full mt-1">
-                            <input id="edit-family-name-input" type="text" value="${state.family.name}" class="flex-1 px-2 py-1 text-lg border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                            <button type="submit" class="p-1 text-white bg-green-500 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></button>
-                            <button type="button" id="cancel-name-edit" class="p-1 text-gray-500 bg-gray-200 rounded hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
-                        </form>
-                    </div>
-                    <button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700 -mt-2 -mr-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500 dark:text-gray-400"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                </div>
-
-                <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
-                    
-                    <div class="mb-6">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Código de Convite</p>
-                        <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg p-1 pl-4 border border-gray-200 dark:border-gray-600">
-                            <p class="text-xl font-mono font-bold text-gray-800 dark:text-gray-100 tracking-widest">${state.family.code}</p>
-                            <div class="flex">
-                                ${regenerateCodeButton}
-                                <button id="copy-code-button" class="p-2 text-gray-500 hover:text-blue-600 transition" title="Copiar">
-                                    ${CopyIconSVG}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <div class="flex justify-between items-end mb-2">
-                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Membros (${state.familyMembers.length})</p>
-                        </div>
-                        <ul class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                            ${memberListHTML}
-                        </ul>
-                    </div>
-
-                    <div class="space-y-3 mt-4 pt-4 border-t dark:border-gray-700">
-                        <button id="switch-family-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-md transition flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            Trocar de Família
-                        </button>
-                        
-                        <button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 transition">
-                            Sair da Família
-                        </button>
-
-                        ${deleteFamilyButton}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    return `<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 modal-overlay p-4 backdrop-blur-sm"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden modal-content dark:bg-gray-800 flex flex-col"><div class="p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-start"><div class="w-full"><p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Gerenciar Família</p><div id="family-name-display" class="flex items-center"><h2 id="family-name-text" class="text-2xl font-bold text-gray-800 dark:text-gray-100 truncate">${state.family.name}</h2>${editNameButton}</div><form id="family-name-edit" class="hidden flex items-center gap-2 w-full mt-1"><input id="edit-family-name-input" type="text" value="${state.family.name}" class="flex-1 px-2 py-1 text-lg border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" /><button type="submit" class="p-1 text-white bg-green-500 rounded hover:bg-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></button><button type="button" id="cancel-name-edit" class="p-1 text-gray-500 bg-gray-200 rounded hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button></form></div><button id="close-modal-button" class="p-2 rounded-full hover:bg-gray-200 transition dark:hover:bg-gray-700 -mt-2 -mr-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500 dark:text-gray-400"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="p-6 overflow-y-auto custom-scrollbar flex-1"><div class="mb-6"><p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Código de Convite</p><div class="flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg p-1 pl-4 border border-gray-200 dark:border-gray-600"><p class="text-xl font-mono font-bold text-gray-800 dark:text-gray-100 tracking-widest">${state.family.code}</p><div class="flex">${regenerateCodeButton}<button class="copy-code-btn p-2 text-gray-500 hover:text-blue-600 transition" title="Copiar">${CopyIconSVG}</button></div></div></div><div class="mb-6"><div class="flex justify-between items-end mb-2"><p class="text-sm font-medium text-gray-500 dark:text-gray-400">Membros (${state.familyMembers.length})</p></div><ul class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">${memberListHTML}</ul></div><div class="space-y-3 mt-4 pt-4 border-t dark:border-gray-700"><button id="switch-family-button" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-md transition flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>Trocar de Família</button><button id="leave-family-modal-button" class="w-full py-3 px-4 rounded-lg font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 transition">Sair da Família</button>${deleteFamilyButton}</div></div></div></div>`;
 }
 
 export function renderManageCategoriesModal() {
@@ -887,11 +764,7 @@ export function renderFamilyDashboard() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : '';
 
-    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg">
-    
-    <h3 class="text-lg font-semibold text-gray-700 mb-4">Saldo dos Membros</h3>
-    
-    <div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
+    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Saldo dos Membros</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button class="copy-code-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
 }
 export function renderRecordsPage() {
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear(); const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' }); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
