@@ -1,8 +1,27 @@
 // main.js
 import { auth, firebase } from "./firebase-config.js";
 import {
-    state, handleLogin, handleSignup, handleGoogleLogin, handleLogout, handleCreateFamily, handleJoinFamily, handleSelectFamily, handleLeaveFamily, handleAddTransaction, handleUpdateTransaction, handleDeleteTransaction, handleSaveBudget, handleDeleteBudget, handleSaveNewTag, handleChangeMonth, handleToggleTheme, fetchUserFamilies, handleSwitchFamily, handleUpdateCategory, handleDeleteCategory, handleJoinFamilyFromLink, subscribeToNotifications, toggleNotificationMenu, handleAcceptJoinRequest, handleRejectJoinRequest, handleDeleteNotification, handleEnterFamilyFromNotification, handleResetPassword, handleUpdateProfile, handleChangePassword, handleUpdateFamilyName, handleRegenerateCode, handlePromoteMember, handleKickMember, handleDemoteMember, handleDeleteFamily, handleConfirmAction, closeConfirmation,
-    handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment, handleClearFilters, handleToggleFilterMember, handleToggleFilterCategory, handleToggleFilterType 
+    state, handleLogin, handleSignup, handleGoogleLogin, handleLogout, 
+    handleCreateFamily, handleJoinFamily, handleSelectFamily, handleLeaveFamily, 
+    handleAddTransaction, handleUpdateTransaction, handleDeleteTransaction, 
+    handleSaveBudget, handleDeleteBudget, handleSaveNewTag, 
+    handleChangeMonth, handleToggleTheme, fetchUserFamilies, 
+    handleSwitchFamily, handleUpdateCategory, handleDeleteCategory, 
+    handleJoinFamilyFromLink, subscribeToNotifications, toggleNotificationMenu, 
+    handleAcceptJoinRequest, handleRejectJoinRequest, handleDeleteNotification, 
+    handleEnterFamilyFromNotification, handleResetPassword, handleUpdateProfile, 
+    handleChangePassword, handleUpdateFamilyName, handleRegenerateCode, 
+    handlePromoteMember, handleKickMember, handleDemoteMember, handleDeleteFamily, 
+    handleConfirmAction, closeConfirmation,
+    handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment,
+    // ADICIONE ESTAS FUNÇÕES ABAIXO:
+    handleOpenFilters, 
+    handleApplyFilters, 
+    handleClearFilters, 
+    handleToggleFilterMember, 
+    handleToggleFilterCategory, 
+    handleToggleFilterType,
+    handleToggleFilterDate
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -278,13 +297,34 @@ function attachEventListeners() {
     }
 
     // Filtros
+
+    const openFilterBtn = document.getElementById('open-filter-modal-btn'); 
+    if (openFilterBtn) {
+        openFilterBtn.onclick = () => {
+            handleOpenFilters(); // Agora ele vai encontrar a função!
+        };
+    }
+    
     const clearFilterBtn = document.getElementById('clear-filters-btn'); 
     if (clearFilterBtn) clearFilterBtn.onclick = handleClearFilters;
     
-    // NOVO BOTÃO DE APLICAR
     const applyFilterBtn = document.getElementById('apply-filters-btn');
     if (applyFilterBtn) applyFilterBtn.onclick = handleApplyFilters;
 
+    // Toggles
+    document.querySelectorAll('.filter-type-btn').forEach(btn => { 
+        btn.onclick = (e) => handleToggleFilterType(e.currentTarget.dataset.type); 
+    });
+    document.querySelectorAll('.filter-category-btn').forEach(btn => { 
+        btn.onclick = (e) => handleToggleFilterCategory(e.currentTarget.dataset.category); 
+    });
+    document.querySelectorAll('.filter-member-btn').forEach(btn => { 
+        btn.onclick = (e) => handleToggleFilterMember(e.currentTarget.dataset.uid); 
+    });
+    document.querySelectorAll('.calendar-day-filter').forEach(btn => {
+        btn.onclick = (e) => handleToggleFilterDate(parseInt(e.currentTarget.dataset.day));
+    });
+    
     // Toggles (mesmos de antes, mas agora afetam o tempFilters)
     document.querySelectorAll('.filter-type-btn').forEach(btn => { btn.onclick = (e) => handleToggleFilterType(e.currentTarget.dataset.type); });
     document.querySelectorAll('.filter-category-btn').forEach(btn => { btn.onclick = (e) => handleToggleFilterCategory(e.currentTarget.dataset.category); });
@@ -310,16 +350,6 @@ function attachEventListeners() {
             renderApp(); 
         };
     });
-
-    // ...
-
-    // Filtro (Reforçando)
-    const openFilterBtn = document.getElementById('open-filter-modal-btn'); 
-    if (openFilterBtn) {
-        openFilterBtn.onclick = () => {
-            handleOpenFilters(); // Certifique-se que handleOpenFilters está importado
-        };
-    }
 }
 
 let unsubscribeNotifications = null;
