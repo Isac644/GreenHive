@@ -62,6 +62,12 @@ export const state = {
     filterCategory: null,     // Nome da categoria ou null
     filterMember: null,       // UID do membro ou null
     selectedDate: null,       // Dia do mês (número) ou null
+    tempFilters: {
+        type: 'all',
+        category: null,
+        member: null,
+        date: null
+    },
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -82,32 +88,69 @@ export const DEFAULT_CATEGORIES_SETUP = {
 
 export const CATEGORIES = { expense: [], income: [] }; 
 
-export function handleToggleFilterType(type) {
-    // Se clicar no que já tá ativo, volta para 'all', senão troca
-    if (state.filterType === type) state.filterType = 'all';
-    else state.filterType = type;
+export function handleOpenFilters() {
+    // Copia o estado atual para o temporário ao abrir
+    state.tempFilters = {
+        type: state.filterType,
+        category: state.filterCategory,
+        member: state.filterMember,
+        date: state.selectedDate
+    };
+    state.isModalOpen = true;
+    state.modalView = 'filters';
+    // Não anima o fundo ao abrir modal
+    state.shouldAnimate = false; 
     renderApp();
 }
+
+export function handleApplyFilters() {
+    // "Commita" as mudanças do temporário para o real
+    state.filterType = state.tempFilters.type;
+    state.filterCategory = state.tempFilters.category;
+    state.filterMember = state.tempFilters.member;
+    state.selectedDate = state.tempFilters.date;
+
+    state.isModalOpen = false;
+    state.shouldAnimate = true; // AGORA SIM ANIMA (Mudou a lista)
+    renderApp();
+    // showToast("Filtros aplicados.", "success"); // Opcional
+}
+
+export function handleClearFilters() {
+    // Limpa o temporário (se estiver no modal) ou o real?
+    // Como o botão "Limpar" está dentro do modal, limpamos o temporário.
+    state.tempFilters = {
+        type: 'all',
+        category: null,
+        member: null,
+        date: null
+    };
+    renderApp(); // Atualiza visual do modal
+}
+
+// Toggles agora mexem no TEMP
+export function handleToggleFilterType(type) {
+    if (state.tempFilters.type === type) state.tempFilters.type = 'all';
+    else state.tempFilters.type = type;
+    renderApp();
+}
+
 export function handleToggleFilterCategory(category) {
-    if (state.filterCategory === category) state.filterCategory = null;
-    else state.filterCategory = category;
+    if (state.tempFilters.category === category) state.tempFilters.category = null;
+    else state.tempFilters.category = category;
     renderApp();
 }
 
 export function handleToggleFilterMember(memberId) {
-    if (state.filterMember === memberId) state.filterMember = null;
-    else state.filterMember = memberId;
+    if (state.tempFilters.member === memberId) state.tempFilters.member = null;
+    else state.tempFilters.member = memberId;
     renderApp();
 }
 
-export function handleClearFilters() {
-    state.filterType = 'all';
-    state.filterCategory = null;
-    state.filterMember = null;
-    state.selectedDate = null;
-    // Mantém o mês atual (displayedMonth)
+export function handleToggleFilterDate(day) {
+    if (state.tempFilters.date === day) state.tempFilters.date = null;
+    else state.tempFilters.date = day;
     renderApp();
-    showToast("Filtros limpos.", "success");
 }
 
 // --- FUNÇÕES DE NOTIFICAÇÃO ---
@@ -298,16 +341,49 @@ export async function handleDeleteInstallment() {
 }
 
 export async function handleSaveBudget(event) {
-    event.preventDefault(); const formData = new FormData(event.target); const id = state.editingBudgetItemId;
-    const budgetData = { name: formData.get('budgetName'), type: formData.get('budgetType'), category: formData.get('budgetCategory'), value: parseFloat(formData.get('budgetValue')), appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', recurring: formData.get('budgetRecurring') === 'on' };
-    try { const col = collection(db, "familyGroups", state.family.id, "budgets"); if (id) { await updateDoc(doc(col, id), budgetData); } else { await addDoc(col, budgetData); } state.editingBudgetItemId = null; state.isModalOpen = false; renderApp(); showToast("Orçamento salvo!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const id = state.editingBudgetItemId;
+    const budgetData = { 
+        name: formData.get('budgetName'), 
+        type: formData.get('budgetType'), 
+        category: formData.get('budgetCategory'), 
+        value: parseFloat(formData.get('budgetValue')), 
+        appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', 
+        recurring: formData.get('budgetRecurring') === 'on' 
+    };
+    
+    try {
+        const col = collection(db, "familyGroups", state.family.id, "budgets");
+        if (id) { 
+            await updateDoc(doc(col, id), budgetData); 
+        } else { 
+            await addDoc(col, budgetData); 
+        }
+        
+        // CORREÇÃO: Fecha o modal e atualiza
+        state.editingBudgetItemId = null; 
+        state.isModalOpen = false; 
+        renderApp(); 
+        
+        showToast("Orçamento salvo!", 'success');
+    } catch (e) { showToast("Erro ao salvar orçamento.", 'error'); }
 }
 
 export async function handleDeleteBudget() {
     if (!state.editingBudgetItemId) return;
-    try { await deleteDoc(doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); state.editingBudgetItemId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Orçamento excluído!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
+    try { 
+        await deleteDoc(doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); 
+        
+        // CORREÇÃO: Fecha o modal, reseta confirmação e atualiza
+        state.editingBudgetItemId = null; 
+        state.isModalOpen = false; 
+        state.confirmingDelete = false;
+        renderApp(); 
+        
+        showToast("Orçamento excluído!", 'success'); 
+    } catch (e) { showToast("Erro ao excluir.", 'error'); }
 }
-
 
 export async function handleSaveNewTag(event) {
     event.preventDefault();
@@ -493,7 +569,14 @@ export function handleLeaveFamily() {
 
 
 export function handleChangeMonth(direction) {
-    state.displayedMonth.setMonth(state.displayedMonth.getMonth() + direction); state.selectedDate = null; renderApp();
+    // Muda o mês
+    state.displayedMonth.setMonth(state.displayedMonth.getMonth() + direction);
+    state.selectedDate = null;
+    
+    // ATIVA A ANIMAÇÃO (Pois é uma mudança de "página" visual)
+    state.shouldAnimate = true;
+    
+    renderApp();
 }
 
 export function handleToggleTheme() {
