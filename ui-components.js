@@ -288,11 +288,12 @@ export function renderMainContent() {
 }
 
 export function renderFamilyDashboard() {
-    // ... (Mantenha toda a parte inicial de cálculos e variáveis igual ao que você já tem) ...
-    // Copie do seu código anterior até a linha 'const valueClass = ...'
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    
+    // Cálculos (Mantidos)
     const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
     summary.balance = summary.income - summary.expenses;
     const userTransactions = monthlyTransactions.filter(t => t.userId === state.user.uid);
@@ -303,22 +304,140 @@ export function renderFamilyDashboard() {
     const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => { const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === b.category).reduce((sum, t) => sum + t.amount, 0); return acc + spent; }, 0);
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>` : '';
+    
     const cardBase = "bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
     const titleClass = "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
     const valueClass = "font-heading font-bold text-3xl sm:text-4xl tracking-tight mb-3";
 
-    // CORREÇÃO: Removi 'animate-fade-in' da div principal abaixo
     return `
-    <div class="space-y-8">
+    <div class="animate-fade-in space-y-8">
         
-        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto">
+        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto lg:mx-0">
             <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
             <h3 class="text-sm font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
             <button id="next-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="flex flex-col gap-6 h-full"><div class="flex flex-col gap-4"><div class="${cardBase} relative overflow-hidden group"><div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div><p class="${titleClass}">Saldo da Família</p><p class="${valueClass} text-gray-900 dark:text-white">R$ ${summary.balance.toFixed(2)}</p><div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50"><div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div><div class="flex flex-col"><span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span><span class="text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'}">R$ ${userSummary.balance.toFixed(2)}</span></div></div></div><div class="grid grid-cols-2 gap-4"><div class="${cardBase} flex flex-col justify-center"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div><p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.income.toFixed(2)}</p><p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400">R$ ${userSummary.income.toFixed(2)}</span></p></div><div class="${cardBase} flex flex-col justify-center"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div><p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.expenses.toFixed(2)}</p><p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500">R$ ${userSummary.expenses.toFixed(2)}</span></p></div></div></div><div class="${cardBase} flex-1 min-h-[300px] flex flex-col"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2"><svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>Saldo dos Membros</h3><div class="relative w-full flex-1 min-h-[250px]"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados neste mês</div></div></div></div><div class="flex flex-col gap-6 h-full"><div class="${cardBase} flex-1 min-h-[250px] flex flex-col"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3><div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300">R$ ${totalBudget.toFixed(0)}</span></span></div></div><div class="relative w-full flex-1 min-h-[200px]"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div><div class="${cardBase} flex-1 min-h-[250px] flex flex-col"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3><div class="relative w-full flex-1 min-h-[200px]"><canvas id="daily-evolution-chart"></canvas></div></div></div></div><div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div></div><div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p><p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p></div><div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"><button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button><button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button></div></div></div></div></div>`;
+            
+            <div class="flex flex-col gap-6 h-full">
+                <div class="flex flex-col gap-4">
+                    <div class="${cardBase} relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div>
+                        <p class="${titleClass}">Saldo da Família</p>
+                        <p class="${valueClass} text-gray-900 dark:text-white">R$ ${summary.balance.toFixed(2)}</p>
+                        <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                            <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span>
+                                <span class="text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'}">R$ ${userSummary.balance.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="${cardBase} flex flex-col justify-center">
+                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
+                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.income.toFixed(2)}</p>
+                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400">R$ ${userSummary.income.toFixed(2)}</span></p>
+                        </div>
+                        <div class="${cardBase} flex flex-col justify-center">
+                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
+                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.expenses.toFixed(2)}</p>
+                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500">R$ ${userSummary.expenses.toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="${cardBase} flex-1 min-h-[300px] flex flex-col overflow-hidden">
+                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        Saldo dos Membros
+                    </h3>
+                    
+                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex items-start">
+                        <div class="h-full min-w-full w-max px-2">
+                            <div class="relative h-full w-full" style="min-width: 500px;">
+                                <canvas id="person-spending-chart"></canvas>
+                            </div>
+                        </div>
+                        <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem dados neste mês</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-6 h-full">
+                
+                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
+                        <div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg">
+                            <span>Meta: <span class="text-gray-600 dark:text-gray-300">R$ ${totalBudget.toFixed(0)}</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex items-start">
+                        <div class="h-full min-w-full w-max px-2">
+                            <div class="relative h-full w-full" style="min-width: 400px;">
+                                <canvas id="budget-performance-chart"></canvas>
+                            </div>
+                        </div>
+                        <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem orçamentos definidos</div>
+                    </div>
+                </div>
+
+                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col">
+                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
+                    <div class="relative w-full flex-1 min-h-[200px]">
+                        <canvas id="daily-evolution-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="${cardBase}">
+            <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3>
+            <div class="h-72 relative w-full">
+                <canvas id="annual-balance-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="${cardBase}">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>
+                    ${manageCategoriesButton} 
+                </div>
+                <div class="h-64 relative w-full">
+                    <canvas id="monthly-expenses-chart"></canvas>
+                    <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
+                </div>
+            </div>
+
+            <div class="${cardBase}">
+                <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3>
+                <div class="h-64 relative w-full">
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20">
+            <div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div>
+                        <h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3>
+                        <p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p>
+                        <p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button>
+                        <button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>`;
 }
 
 // --- 5. PÁGINAS INTERNAS (REGISTROS, ORÇAMENTO, DÍVIDAS) ---
@@ -1219,76 +1338,79 @@ function renderBudgetPerformanceChart() {
     });
 }
 
-function renderPersonSpendingChart() {
-    const canvas = document.getElementById('person-spending-chart');
-    const noData = document.getElementById('person-spending-chart-no-data');
-    if (!canvas || !noData) return null;
-
+export function renderPersonSpendingChart() {
+    // ... (código de preparação de dados igual, copie até 'const textColor = ...')
+    const chartCanvas = document.getElementById('person-spending-chart');
+    const noDataElement = document.getElementById('person-spending-chart-no-data');
+    if (!chartCanvas || !noDataElement) return null;
     const month = state.displayedMonth.getMonth();
     const year = state.displayedMonth.getFullYear();
-    const txs = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    const monthlyTransactions = state.transactions.filter(t => { const tDate = new Date(t.date + 'T12:00:00'); return tDate.getMonth() === month && tDate.getFullYear() === year; });
+    if (monthlyTransactions.length === 0) { chartCanvas.style.display = 'none'; noDataElement.style.display = 'flex'; noDataElement.innerHTML = `Sem movimentações neste mês.`; return null; } else { chartCanvas.style.display = 'block'; noDataElement.style.display = 'none'; }
+    const memberStats = {};
+    state.familyMembers.forEach(m => { let icon = '👤'; let color = '#9CA3AF'; let image = null; if (m.photoURL && m.photoURL.includes('|')) { const parts = m.photoURL.split('|'); icon = parts[0]; color = parts[1]; } else if (m.photoURL) { image = new Image(); image.src = m.photoURL; image.crossOrigin = "Anonymous"; image.onload = () => { const chart = Chart.getChart('person-spending-chart'); if (chart) chart.update(); }; color = 'transparent'; } else { icon = m.name.charAt(0).toUpperCase(); color = '#3B82F6'; } memberStats[m.uid] = { name: m.name.split(' ')[0], icon: icon, color: color, image: image, income: 0, expense: 0 }; });
+    monthlyTransactions.forEach(t => { const uid = t.userId; if (!memberStats[uid]) { memberStats[uid] = { name: 'Ex-membro', icon: '👻', color: '#9CA3AF', income: 0, expense: 0 }; } if (t.type === 'income') memberStats[uid].income += t.amount; else memberStats[uid].expense += t.amount; });
+    const incomes = []; const expenses = []; const balances = []; const userData = []; 
+    Object.values(memberStats).forEach(s => { const balance = s.income - s.expense; incomes.push(s.income); expenses.push(s.expense); balances.push(balance); userData.push({ name: s.name, icon: s.icon, color: s.color, image: s.image, balance: balance }); });
+    const textColor = state.theme === 'dark' ? '#d1d5db' : '#374151';
+    const gridColor = state.theme === 'dark' ? '#374151' : '#e2e8f0'; // COR DO GRID
 
-    if (txs.length === 0) { canvas.style.display = 'none'; noData.style.display = 'flex'; return null; }
-    canvas.style.display = 'block'; noData.style.display = 'none';
-
-    const stats = {};
-    state.familyMembers.forEach(m => {
-        let icon = '👤'; let color = '#9ca3af';
-        if (m.photoURL && m.photoURL.includes('|')) { const p = m.photoURL.split('|'); icon = p[0]; color = p[1]; }
-        stats[m.uid] = { name: m.name.split(' ')[0], icon, color, income: 0, expense: 0 };
-    });
-
-    txs.forEach(t => {
-        if (!stats[t.userId]) stats[t.userId] = { name: 'Ex', icon: '👻', color: '#9ca3af', income: 0, expense: 0 };
-        if (t.type === 'income') stats[t.userId].income += t.amount; else stats[t.userId].expense += t.amount;
-    });
-
-    const userData = Object.values(stats);
-    const labels = userData.map(u => u.name);
-    const incomes = userData.map(u => u.income);
-    const expenses = userData.map(u => u.expense);
-    const balances = userData.map(u => u.income - u.expense);
-    const textColor = state.theme === 'dark' ? '#e2e8f0' : '#475569';
-
-    // Plugin de Avatar no Eixo X
-    const avatarPlugin = {
+    // Plugin Avatar
+    const avatarAxisPlugin = {
         id: 'avatarAxis',
         afterDraw: (chart) => {
             const { ctx, scales: { x } } = chart;
-            x.ticks.forEach((tick, i) => {
-                const u = userData[i];
-                if (!u) return;
-                const xPos = x.getPixelForTick(i);
-                const yPos = x.bottom + 25;
-                
-                ctx.beginPath(); ctx.arc(xPos, yPos, 18, 0, 2 * Math.PI); ctx.fillStyle = u.color; ctx.fill(); ctx.closePath();
-                ctx.font = '20px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(u.icon, xPos, yPos + 1);
-                
-                ctx.font = 'bold 12px Inter'; ctx.fillStyle = textColor; ctx.fillText(u.name, xPos, yPos + 30);
-                ctx.font = '11px Inter'; ctx.fillStyle = '#3b82f6'; ctx.fillText(`R$ ${balances[i].toFixed(0)}`, xPos, yPos + 45);
+            x.ticks.forEach((tick, index) => {
+                if (!chart.data.userData || !chart.data.userData[index]) return;
+                const xPos = x.getPixelForTick(index);
+                const yPos = x.bottom + 25; 
+                const user = chart.data.userData[index];
+                const radius = 18;
+                ctx.save(); 
+                ctx.beginPath(); ctx.arc(xPos, yPos, radius, 0, 2 * Math.PI); ctx.fillStyle = user.color; ctx.fill();
+                if (user.image && user.image.complete && user.image.naturalHeight !== 0) { ctx.clip(); ctx.drawImage(user.image, xPos - radius, yPos - radius, radius * 2, radius * 2); } else { ctx.fillStyle = '#FFFFFF'; if (user.icon.length === 1 && user.icon.match(/[a-z]/i)) { ctx.font = 'bold 14px Arial'; } else { ctx.font = '20px Arial'; } ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(user.icon, xPos, yPos + 1); }
+                ctx.restore(); 
+                ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = textColor; ctx.textAlign = 'center'; ctx.fillText(user.name, xPos, yPos + 30);
+                const balanceFormatted = "R$ " + user.balance.toFixed(0); ctx.font = 'normal 10px sans-serif'; ctx.fillStyle = '#3B82F6'; ctx.fillText(balanceFormatted, xPos, yPos + 45);
             });
         }
     };
 
-    if (Chart.getChart(canvas)) Chart.getChart(canvas).destroy();
+    if (Chart.getChart(chartCanvas)) Chart.getChart(chartCanvas).destroy();
 
-    return new Chart(canvas.getContext('2d'), {
+    return new Chart(chartCanvas.getContext('2d'), {
         type: 'bar',
         data: {
-            labels,
+            labels: userData.map(u => u.name), 
+            userData: userData, 
             datasets: [
-                { label: 'Saldo', data: balances, backgroundColor: '#3b82f6', borderRadius: 4 },
-                { label: 'Receita', data: incomes, backgroundColor: '#10b981', borderRadius: 4 },
-                { label: 'Despesa', data: expenses, backgroundColor: '#ef4444', borderRadius: 4 }
+                { label: 'Saldo', data: balances, backgroundColor: 'rgba(59, 130, 246, 0.8)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1, barPercentage: 0.6, categoryPercentage: 0.8 },
+                { label: 'Receita', data: incomes, backgroundColor: 'rgba(16, 185, 129, 0.8)', borderColor: 'rgba(16, 185, 129, 1)', borderWidth: 1, barPercentage: 0.6, categoryPercentage: 0.8 },
+                { label: 'Despesa', data: expenses, backgroundColor: 'rgba(239, 68, 68, 0.8)', borderColor: 'rgba(239, 68, 68, 1)', borderWidth: 1, barPercentage: 0.6, categoryPercentage: 0.8 }
             ]
         },
-        plugins: [avatarPlugin],
+        plugins: [avatarAxisPlugin], 
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             animation: { duration: state.shouldAnimate ? 1000 : 0 },
-            responsive: true, maintainAspectRatio: false,
             layout: { padding: { bottom: 60 } },
-            scales: { y: { beginAtZero: true, grid: { color: state.theme === 'dark' ? '#374151' : '#e2e8f0' }, ticks: { color: textColor } }, x: { display: false } },
-            plugins: { legend: { position: 'top', labels: { color: textColor, usePointStyle: true } }, datalabels: { display: false } }
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: textColor },
+                    grid: { color: gridColor } // CORREÇÃO: Grid ativado
+                },
+                x: {
+                    ticks: { display: false }, 
+                    grid: { display: false } // Mantém grid X oculto para não poluir o avatar
+                }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { color: textColor } },
+                tooltip: { callbacks: { title: (context) => context[0].chart.data.userData[context[0].dataIndex].name } },
+                datalabels: { display: false }
+            }
         }
     });
 }

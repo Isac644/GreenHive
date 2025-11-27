@@ -547,24 +547,70 @@ export async function handleJoinFamily(event) {
 }
 
 export function handleLeaveFamily() {
-    openConfirmation("Sair da Família", "Tem certeza que deseja sair? Você precisará de um novo convite para entrar.", async () => {
-        const familyId = state.family.id; const userId = state.user.uid; const familyRef = firebase.doc(db, "familyGroups", familyId);
-        try {
-            const familyData = (await firebase.getDoc(familyRef)).data();
-            if (familyData.members.length === 1) {
-                await handleDeleteFamily(); return;
-            } else if (familyData.admins.includes(userId) && familyData.admins.length === 1) {
-                const nextAdmin = familyData.members.find(m => m !== userId);
-                await updateDoc(familyRef, { members: arrayRemove(userId), admins: arrayUnion(nextAdmin) });
-                await updateDoc(familyRef, { admins: arrayRemove(userId) });
-            } else {
-                await updateDoc(familyRef, { members: arrayRemove(userId), admins: arrayRemove(userId) });
-            }
-            handleSwitchFamily();
-        } catch (e) { showToast("Erro ao sair.", 'error'); }
-    });
-}
+    openConfirmation(
+        "Sair da Família",
+        "Ao sair, todas as suas transações e dívidas pendentes nesta família serão apagadas. Tem certeza?",
+        async () => {
+            const familyId = state.family.id;
+            const userId = state.user.uid;
+            const familyRef = doc(db, "familyGroups", familyId);
 
+            try {
+                const batch = firebase.writeBatch(db);
+
+                // Apaga Transações
+                const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId), where("userId", "==", userId));
+                const transDocs = await getDocs(qTrans);
+                transDocs.forEach(d => batch.delete(d.ref));
+
+                // Apaga Dívidas (onde sou devedor)
+                const qDebts = query(collection(db, "familyGroups", familyId, "debts"), where("debtorId", "==", userId));
+                const debtDocs = await getDocs(qDebts);
+                debtDocs.forEach(d => batch.delete(d.ref));
+
+                // Apaga Parcelamentos (onde sou devedor)
+                const qInst = query(collection(db, "familyGroups", familyId, "installments"), where("debtorId", "==", userId));
+                const instDocs = await getDocs(qInst);
+                instDocs.forEach(d => batch.delete(d.ref));
+
+                // Executa limpeza
+                await batch.commit();
+
+                const fDoc = await getDoc(familyRef);
+                const fData = fDoc.data();
+                
+                if (fData.members.length === 1) {
+                    await handleDeleteFamily(); 
+                    return;
+                } 
+                
+                // Lógica de passar Admin se necessário
+                if (fData.admins.includes(userId) && fData.admins.length === 1) {
+                    const nextAdmin = fData.members.find(m => m !== userId);
+                    // CORREÇÃO AQUI: Usando arrayRemove e arrayUnion importados
+                    await updateDoc(familyRef, { 
+                        members: arrayRemove(userId), 
+                        admins: arrayUnion(nextAdmin) 
+                    });
+                    await updateDoc(familyRef, { admins: arrayRemove(userId) });
+                } else {
+                    // CORREÇÃO AQUI: Usando arrayRemove importado
+                    await updateDoc(familyRef, { 
+                        members: arrayRemove(userId), 
+                        admins: arrayRemove(userId) 
+                    });
+                }
+
+                handleSwitchFamily();
+                showToast("Você saiu e seus dados foram limpos.", 'success');
+
+            } catch (e) {
+                console.error(e);
+                showToast("Erro ao sair.", 'error');
+            }
+        }
+    );
+}
 // --- DÍVIDAS E PARCELAMENTOS HANDLERS ---
 
 
@@ -831,23 +877,38 @@ export async function handlePromoteMember(memberId) {
 export function handleKickMember(memberId, memberName) {
     openConfirmation(
         "Remover Membro",
-        `Tem certeza que deseja remover <strong>${memberName}</strong> da família?`,
+        `Tem certeza que deseja remover <strong>${memberName}</strong> e apagar todos os seus registros?`,
         async () => {
             try {
-                const familyRef = firebase.doc(db, "familyGroups", state.family.id);
-                await updateDoc(familyRef, {
+                const batch = firebase.writeBatch(db);
+                const familyId = state.family.id;
+                const familyRef = doc(db, "familyGroups", familyId);
+                
+                // CORREÇÃO: Usando arrayRemove direto
+                batch.update(familyRef, {
                     members: arrayRemove(memberId),
                     admins: arrayRemove(memberId)
                 });
+
+                // ... (código de deleção dos dados mantido igual ao anterior) ...
+                const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId), where("userId", "==", memberId));
+                const transDocs = await getDocs(qTrans);
+                transDocs.forEach(d => batch.delete(d.ref));
+
+                const qDebts = query(collection(db, "familyGroups", familyId, "debts"), where("debtorId", "==", memberId));
+                const debtDocs = await getDocs(qDebts);
+                debtDocs.forEach(d => batch.delete(d.ref));
+
+                const qInst = query(collection(db, "familyGroups", familyId, "installments"), where("debtorId", "==", memberId));
+                const instDocs = await getDocs(qInst);
+                instDocs.forEach(d => batch.delete(d.ref));
+
+                await batch.commit();
                 
-                state.familyMembers = state.familyMembers.filter(m => m.uid !== memberId);
-                state.familyAdmins = state.familyAdmins.filter(id => id !== memberId);
-                
-                // Não precisa chamar renderApp aqui pois o closeConfirmation chama depois
-                showToast(`${memberName} foi removido da família.`, 'success');
+                showToast(`${memberName} removido.`, 'success');
             } catch (e) {
                 console.error(e);
-                showToast("Erro ao remover membro.", 'error');
+                showToast("Erro ao remover.", 'error');
             }
         }
     );
