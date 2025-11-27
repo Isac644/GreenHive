@@ -333,17 +333,31 @@ export function renderTransactionModal() {
     if (!state.isModalOpen || (state.modalView !== 'transaction' && state.modalView !== 'newTag')) return '';
 
     const transaction = isEditing ? state.transactions.find(t => t.id === state.editingTransactionId) : null;
-
-    // --- CORREÇÃO DO ERRO AQUI ---
-    // Se o ID de edição existe, mas a transação não foi encontrada na lista 
-    // (ex: foi excluída pelo listener em tempo real), retornamos vazio para não quebrar a tela.
+    
+    // Proteção contra exclusão em tempo real
     if (isEditing && !transaction) return ''; 
-    // -----------------------------
 
     const type = isEditing ? transaction.type : state.modalTransactionType;
     const defaultCategories = (type === 'expense' ? CATEGORIES.expense : CATEGORIES.income);
     const customCategories = state.userCategories[type] || [];
     const allCategories = [...defaultCategories, ...customCategories];
+    
+    // Verifica se é Admin
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+
+    // 1. Adiciona um Placeholder para forçar o evento 'change'
+    let categoryOptions = `<option value="" disabled ${!transaction?.category ? 'selected' : ''}>Selecione uma categoria...</option>`;
+    
+    // 2. Lista as categorias existentes
+    allCategories.forEach(cat => {
+        const isSelected = transaction?.category === cat ? 'selected' : '';
+        categoryOptions += `<option value="${cat}" ${isSelected}>${cat}</option>`;
+    });
+
+    // 3. Adiciona a opção de Criar Nova APENAS se for Admin
+    if (isAdmin) {
+        categoryOptions += `<option value="--create-new--" class="font-bold text-green-600">+ ✨ Criar nova categoria</option>`;
+    }
 
     const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-4 p-4 bg-red-100 rounded-lg text-center">
     <p class="text-red-700 mb-2">Tem certeza?</p>
@@ -351,15 +365,12 @@ export function renderTransactionModal() {
     <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
 </div>` : '';
 
-    // Opções de Vínculo (Dívidas/Parcelas) - Só mostra se for Despesa
     let linkOptions = '<option value="">Nenhum</option>';
     if (type === 'expense') {
-        // Dívidas (Pendentes ou do usuário)
         state.debts.forEach(d => {
             const selected = transaction?.linkedDebtId === d.id ? 'selected' : '';
             linkOptions += `<option value="debt:${d.id}" ${selected}>Dívida: ${d.name}</option>`;
         });
-        // Parcelas
         state.installments.forEach(i => {
             const selected = transaction?.linkedInstallmentId === i.id ? 'selected' : '';
             linkOptions += `<option value="installment:${i.id}" ${selected}>Parcela: ${i.name}</option>`;
@@ -371,7 +382,6 @@ export function renderTransactionModal() {
         const colorSwatches = PALETTE_COLORS.map(color => `<label class="cursor-pointer"><input type="radio" name="newTagColor" value="${color}" class="sr-only peer"><div class="w-8 h-8 rounded-full peer-checked:ring-2 ring-offset-2 ring-blue-500" style="background-color: ${color};"></div></label>`).join('');
         contentHTML = `<h3 class="text-lg font-semibold text-gray-700 mb-4">Criar Nova Categoria</h3><form id="create-tag-form"><div class="mb-4"><label for="newTagName" class="block text-sm font-medium text-gray-700 mb-1">Nome</label><input id="newTagName" name="newTagName" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required /></div><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Cor</label><div class="flex flex-wrap gap-3">${colorSwatches}</div></div><div class="mt-6 flex justify-end gap-2"><button type="button" id="cancel-tag-creation" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg">Cancelar</button><button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg">Salvar</button></div></form>`;
     } else {
-        const categoryOptions = allCategories.map(cat => `<option value="${cat}" ${transaction?.category === cat ? 'selected' : ''}>${cat}</option>`).join('') + `<option value="--create-new--">Criar nova categoria...</option>`;
         const deleteButtonHTML = isEditing ? `<button type="button" id="delete-transaction-button" class="px-4 py-3 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700">Excluir</button>` : '';
         const typeSelectorHTML = `<div class="flex gap-2 mb-6"><button type="button" data-type="expense" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}">Despesa</button><button type="button" data-type="income" class="transaction-type-button flex-1 py-3 px-4 rounded-lg font-medium ${type === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}">Receita</button></div>`;
 
