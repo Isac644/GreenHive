@@ -11,17 +11,12 @@ import {
     handleAcceptJoinRequest, handleRejectJoinRequest, handleDeleteNotification, 
     handleEnterFamilyFromNotification, handleResetPassword, handleUpdateProfile, 
     handleChangePassword, handleUpdateFamilyName, handleRegenerateCode, 
-    handlePromoteMember, handleKickMember, handleDemoteMember, handleDeleteFamily, 
+    handlePromoteMember, handleKickMember, handleDemoteMember, 
     handleConfirmAction, closeConfirmation,
     handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment,
-    // ADICIONE ESTAS FUNÇÕES ABAIXO:
-    handleOpenFilters, 
-    handleApplyFilters, 
-    handleClearFilters, 
-    handleToggleFilterMember, 
-    handleToggleFilterCategory, 
-    handleToggleFilterType,
-    handleToggleFilterDate
+    handleClearFilters, handleToggleFilterMember, handleToggleFilterCategory, 
+    handleToggleFilterType, handleToggleFilterDate, handleOpenFilters, handleApplyFilters,
+    handleDeleteFamily // <--- ELA PRECISA ESTAR AQUI
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
