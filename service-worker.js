@@ -1,4 +1,4 @@
-const CACHE_NAME = 'greenhive-v1';
+const CACHE_NAME = 'greenhive-v2'; // Mudei para v2 para forçar atualização
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,9 +6,10 @@ const ASSETS_TO_CACHE = [
   '/state-and-handlers.js',
   '/ui-components.js',
   '/firebase-config.js',
-  '/assets/favicon.png',
-  '/assets/icon-192.png',
-  '/assets/icon-512.png'
+  '/manifest.json',        // Importante cachear o manifesto
+  '/assets/favicon.png',   // <--- ADICIONE
+  '/assets/icon-192.png',  // <--- ADICIONE
+  '/assets/icon-512.png'   // <--- ADICIONE
 ];
 
 // Instalação do Service Worker e Cache dos arquivos

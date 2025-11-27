@@ -3,11 +3,17 @@ import { state, CATEGORIES, PALETTE_COLORS } from "./state-and-handlers.js";
 // --- 1. ÍCONES E LOGOTIPO ---
 
 const GreenHiveLogoSVG = (height) => `
-    <div class="flex items-center gap-2 select-none">
-        <svg height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="text-brand-500">
-            <path d="M50 5 L88 27 V73 L50 95 L12 73 V27 Z" fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
-            <path d="M50 25 Q75 25 75 50 Q75 75 50 75 Q25 75 25 50 Q25 25 50 25" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-            <path d="M50 75 Q50 50 75 25" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    <div class="flex items-center gap-3 select-none">
+        <svg height="${height}" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none" class="text-brand-500">
+            <defs>
+                <linearGradient id="gradient_0" gradientUnits="userSpaceOnUse" x1="659.92688" y1="804.06799" x2="364.78558" y2="219.32478">
+                    <stop offset="0" stop-color="#36E067"/>
+                    <stop offset="1" stop-color="#00C27D"/>
+                </linearGradient>
+            </defs>
+            <path fill="url(#gradient_0)" transform="scale(0.5 0.5)" d="M503.943 156.691C504.707 156.621 505.471 156.566 506.237 156.523C540.929 154.492 562.082 169.506 590.279 186.012L647.676 219.432L732.866 268.97C755.172 281.847 778.898 293.35 798.407 310.347C836.488 343.525 830.096 394.384 830.004 439.667L830 540.226L830.007 608.664C830.02 622.715 830.718 643.448 828.324 656.483C824.943 675.587 816.232 693.346 803.195 707.714C787.098 725.242 757.043 740.065 736.142 752.269L657.512 798.62L590.973 837.879C568.348 851.204 547.215 866.473 519.878 867.58C484.58 871.811 454.406 850.384 425.661 833.379L357.576 793.333L282.991 749.62L234.076 719.516C213.357 704.251 198.471 677.833 195.3 652.429C193.173 635.381 193.982 616.311 193.989 598.879L194.001 510.939L193.985 422.742C193.977 407.498 193.215 381.967 195.575 367.688C198.448 351.315 205.209 335.871 215.29 322.654C221.968 313.9 229.96 306.232 238.982 299.921C252.535 290.423 268.907 281.871 283.321 273.577L349.594 234.976L433.575 186.289C460.945 170.652 470.995 161.071 503.943 156.691ZM367.023 664.312C366.721 702.819 379.137 710.289 409.204 730.489L440.787 751.486C455.347 761.122 486.063 783.748 501.887 788.146C531.944 797.679 555.454 778.897 578.725 763.36L627.659 730.575L673.443 699.82C685.171 691.929 696.805 684.653 707.249 675.004C736.295 648.168 734.558 617.968 734.558 582.05L734.543 526.224L734.584 483.393C734.608 471.87 734.898 459.289 733.416 447.863C731.884 436.442 728.335 425.384 722.933 415.204C716.483 403.226 707.935 392.503 697.695 383.546C688.705 375.559 676.504 367.473 666.545 360.529L626.163 332.099L567.005 289.771C550.882 278.267 529.985 259.265 509.489 260.71C489.421 263.601 476.305 275.369 460.486 286.921L423.907 313.208L368.899 352.236C357.254 360.468 343.785 369.429 333.01 378.523C323.178 386.829 314.286 396.186 306.491 406.427C278.087 444.37 270.532 491.169 276.804 537.452C282.808 581.756 306.051 622.253 342.139 649.057C349.97 654.862 358.297 659.966 367.023 664.312Z"/>
+            <path fill="#19D171" transform="scale(0.5 0.5)" d="M510.889 294.111C514.29 293.976 519.667 295.736 522.5 297.582C533.474 304.731 544.381 312.928 555.029 320.569L612.742 361.76L651.782 389.604C662.047 396.87 672.528 403.521 681.536 412.395C705.398 435.903 703.406 461.714 703.424 492.302L703.45 543.297L703.465 585.477C703.464 604.453 704.909 622.756 694.67 639.688C690.707 646.123 685.681 651.839 679.806 656.592C671.231 663.577 660.209 670.635 650.868 676.877L613.302 702.181L564.342 735.368C555.127 741.669 546.095 748.156 536.691 754.168C527.379 760.121 518.07 762.824 507.621 757.677C496.203 752.053 485.597 743.956 474.957 736.858L416.41 698.13C402.908 689.201 400.409 688.718 397.226 673.11C402.04 672.918 406.846 672.55 411.633 672.008C445.586 668.394 477.696 654.76 503.877 632.84C509.045 628.502 515.483 622.914 519.642 617.702C521.912 615.293 524.575 611.968 526.575 609.271C568.005 553.409 550.699 481.418 544.869 417.876C543.148 399.116 546.776 378.61 519.323 383.531C509.128 385.397 499.377 389.531 489.794 393.438C439.874 413.786 388.77 441.689 356.723 486.439C336.566 514.585 323.599 559.635 329.41 593.9C313.889 568.731 306.322 547.218 305.205 517.342C304.131 488.628 308.365 462.088 323.557 437.133C330.377 425.798 338.935 415.605 348.917 406.925C359.014 398.069 370.286 390.417 381.25 382.679L415.642 358.141L458.342 327.718C469.687 319.536 498.594 297.13 510.889 294.111Z"/>
+            <path fill="#19D171" transform="scale(0.5 0.5)" d="M511.517 420.008C511.604 420.056 511.7 420.089 511.776 420.151C514.116 422.056 519.587 472.25 520.122 478.124C523.878 519.301 525.829 562.812 497.491 596.569C473.208 625.497 436.444 639.606 399.644 642.848C412.219 608.091 423.479 583.642 444.07 552.727C448.559 546.067 453.177 539.495 457.922 533.015C462.782 526.459 469.306 518.83 472.585 511.446C478.246 498.699 465.454 487.641 453.008 493.934C447.24 497.741 438.93 508.915 434.591 514.765C412.204 544.761 393.775 577.516 379.756 612.22C377.107 618.9 373.247 628.92 371.52 635.782C369.678 632.63 367.986 628.793 366.619 625.403C354.348 594.371 354.933 559.73 368.246 529.13C393.517 470.088 455.392 442.248 511.517 420.008Z"/>
         </svg>
         <span class="font-heading font-bold text-gray-800 dark:text-white text-2xl tracking-tight">GreenHive</span>
     </div>`;
@@ -41,95 +47,58 @@ export function renderLoadingScreen() {
 
 export function renderHeader() {
     if (!state.user) return '';
-
-    // Notificações
     const hasUnread = state.notifications && state.notifications.some(n => !n.read);
     const badgeHTML = hasUnread ? `<span class="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 bg-brand-500 animate-pulse"></span>` : '';
     
+    // ... (mantém lógica de notificações) ...
     let notificationsListHTML = state.notifications.length > 0 
         ? state.notifications.map(notif => {
-            // Define estilo do alerta
+            // ... (mesmo código anterior para notif) ...
             let bgClass = 'bg-white dark:bg-gray-800';
             let borderClass = 'border-gray-100 dark:border-gray-700';
             let icon = '';
-            
             if (['balance_alert', 'budget_alert', 'installment_alert'].includes(notif.type)) {
                 if (notif.type === 'balance_alert') { bgClass = 'bg-red-50 dark:bg-red-900/20'; icon = '⚠️'; } 
                 else if (notif.type === 'budget_alert') { bgClass = 'bg-yellow-50 dark:bg-yellow-900/20'; icon = '📉'; } 
                 else { bgClass = 'bg-blue-50 dark:bg-blue-900/20'; icon = '📅'; }
             }
-            
-            // Destaque para não lidas
             const finalBg = !notif.read ? bgClass + ' border-l-4 border-brand-500' : bgClass;
             const content = notif.title ? 
                 `<div class="flex gap-3"><span class="text-xl">${icon}</span><div><p class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-1">${notif.title}</p><p class="text-xs text-gray-600 dark:text-gray-300">${notif.message}</p></div></div>` :
                 `<p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2"><strong>${notif.senderName}</strong> ${notif.type === 'join_request' ? 'quer entrar na família' : 'aceitou seu convite'}.</p>`;
-
-            // Botões de ação (se for convite)
             let actions = '';
-            if (notif.type === 'join_request') {
-                actions = `<div class="flex gap-2 mt-2"><button class="accept-request-btn px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Aceitar</button><button class="reject-request-btn px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition" data-notif-id="${notif.id}">Recusar</button></div>`;
-            } else if (notif.type === 'request_accepted') {
-                actions = `<button class="enter-family-notif-btn w-full mt-2 px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Entrar Agora</button>`;
-            }
-
-            return `
-            <div class="p-4 border-b ${borderClass} ${finalBg} relative group transition hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition" data-id="${notif.id}">&times;</button>
-                ${content}
-                ${actions}
-            </div>`;
+            if (notif.type === 'join_request') { actions = `<div class="flex gap-2 mt-2"><button class="accept-request-btn px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Aceitar</button><button class="reject-request-btn px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition" data-notif-id="${notif.id}">Recusar</button></div>`; } 
+            else if (notif.type === 'request_accepted') { actions = `<button class="enter-family-notif-btn w-full mt-2 px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Entrar Agora</button>`; }
+            return `<div class="p-4 border-b ${borderClass} ${finalBg} relative group transition hover:bg-gray-50/50 dark:hover:bg-gray-700/30"><button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition" data-id="${notif.id}">&times;</button>${content}${actions}</div>`;
         }).join('') 
         : `<div class="p-8 text-center text-gray-400 text-sm font-medium flex flex-col items-center gap-2"><svg class="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>Tudo limpo por aqui!</div>`;
 
-    // Avatar do Usuário
     let userAvatar = `<div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-300 flex items-center justify-center font-heading font-bold text-lg shadow-sm ring-2 ring-white dark:ring-gray-800 select-none">${state.user.name.charAt(0).toUpperCase()}</div>`;
     if (state.user.photoURL) { 
-        if(state.user.photoURL.includes('|')) {
-            const [emoji, bg] = state.user.photoURL.split('|'); 
-            userAvatar = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" style="background-color: ${bg};">${emoji}</div>`; 
-        } else {
-            userAvatar = `<img src="${state.user.photoURL}" class="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" />`; 
-        }
+        if(state.user.photoURL.includes('|')) { const [emoji, bg] = state.user.photoURL.split('|'); userAvatar = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" style="background-color: ${bg};">${emoji}</div>`; } 
+        else { userAvatar = `<img src="${state.user.photoURL}" class="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" />`; }
     }
     
     const dropdownHTML = state.isNotificationMenuOpen ? `<div class="absolute right-0 mt-4 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black/5"><div class="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 border-b border-gray-100 dark:border-gray-700 font-heading font-bold text-gray-700 dark:text-gray-200 text-sm">Notificações</div><div class="max-h-96 overflow-y-auto custom-scrollbar">${notificationsListHTML}</div></div>` : '';
 
+    // ATUALIZAÇÃO: Chamar GreenHiveLogoSVG('48') para o logo ficar maior
     return `
     <header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">
-                    ${GreenHiveLogoSVG('36')}
+                    ${GreenHiveLogoSVG('48')} 
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
-                    <div class="relative">
-                        <button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">
-                            ${Icons.Bell}${badgeHTML}
-                        </button>
-                        ${dropdownHTML}
-                    </div>
-                    <button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">
-                        ${state.theme === 'light' ? Icons.Moon : Icons.Sun}
-                    </button>
+                    <div class="relative"><button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${Icons.Bell}${badgeHTML}</button>${dropdownHTML}</div>
+                    <button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${state.theme === 'light' ? Icons.Moon : Icons.Sun}</button>
                     <div class="relative pl-2">
-                        <button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">
-                            ${userAvatar}
-                        </button>
+                        <button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">${userAvatar}</button>
                         <div id="user-menu" class="hidden absolute right-0 mt-4 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 animate-fade-in origin-top-right z-50 ring-1 ring-black/5">
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2">
-                                <p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p>
-                            </div>
-                            <button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.29 1.52 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                Configurações
-                            </button>
+                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2"><p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p></div>
+                            <button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button>
                             <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
-                            <button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                                Sair da Conta
-                            </button>
+                            <button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button>
                         </div>
                     </div>
                 </div>
@@ -541,8 +510,23 @@ export function renderBudgetPage() {
     const month = state.displayedMonth.getMonth(); 
     const year = state.displayedMonth.getFullYear(); 
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
-    const activeBudgets = state.budgets.filter(b => { const startDate = new Date(b.appliesFrom + 'T12:00:00'); const startYear = startDate.getUTCFullYear(); const startMonth = startDate.getUTCMonth(); const endDate = b.appliesTo ? new Date(b.appliesTo + 'T12:00:00') : null; const currentYear = state.displayedMonth.getFullYear(); const currentMonth = state.displayedMonth.getMonth(); if (startDate > new Date(currentYear, currentMonth + 1, 0)) return false; if (b.recurring === false && (startYear !== currentYear || startMonth !== currentMonth)) return false; if (endDate && endDate < new Date(currentYear, currentMonth, 1)) return false; return true; });
+    
+    const activeBudgets = state.budgets.filter(b => { 
+        const startDate = new Date(b.appliesFrom + 'T12:00:00'); 
+        const startYear = startDate.getUTCFullYear(); 
+        const startMonth = startDate.getUTCMonth(); 
+        const endDate = b.appliesTo ? new Date(b.appliesTo + 'T12:00:00') : null; 
+        const currentYear = state.displayedMonth.getFullYear(); 
+        const currentMonth = state.displayedMonth.getMonth(); 
+        
+        if (startDate > new Date(currentYear, currentMonth + 1, 0)) return false; 
+        if (b.recurring === false && (startYear !== currentYear || startMonth !== currentMonth)) return false; 
+        if (endDate && endDate < new Date(currentYear, currentMonth, 1)) return false; 
+        return true; 
+    });
+
     const isAdmin = state.familyAdmins.includes(state.user.uid);
 
     const budgetItemsHTML = activeBudgets.map(budget => {
@@ -551,46 +535,98 @@ export function renderBudgetPage() {
         let limit = budget.value;
         
         if(budget.type === 'expense') {
-            spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
+            spent = monthlyTransactions
+                .filter(t => t.type === 'expense' && t.category === budget.category)
+                .reduce((sum, t) => sum + t.amount, 0);
+            
             const percentage = limit > 0 ? (spent / limit) * 100 : 0;
             const barColor = percentage > 100 ? 'bg-red-500' : (percentage > 80 ? 'bg-amber-400' : 'bg-brand-500');
-            progressHTML = `<div class="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider"><span>Gasto: R$ ${spent.toFixed(2)}</span><span>Teto: R$ ${limit.toFixed(2)}</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner"><div class="${barColor} h-full rounded-full transition-all duration-500 ease-out relative" style="width: ${Math.min(percentage, 100)}%">${percentage > 100 ? '<div class="absolute inset-0 bg-white/20 animate-pulse"></div>' : ''}</div></div>`;
+            
+            progressHTML = `
+                <div class="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                    <span>Gasto: R$ ${spent.toFixed(2)}</span>
+                    <span>Teto: R$ ${limit.toFixed(2)}</span>
+                </div>
+                <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner">
+                    <div class="${barColor} h-full rounded-full transition-all duration-500 ease-out relative" style="width: ${Math.min(percentage, 100)}%">
+                        ${percentage > 100 ? '<div class="absolute inset-0 bg-white/20 animate-pulse"></div>' : ''}
+                    </div>
+                </div>`;
         } else {
-            spent = monthlyTransactions.filter(t => t.type === 'income' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
+            spent = monthlyTransactions
+                .filter(t => t.type === 'income' && t.category === budget.category)
+                .reduce((sum, t) => sum + t.amount, 0);
+            
             const percentage = limit > 0 ? (spent / limit) * 100 : 0;
-            progressHTML = `<div class="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider"><span>Alcançado: R$ ${spent.toFixed(2)}</span><span>Meta: R$ ${limit.toFixed(2)}</span></div><div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner"><div class="bg-blue-500 h-full rounded-full transition-all duration-500 ease-out" style="width: ${Math.min(percentage, 100)}%"></div></div>`;
+            
+            progressHTML = `
+                <div class="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                    <span>Alcançado: R$ ${spent.toFixed(2)}</span>
+                    <span>Meta: R$ ${limit.toFixed(2)}</span>
+                </div>
+                <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner">
+                    <div class="bg-blue-500 h-full rounded-full transition-all duration-500 ease-out" style="width: ${Math.min(percentage, 100)}%"></div>
+                </div>`;
         }
 
         const interactionClasses = isAdmin 
             ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-gray-600' 
             : 'cursor-default';
+        
         const catIcon = state.categoryIcons[budget.category] || '🎯';
 
-        // CORREÇÃO: Adicionada classe 'budget-item'
         return `
             <div class="${interactionClasses} budget-item bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-200 group" data-budget-id="${budget.id}">
                 <div class="flex items-center gap-4 mb-4">
-                    <div class="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 text-2xl flex items-center justify-center border border-gray-100 dark:border-gray-700">${catIcon}</div>
-                    <div><h4 class="font-heading font-bold text-lg text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${budget.name}</h4><p class="text-xs text-gray-400 uppercase font-bold tracking-wider">${budget.category}</p></div>
+                    <div class="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 text-2xl flex items-center justify-center border border-gray-100 dark:border-gray-700">
+                        ${catIcon}
+                    </div>
+                    <div>
+                        <h4 class="font-heading font-bold text-lg text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${budget.name}</h4>
+                        <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">${budget.category}</p>
+                    </div>
                 </div>
                 ${progressHTML}
             </div>`;
     }).join('');
 
-    const addButtonHTML = isAdmin ? `<button id="add-budget-button" class="w-full p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-3xl text-gray-400 hover:text-brand-600 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-all flex flex-col items-center justify-center gap-2 group"><div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-brand-100 group-hover:text-brand-600 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></div><span class="font-bold text-sm">Novo Orçamento</span></button>` : '';
+    const newButtonHTML = isAdmin ? `
+        <button id="add-budget-button" class="flex items-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <span class="hidden sm:inline">Novo</span>
+        </button>
+    ` : '';
 
     return `
-        <main class="animate-fade-in pb-24">
-            <div class="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl py-4 border-b border-gray-200/50 dark:border-gray-800 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl">
-                <div class="flex items-center justify-between bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 max-w-sm mx-auto">
-                    <button id="prev-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-                    <span class="font-heading font-bold capitalize text-sm md:text-base px-3 w-36 text-center text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</span>
-                    <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        <div id="budget-page-container" class="pb-32 animate-fade-in">
+            <div class="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl py-4 border-b border-gray-200/50 dark:border-gray-800 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
+                <div class="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+                    
+                    <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
+                        <button id="prev-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                        <span class="font-heading font-bold capitalize text-sm md:text-base px-3 w-36 text-center text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</span>
+                        <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                    </div>
+
+                    <div>
+                        ${newButtonHTML}
+                    </div>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">${budgetItemsHTML}${addButtonHTML}</div>
-            ${activeBudgets.length === 0 && !isAdmin ? `<div class="text-center py-12 text-gray-400"><p>Nenhum orçamento definido.</p></div>` : ''}
-        </main>`;
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                ${budgetItemsHTML}
+            </div>
+            
+            ${activeBudgets.length === 0 ? `
+            <div class="flex flex-col items-center justify-center py-20 text-gray-400 animate-fade-in">
+                <div class="w-24 h-24 bg-gray-50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-6 border border-gray-100 dark:border-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                </div>
+                <p class="font-medium text-lg">Nenhum orçamento definido.</p>
+                ${isAdmin ? '<p class="text-sm mt-1 opacity-70">Clique em "+ Novo" para criar uma meta de gastos.</p>' : ''}
+            </div>` : ''}
+        </div>`;
 }
 
 export function renderDebtsPage() {
@@ -858,14 +894,31 @@ export function renderBudgetModal() {
 
 export function renderDebtModal() {
     if (!state.isModalOpen || state.modalView !== 'debt') return '';
+    
     const d = state.editingDebtId ? state.debts.find(i => i.id === state.editingDebtId) : null;
-    const membersOptions = state.familyMembers.map(m => `<option value="${m.uid}" ${d?.debtorId === m.uid ? 'selected' : ''}>${m.name || 'Anônimo'}</option>`).join('');
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+
+    // LÓGICA DO CAMPO DEVEDOR
+    let debtorFieldHTML = '';
+    
+    if (isAdmin) {
+        // Se for Admin: Mostra o SELECT com todos os membros
+        const membersOptions = state.familyMembers.map(m => `<option value="${m.uid}" ${d?.debtorId === m.uid ? 'selected' : ''}>${m.name || 'Anônimo'}</option>`).join('');
+        debtorFieldHTML = `<div><label class="${labelClass}">Quem deve?</label><select name="debtorId" class="${selectClass}">${membersOptions}</select></div>`;
+    } else {
+        // Se for Membro Comum: Campo oculto com o próprio ID (ou o ID original se for edição)
+        const targetValue = d?.debtorId || state.user.uid;
+        debtorFieldHTML = `<input type="hidden" name="debtorId" value="${targetValue}">`;
+    }
+
     const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-center animate-fade-in"><p class="text-red-600 dark:text-red-400 font-bold mb-3 text-sm">Excluir esta dívida?</p><div class="flex justify-center gap-3"><button type="button" id="confirm-delete-no" class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 rounded-lg border font-bold text-xs">Não</button><button type="button" id="confirm-delete-yes" class="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs shadow-md">Sim</button></div></div>` : '';
 
     const contentHTML = `
         <form id="debt-form" class="space-y-5">
             <div><label class="${labelClass}">Nome da Dívida</label><input name="debtName" type="text" class="${inputClass}" value="${d?.name || ''}" placeholder="Ex: Empréstimo do João" required /></div>
-            <div><label class="${labelClass}">Quem deve?</label><select name="debtorId" class="${selectClass}">${membersOptions}</select></div>
+            
+            ${debtorFieldHTML}
+            
             <div><label class="${labelClass}">Valor Total (R$)</label><input name="debtTotalValue" type="number" step="0.01" class="${inputClass}" value="${d?.totalValue || ''}" required /></div>
             <div><label class="${labelClass}">Vencimento (Opcional)</label><input name="debtDueDate" type="date" class="${inputClass}" value="${d?.dueDate || ''}" /></div>
             <div class="mt-8 flex gap-3">
@@ -874,6 +927,7 @@ export function renderDebtModal() {
             </div>
             ${confirmDeleteHTML}
         </form>`;
+        
     return ModalBase(d ? 'Editar Dívida' : 'Nova Dívida', contentHTML);
 }
 
