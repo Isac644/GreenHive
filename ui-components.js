@@ -26,7 +26,9 @@ const BellIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="
 export function renderHeader() {
     if (!state.user) return '';
 
-    const hasUnread = state.notifications && state.notifications.length > 0;
+    // CORREÇÃO: Verifica se existe ALGUMA notificação com read == false
+    const hasUnread = state.notifications && state.notifications.some(n => !n.read);
+    
     const badgeHTML = hasUnread 
         ? `<span class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-white bg-red-600 transform translate-x-1/4 -translate-y-1/4"></span>` 
         : '';
@@ -37,97 +39,64 @@ export function renderHeader() {
             notificationsListHTML = `<div class="p-4 text-center text-gray-500 text-sm">Nenhuma notificação nova.</div>`;
         } else {
             notificationsListHTML = state.notifications.map(notif => {
-                if (notif.type === 'join_request') {
+                // Define estilo visual se for não lida (opcional, mas ajuda a identificar)
+                const unreadClass = !notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : '';
+
+                // NOVOS ALERTAS DE SISTEMA
+                if (['balance_alert', 'budget_alert', 'installment_alert'].includes(notif.type)) {
+                    let bgClass = 'bg-white dark:bg-gray-800';
+                    let borderClass = 'border-gray-100 dark:border-gray-700';
+                    let icon = '';
+                    
+                    if (notif.type === 'balance_alert') {
+                        bgClass = 'bg-red-50 dark:bg-red-900/20';
+                        icon = '⚠️';
+                    } else if (notif.type === 'budget_alert') {
+                        bgClass = 'bg-yellow-50 dark:bg-yellow-900/20';
+                        icon = '📉';
+                    } else {
+                        bgClass = 'bg-blue-50 dark:bg-blue-900/20';
+                        icon = '📅';
+                    }
+
+                    // Sobrescreve bgClass se não lida para dar destaque, ou mantém a cor do alerta
+                    const finalBg = !notif.read ? bgClass + ' border-l-4 border-blue-500' : bgClass;
+
                     return `
-                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 relative group">
+                    <div class="p-3 border-b ${borderClass} ${finalBg} relative group">
                         <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
-                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2">
-                            <strong>${notif.senderName}</strong> quer entrar na família <strong>${notif.targetFamilyName}</strong>.
-                        </p>
-                        <div class="flex gap-2">
-                            <button class="accept-request-btn px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700" data-notif-id="${notif.id}">Aceitar</button>
-                            <button class="reject-request-btn px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300" data-notif-id="${notif.id}">Recusar</button>
+                        <div class="flex gap-3">
+                            <span class="text-xl">${icon}</span>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-1">${notif.title}</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-300">${notif.message}</p>
+                            </div>
                         </div>
                     </div>`;
                 }
+
+                // Convites e Respostas (Mantido)
+                if (notif.type === 'join_request') {
+                    return `<div class="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 relative group ${unreadClass}"><button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button><p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2"><strong>${notif.senderName}</strong> quer entrar na família <strong>${notif.targetFamilyName}</strong>.</p><div class="flex gap-2"><button class="accept-request-btn px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700" data-notif-id="${notif.id}">Aceitar</button><button class="reject-request-btn px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300" data-notif-id="${notif.id}">Recusar</button></div></div>`;
+                }
                 if (notif.type === 'request_accepted') {
-                    return `
-                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 relative">
-                        <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
-                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2">
-                            <span class="text-green-600 font-bold">Aprovado!</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName}</strong> foi aceita.
-                        </p>
-                        <button class="enter-family-notif-btn w-full px-3 py-2 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition" data-notif-id="${notif.id}">
-                            Entrar Agora
-                        </button>
-                    </div>`;
+                    return `<div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 relative ${unreadClass}"><button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button><p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2"><span class="text-green-600 font-bold">Aprovado!</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName}</strong> foi aceita.</p><button class="enter-family-notif-btn w-full px-3 py-2 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition" data-notif-id="${notif.id}">Entrar Agora</button></div>`;
                 }
                 if (notif.type === 'request_rejected') {
-                    return `
-                    <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 relative">
-                        <button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button>
-                        <p class="text-sm text-gray-800 dark:text-gray-200 pr-4">
-                            <span class="text-red-600 font-bold">Recusado.</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName || 'solicitada'}</strong> foi recusada pelo administrador.
-                        </p>
-                    </div>`;
+                    return `<div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 relative ${unreadClass}"><button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="${notif.id}">&times;</button><p class="text-sm text-gray-800 dark:text-gray-200 pr-4"><span class="text-red-600 font-bold">Recusado.</span> Sua solicitação para entrar na família <strong>${notif.targetFamilyName || 'solicitada'}</strong> foi recusada pelo administrador.</p></div>`;
                 }
                 return '';
             }).join('');
         }
     }
 
-    let userAvatar = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-300">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-        </svg>`;
-        
-    if (state.user.photoURL && state.user.photoURL.includes('|')) {
-        const [emoji, bg] = state.user.photoURL.split('|');
-        userAvatar = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-lg shadow-sm border border-gray-200" style="background-color: ${bg};">${emoji}</div>`;
-    }
+    let userAvatar = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-300"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+    if (state.user.photoURL && state.user.photoURL.includes('|')) { const [emoji, bg] = state.user.photoURL.split('|'); userAvatar = `<div class="w-8 h-8 rounded-full flex items-center justify-center text-lg shadow-sm border border-gray-200" style="background-color: ${bg};">${emoji}</div>`; }
+    else if (state.user.photoURL) { userAvatar = `<img src="${state.user.photoURL}" class="w-8 h-8 rounded-full object-cover border border-gray-200 shadow-sm" />`; }
+    
+    const dropdownHTML = state.isNotificationMenuOpen ? `<div class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in"><div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300 text-sm">Notificações</div><div class="max-h-96 overflow-y-auto">${notificationsListHTML}</div></div>` : '';
 
-    const dropdownHTML = state.isNotificationMenuOpen 
-        ? `<div class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
-            <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300 text-sm">Notificações</div>
-            <div class="max-h-96 overflow-y-auto">${notificationsListHTML}</div>
-           </div>` : '';
-
-    return `<header class="bg-white dark:bg-gray-800 shadow-md w-full sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center gap-3">${GreenHiveLogoSVG('40')}</div>
-            <div class="flex items-center gap-4">
-                <div class="relative">
-                    <button id="notification-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition relative text-gray-600 dark:text-gray-300">
-                        ${BellIconSVG}${badgeHTML}
-                    </button>
-                    ${dropdownHTML}
-                </div>
-                <button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">${ThemeIconSVG()}</button>
-                <div class="relative">
-                    <button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center">
-                        ${userAvatar}
-                    </button>
-                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border dark:border-gray-700 animate-fade-in z-50">
-                        <div class="px-4 py-2 border-b dark:border-gray-700">
-                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">${state.user.name}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${state.user.email}</p>
-                        </div>
-                        
-                        <button id="open-settings-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            Configurações
-                        </button>
-
-                        <button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                            Sair da Conta
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>`;
+    return `<header class="bg-white dark:bg-gray-800 shadow-md w-full sticky top-0 z-40"><div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center"><div class="flex items-center gap-3">${GreenHiveLogoSVG('40')}</div><div class="flex items-center gap-4"><div class="relative"><button id="notification-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition relative text-gray-600 dark:text-gray-300">${BellIconSVG}${badgeHTML}</button>${dropdownHTML}</div><button id="theme-toggle-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">${ThemeIconSVG()}</button><div class="relative"><button id="user-menu-button" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center">${userAvatar}</button><div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl py-2 border dark:border-gray-700 animate-fade-in z-50"><div class="px-4 py-2 border-b dark:border-gray-700"><p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">${state.user.name}</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate">${state.user.email}</p></div><button id="open-settings-button" class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">Configurações</button><button id="logout-button" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">Sair da Conta</button></div></div></div></div></header>`;
 }
 
 export function renderAuthPage() {
@@ -777,21 +746,121 @@ export function renderFamilyDashboard() {
     return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Saldo dos Membros</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button class="copy-code-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
 }
 export function renderRecordsPage() {
-    const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear(); const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' }); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysWithTransactions = new Set(state.transactions.filter(t => { const tDate = new Date(t.date + 'T12:00:00'); return tDate.getMonth() === month && tDate.getFullYear() === year; }).map(t => new Date(t.date + 'T12:00:00').getDate()));
-    let calendarDaysHTML = Array(firstDay).fill(`<div class="text-center p-2"></div>`).join('');
-    for (let day = 1; day <= daysInMonth; day++) { const isSelected = state.selectedDate === day; const hasTransaction = daysWithTransactions.has(day); let dayClasses = 'text-gray-800'; if (isSelected) dayClasses = 'bg-blue-500 text-white'; else if (hasTransaction) dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800'; else dayClasses += ' hover:bg-gray-200'; calendarDaysHTML += `<div class="text-center p-1"><button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${dayClasses}">${day}</button></div>`; }
-    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center mb-4"><button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div><div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div></div>`;
-    const filtered = state.transactions.filter(t => { const transactionDate = new Date(t.date + 'T12:00:00'); const typeMatch = state.detailsFilterType === 'all' || t.type === state.detailsFilterType; const dateMatch = !state.selectedDate || transactionDate.getDate() === state.selectedDate; return typeMatch && dateMatch && transactionDate.getMonth() === month && transactionDate.getFullYear() === year; });
-    const groupedByDate = filtered.reduce((acc, t) => { const day = new Date(t.date + 'T12:00:00').getDate(); if (!acc[day]) acc[day] = []; acc[day].push(t); return acc; }, {});
+    const month = state.displayedMonth.getMonth();
+    const year = state.displayedMonth.getFullYear();
+    const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+
+    // --- LÓGICA DE FILTRAGEM AVANÇADA ---
+    const filtered = state.transactions.filter(t => {
+        const tDate = new Date(t.date + 'T12:00:00');
+        
+        // 1. Filtro de Mês/Ano (Sempre ativo baseada na navegação)
+        const isSameMonth = tDate.getMonth() === month && tDate.getFullYear() === year;
+        if (!isSameMonth) return false;
+
+        // 2. Filtro de Data Específica (Dia)
+        if (state.selectedDate && tDate.getDate() !== state.selectedDate) return false;
+
+        // 3. Filtro de Tipo (Receita/Despesa)
+        if (state.filterType !== 'all' && t.type !== state.filterType) return false;
+
+        // 4. Filtro de Categoria
+        if (state.filterCategory && t.category !== state.filterCategory) return false;
+
+        // 5. Filtro de Membro
+        if (state.filterMember && t.userId !== state.filterMember) return false;
+
+        return true;
+    });
+
+    // Agrupamento por dia (Mantido igual)
+    const groupedByDate = filtered.reduce((acc, t) => {
+        const day = new Date(t.date + 'T12:00:00').getDate();
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(t);
+        return acc;
+    }, {});
     const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-    let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada.</p>`;
-    if (sortedDays.length > 0) { transactionsHTML = sortedDays.map(day => { const transactionsForDay = groupedByDate[day].map(t => { const isOwner = t.userId === state.user.uid; const canEdit = isAdmin || isOwner; const interactClasses = canEdit ? 'transaction-item cursor-pointer' : 'cursor-default opacity-60'; const categoryColor = state.categoryColors[t.category] || '#6B7280'; return `<li class="${interactClasses} flex justify-between items-center py-3 px-2 -mx-2 rounded-lg" data-transaction-id="${t.id}"><div><p class="font-medium text-gray-800">${t.description}</p><div class="flex items-center mt-1"><p class="text-sm text-gray-500 mr-2">${t.userName || 'Desconhecido'}</p><span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${categoryColor}">${t.category}</span></div></div><p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></li>`; }).join(''); return `<div class="mb-4"><div class="flex items-center justify-between pb-2 border-b"><p class="font-bold text-gray-700">${day} de ${monthName}</p></div><ul class="divide-y">${transactionsForDay}</ul></div>`; }).join(''); }
-    const newButtonHTML = `<div class="flex justify-end mb-4"><button id="open-modal-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Adicionar Transação</button></div>`;
+
+    // HTML da Lista (Mantido praticamente igual)
+    let transactionsHTML = `<div class="flex flex-col items-center justify-center py-12 text-gray-500 animate-fade-in"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg><p>Nenhuma transação encontrada para os filtros atuais.</p></div>`;
     
-    // REMOVIDO content-fade-in DA DIV ABAIXO
-    return `<div id="records-page-container"><div class="grid grid-cols-1 lg:grid-cols-5 gap-6"><div class="lg:col-span-2">${calendarHTML}</div><div class="lg:col-span-3"><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-center gap-4"><button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button><button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button><button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button></div></div><div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${newButtonHTML + transactionsHTML}</div></div></div></div>`;
+    if (sortedDays.length > 0) {
+        transactionsHTML = sortedDays.map(day => {
+            const transactionsForDay = groupedByDate[day].map(t => {
+                const isOwner = t.userId === state.user.uid;
+                const canEdit = isAdmin || isOwner;
+                const interactClasses = canEdit ? 'transaction-item cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default opacity-75';
+                const categoryColor = state.categoryColors[t.category] || '#6B7280';
+                const memberName = t.userName ? t.userName.split(' ')[0] : '???';
+                
+                return `
+                <li class="${interactClasses} flex justify-between items-center py-3 px-3 rounded-lg transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0" data-transaction-id="${t.id}">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-sm" style="background-color: ${categoryColor}">
+                            ${t.category.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-gray-200 text-sm md:text-base">${t.description}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">${memberName}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">${t.category}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} whitespace-nowrap">
+                            ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                        </p>
+                    </div>
+                </li>`;
+            }).join('');
+            return `<div class="mb-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"><div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center"><p class="font-bold text-gray-700 dark:text-gray-200 capitalize">${day} de ${monthName}</p><span class="text-xs text-gray-400 font-mono">${groupedByDate[day].length} itens</span></div><ul class="px-2">${transactionsForDay}</ul></div>`;
+        }).join('');
+    }
+
+    // Contador de Filtros Ativos (para a bolinha no botão)
+    let activeFiltersCount = 0;
+    if (state.filterType !== 'all') activeFiltersCount++;
+    if (state.filterCategory) activeFiltersCount++;
+    if (state.filterMember) activeFiltersCount++;
+    if (state.selectedDate) activeFiltersCount++;
+
+    const filterBadge = activeFiltersCount > 0 
+        ? `<span class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900">${activeFiltersCount}</span>` 
+        : '';
+
+    return `
+    <div id="records-page-container" class="content-fade-in pb-20">
+        <div class="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md py-4 border-b border-gray-200 dark:border-gray-700 mb-6 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-xl">
+            <div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
+                
+                <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                    <span class="font-semibold capitalize text-sm md:text-base px-2 w-32 text-center text-gray-700 dark:text-gray-200 select-none">${monthName} ${year}</span>
+                    <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="open-filter-modal-btn" class="relative p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        ${filterBadge}
+                    </button>
+                    
+                    <button id="open-modal-button" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg shadow-green-200 dark:shadow-none transition transform active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span class="hidden sm:inline">Novo</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="records-list-wrapper" class="max-w-3xl mx-auto">
+            ${transactionsHTML}
+        </div>
+    </div>`;
 }
 
 export function renderBudgetPage() {
@@ -1453,4 +1522,144 @@ export function renderLoadingScreen() {
             Carregando...
         </div>
     </div>`;
+}
+
+export function renderFilterModal() {
+    if (!state.isModalOpen || state.modalView !== 'filters') return '';
+
+    // --- 1. Calendário ---
+    const month = state.displayedMonth.getMonth();
+    const year = state.displayedMonth.getFullYear();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Dias com transações
+    const daysWithData = new Set(state.transactions
+        .filter(t => {
+            const d = new Date(t.date + 'T12:00:00');
+            return d.getMonth() === month && d.getFullYear() === year;
+        })
+        .map(t => new Date(t.date + 'T12:00:00').getDate())
+    );
+
+    let calendarDaysHTML = Array(firstDay).fill(`<div class="p-2"></div>`).join('');
+    for (let day = 1; day <= daysInMonth; day++) {
+        const isSelected = state.selectedDate === day;
+        const hasData = daysWithData.has(day);
+        
+        let btnClass = "w-8 h-8 rounded-full text-sm flex items-center justify-center mx-auto transition ";
+        if (isSelected) {
+            btnClass += "bg-blue-600 text-white font-bold shadow-md";
+        } else if (hasData) {
+            btnClass += "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 font-medium";
+        } else {
+            btnClass += "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700";
+        }
+
+        calendarDaysHTML += `<div class="text-center py-1"><button data-day="${day}" class="calendar-day-filter ${btnClass}">${day}</button></div>`;
+    }
+
+    // --- 2. Categorias ---
+    const allCategories = [...CATEGORIES.expense, ...CATEGORIES.income, ...(state.userCategories.expense || []), ...(state.userCategories.income || [])];
+    // Remove duplicatas e ordena
+    const uniqueCategories = [...new Set(allCategories)].sort();
+    
+    const categoriesHTML = uniqueCategories.map(cat => {
+        const isActive = state.filterCategory === cat;
+        const activeClass = isActive 
+            ? 'bg-green-600 text-white border-green-600 shadow-md' 
+            : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-500 hover:text-green-600';
+        
+        return `<button data-category="${cat}" class="filter-category-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border transition ${activeClass}">${cat}</button>`;
+    }).join('');
+
+    // --- 3. Membros ---
+    const membersHTML = state.familyMembers.map(m => {
+        const isActive = state.filterMember === m.uid;
+        const activeClass = isActive 
+            ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-800 grayscale-0 opacity-100' 
+            : 'grayscale opacity-60 hover:opacity-100 hover:grayscale-0';
+        
+        let avatar = `<div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center font-bold text-gray-600">${m.name.charAt(0)}</div>`;
+        if (m.photoURL && m.photoURL.includes('|')) {
+            const [emoji, bg] = m.photoURL.split('|');
+            avatar = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg" style="background-color: ${bg}">${emoji}</div>`;
+        } else if (m.photoURL) {
+            avatar = `<img src="${m.photoURL}" class="w-10 h-10 rounded-full object-cover">`;
+        }
+
+        return `
+        <button data-uid="${m.uid}" class="filter-member-btn flex flex-col items-center gap-1 transition-all ${activeClass} rounded-full p-0.5">
+            ${avatar}
+            <span class="text-[10px] font-medium text-gray-600 dark:text-gray-400">${m.name.split(' ')[0]}</span>
+        </button>`;
+    }).join('');
+
+    // --- 4. Tipo ---
+    const typeOptions = [
+        { val: 'all', label: 'Todos' },
+        { val: 'income', label: 'Receitas' },
+        { val: 'expense', label: 'Despesas' }
+    ];
+    const typesHTML = typeOptions.map(t => {
+        const isActive = state.filterType === t.val;
+        const activeClass = isActive ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200';
+        return `<button data-type="${t.val}" class="filter-type-btn flex-1 py-2 rounded-lg text-sm font-medium transition ${activeClass}">${t.label}</button>`;
+    }).join('');
+
+
+    return `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 modal-overlay p-0 sm:p-4 backdrop-blur-sm">
+            <div class="bg-white dark:bg-gray-800 w-full max-w-md max-h-[85vh] sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col modal-content overflow-hidden animate-fade-in-up">
+                
+                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100">Filtrar Transações</h3>
+                    <button id="clear-filters-btn" class="text-xs font-medium text-red-500 hover:text-red-700 uppercase tracking-wide">Limpar tudo</button>
+                </div>
+
+                <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
+                    
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Tipo</label>
+                        <div class="flex gap-2 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-xl">
+                            ${typesHTML}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Data (${state.displayedMonth.toLocaleDateString('pt-BR', {month:'long', year:'numeric'})})</label>
+                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2">
+                            <div class="grid grid-cols-7 gap-1 text-center mb-1">
+                                ${['D','S','T','Q','Q','S','S'].map(d => `<span class="text-[10px] font-bold text-gray-400">${d}</span>`).join('')}
+                            </div>
+                            <div class="grid grid-cols-7 gap-1">
+                                ${calendarDaysHTML}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 block">Por Pessoa</label>
+                        <div class="flex flex-wrap gap-4 justify-center">
+                            ${membersHTML}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Categorias</label>
+                        <div class="flex flex-wrap gap-2">
+                            ${categoriesHTML}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
+                    <button id="close-modal-button" class="w-full py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 transition transform active:scale-95">
+                        Ver Resultados
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    `;
 }

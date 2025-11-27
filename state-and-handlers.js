@@ -58,6 +58,10 @@ export const state = {
     unsubscribers: [],
     isLoading: true,
     shouldAnimate: true,
+    filterType: 'all',        // 'all', 'income', 'expense'
+    filterCategory: null,     // Nome da categoria ou null
+    filterMember: null,       // UID do membro ou null
+    selectedDate: null,       // Dia do mês (número) ou null
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -77,6 +81,34 @@ export const DEFAULT_CATEGORIES_SETUP = {
 };
 
 export const CATEGORIES = { expense: [], income: [] }; 
+
+export function handleToggleFilterType(type) {
+    // Se clicar no que já tá ativo, volta para 'all', senão troca
+    if (state.filterType === type) state.filterType = 'all';
+    else state.filterType = type;
+    renderApp();
+}
+export function handleToggleFilterCategory(category) {
+    if (state.filterCategory === category) state.filterCategory = null;
+    else state.filterCategory = category;
+    renderApp();
+}
+
+export function handleToggleFilterMember(memberId) {
+    if (state.filterMember === memberId) state.filterMember = null;
+    else state.filterMember = memberId;
+    renderApp();
+}
+
+export function handleClearFilters() {
+    state.filterType = 'all';
+    state.filterCategory = null;
+    state.filterMember = null;
+    state.selectedDate = null;
+    // Mantém o mês atual (displayedMonth)
+    renderApp();
+    showToast("Filtros limpos.", "success");
+}
 
 // --- FUNÇÕES DE NOTIFICAÇÃO ---
 export function subscribeToNotifications() {
@@ -131,14 +163,17 @@ function forceExitFamily(message) {
 export function subscribeToFamilyData(familyId) {
     clearAllListeners(); 
 
+    // Listener da Família
     const familyRef = doc(db, "familyGroups", familyId);
     const unsubFamily = onSnapshot(familyRef, async (snapshot) => {
         if (!snapshot.exists()) {
+            state.isLoading = false; 
             forceExitFamily("A família que você estava acessando foi excluída.");
             return;
         }
         const data = snapshot.data();
         if (!data.members.includes(state.user.uid)) {
+            state.isLoading = false;
             forceExitFamily("Você foi removido desta família.");
             return;
         }
@@ -155,21 +190,25 @@ export function subscribeToFamilyData(familyId) {
         
         state.isLoading = false;
         renderApp();
-        // Importante: Depois da primeira carga, desligamos a animação para as próximas atualizações de dados
-        state.shouldAnimate = false; 
+        state.shouldAnimate = false;
+
+        // NOVO: Verifica alertas
+        checkAutomatedAlerts();
     });
     state.unsubscribers.push(unsubFamily);
 
-    // Função auxiliar para os sub-listeners
+    // Função auxiliar para atualizar listas e verificar alertas
     const handleSubCollectionSnapshot = (snapshot, listKey, sortFunc) => {
         const items = [];
         snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
         if (sortFunc) items.sort(sortFunc);
         state[listKey] = items;
         
-        // Renderiza sem animação, pois é update de dados
         renderApp(); 
-        state.shouldAnimate = false; 
+        state.shouldAnimate = false;
+
+        // NOVO: Verifica alertas a cada mudança de dados
+        checkAutomatedAlerts();
     };
 
     const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId));
@@ -1230,6 +1269,20 @@ export async function handleRejectJoinRequest(notification) {
 
 export function toggleNotificationMenu() {
     state.isNotificationMenuOpen = !state.isNotificationMenuOpen;
+
+    // Se abriu o menu, marca visualmente as notificações como lidas no banco
+    if (state.isNotificationMenuOpen && state.notifications.some(n => !n.read)) {
+        const batch = writeBatch(db);
+        state.notifications.forEach(n => {
+            if (!n.read) {
+                const notifRef = doc(db, "notifications", n.id);
+                batch.update(notifRef, { read: true });
+            }
+        });
+        // Envia a atualização para o Firestore (sem bloquear a UI)
+        batch.commit().catch(console.error);
+    }
+    
     renderApp();
 }
 
@@ -1257,4 +1310,123 @@ export async function handleDemoteMember(memberId) {
         console.error(e);
         showToast("Erro ao remover permissão.", 'error');
     }
+}
+
+async function createSystemNotification(type, title, message, metadata = {}) {
+    // Evita criar alertas duplicados se já existir um igual não lido
+    const exists = state.notifications.some(n => 
+        n.type === type && 
+        n.targetFamilyId === state.family.id &&
+        JSON.stringify(n.metadata) === JSON.stringify(metadata)
+    );
+
+    if (!exists) {
+        try {
+            await addDoc(collection(db, "notifications"), {
+                recipientId: state.user.uid,
+                senderId: "SYSTEM",
+                senderName: "GreenHive Alerta",
+                targetFamilyId: state.family.id,
+                targetFamilyName: state.family.name,
+                type: type,
+                title: title,
+                message: message,
+                metadata: metadata,
+                createdAt: Date.now(),
+                read: false
+            });
+        } catch (e) {
+            console.error("Erro ao criar alerta automático:", e);
+        }
+    }
+}
+
+function checkAutomatedAlerts() {
+    if (!state.user || !state.family) return;
+
+    // 1. ALERTA DE SALDO NEGATIVO
+    const myBalance = state.transactions
+        .filter(t => t.userId === state.user.uid)
+        .reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+
+    const balanceStateKey = `gh_bal_state_${state.user.uid}_${state.family.id}`;
+    const lastState = localStorage.getItem(balanceStateKey) || 'positive';
+
+    if (myBalance < 0) {
+        if (lastState !== 'negative') {
+            createSystemNotification(
+                'balance_alert', 
+                'Saldo Negativo', 
+                `Cuidado! Seu saldo atual está negativo em R$ ${Math.abs(myBalance).toFixed(2)}.`,
+                { threshold: 'negative' } 
+            );
+            localStorage.setItem(balanceStateKey, 'negative');
+        }
+    } else {
+        if (lastState !== 'positive') {
+            localStorage.setItem(balanceStateKey, 'positive');
+        }
+    }
+
+    // 2. ALERTA DE ORÇAMENTO ESTOURADO (Com Reset)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    state.budgets.forEach(budget => {
+        if (budget.type === 'expense') {
+            const spent = state.transactions
+                .filter(t => {
+                    const tDate = new Date(t.date + 'T12:00:00');
+                    return t.category === budget.category && 
+                           t.type === 'expense' &&
+                           tDate.getMonth() === currentMonth &&
+                           tDate.getFullYear() === currentYear;
+                })
+                .reduce((sum, t) => sum + t.amount, 0);
+
+            const budgetKey = `gh_budget_alert_${budget.id}_${currentMonth}_${currentYear}`;
+            const alreadyAlerted = localStorage.getItem(budgetKey);
+
+            if (spent > budget.value) {
+                // Só avisa se ainda não avisou
+                if (!alreadyAlerted) {
+                    createSystemNotification(
+                        'budget_alert',
+                        'Orçamento Excedido',
+                        `Você ultrapassou o limite de ${budget.name} em R$ ${(spent - budget.value).toFixed(2)}.`,
+                        { budgetId: budget.id, month: currentMonth, year: currentYear }
+                    );
+                    localStorage.setItem(budgetKey, 'true');
+                }
+            } else {
+                // NOVO: Se o gasto voltou para dentro do limite (exclusão/edição),
+                // removemos a marcação. Assim, se estourar de novo, avisará novamente.
+                if (alreadyAlerted) {
+                    localStorage.removeItem(budgetKey);
+                }
+            }
+        }
+    });
+
+    // 3. ALERTA DE PARCELAMENTO
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDay = tomorrow.getDate();
+
+    state.installments.forEach(inst => {
+        if (inst.debtorId === state.user.uid && inst.dueDay === tomorrowDay) {
+            const instKey = `gh_inst_alert_${inst.id}_${currentMonth}_${tomorrowDay}`;
+            
+            if (!localStorage.getItem(instKey)) {
+                createSystemNotification(
+                    'installment_alert',
+                    'Parcela Vence Amanhã',
+                    `O parcelamento "${inst.name}" vence amanhã (dia ${inst.dueDay}).`,
+                    { installmentId: inst.id, dueDay: tomorrowDay, month: currentMonth }
+                );
+                localStorage.setItem(instKey, 'true');
+            }
+        }
+    });
 }
