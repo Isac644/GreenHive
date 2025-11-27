@@ -333,10 +333,23 @@ export function renderTransactionModal() {
     if (!state.isModalOpen || (state.modalView !== 'transaction' && state.modalView !== 'newTag')) return '';
 
     const transaction = isEditing ? state.transactions.find(t => t.id === state.editingTransactionId) : null;
+
+    // --- CORREÇÃO DO ERRO AQUI ---
+    // Se o ID de edição existe, mas a transação não foi encontrada na lista 
+    // (ex: foi excluída pelo listener em tempo real), retornamos vazio para não quebrar a tela.
+    if (isEditing && !transaction) return ''; 
+    // -----------------------------
+
     const type = isEditing ? transaction.type : state.modalTransactionType;
     const defaultCategories = (type === 'expense' ? CATEGORIES.expense : CATEGORIES.income);
     const customCategories = state.userCategories[type] || [];
     const allCategories = [...defaultCategories, ...customCategories];
+
+    const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-4 p-4 bg-red-100 rounded-lg text-center">
+    <p class="text-red-700 mb-2">Tem certeza?</p>
+    <button type="button" id="confirm-delete-yes" class="px-3 py-1 bg-red-600 text-white rounded-md mr-2">Sim</button>
+    <button type="button" id="confirm-delete-no" class="px-3 py-1 bg-gray-300 rounded-md">Não</button>
+</div>` : '';
 
     // Opções de Vínculo (Dívidas/Parcelas) - Só mostra se for Despesa
     let linkOptions = '<option value="">Nenhum</option>';
@@ -355,7 +368,6 @@ export function renderTransactionModal() {
 
     let contentHTML = '';
     if (state.modalView === 'newTag') {
-        // ... (Conteúdo de New Tag mantido igual) ...
         const colorSwatches = PALETTE_COLORS.map(color => `<label class="cursor-pointer"><input type="radio" name="newTagColor" value="${color}" class="sr-only peer"><div class="w-8 h-8 rounded-full peer-checked:ring-2 ring-offset-2 ring-blue-500" style="background-color: ${color};"></div></label>`).join('');
         contentHTML = `<h3 class="text-lg font-semibold text-gray-700 mb-4">Criar Nova Categoria</h3><form id="create-tag-form"><div class="mb-4"><label for="newTagName" class="block text-sm font-medium text-gray-700 mb-1">Nome</label><input id="newTagName" name="newTagName" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg" required /></div><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Cor</label><div class="flex flex-wrap gap-3">${colorSwatches}</div></div><div class="mt-6 flex justify-end gap-2"><button type="button" id="cancel-tag-creation" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg">Cancelar</button><button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg">Salvar</button></div></form>`;
     } else {
@@ -379,6 +391,7 @@ export function renderTransactionModal() {
                     ${deleteButtonHTML}
                     <button type="submit" class="w-full py-3 px-4 rounded-lg font-medium text-white bg-green-600 hover:bg-green-700">${isEditing ? 'Salvar' : 'Adicionar'}</button>
                 </div>
+                ${confirmDeleteHTML}
             </form>`;
     }
 
@@ -729,7 +742,10 @@ export function renderMainContent() {
     if (state.currentView === 'dashboard') viewContent = renderFamilyDashboard();
     else if (state.currentView === 'records') viewContent = renderRecordsPage();
     else if (state.currentView === 'budget') viewContent = renderBudgetPage();
-    else if (state.currentView === 'debts') viewContent = renderDebtsPage(); // NOVO
+    else if (state.currentView === 'debts') viewContent = renderDebtsPage();
+
+    // CORREÇÃO: Aplica a classe de animação apenas se state.shouldAnimate for true
+    const animationClass = state.shouldAnimate ? 'content-fade-in' : '';
 
     return `<div class="w-full max-w-6xl mx-auto px-4 py-8">
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
@@ -746,14 +762,13 @@ export function renderMainContent() {
             </button>
         </header>
         ${navTabs}
-        <div id="view-content" class="content-fade-in min-h-[500px]">${viewContent}</div>
+        <div id="view-content" class="${animationClass} min-h-[500px]">${viewContent}</div>
     </div>`;
 }
 
 export function renderDebtsPage() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     
-    // Dívidas (Mantido igual, apenas comprimi para focar no parcelamento)
     const debtsHTML = state.debts.map(d => {
         const canEdit = isAdmin || d.userId === state.user.uid;
         const memberName = state.familyMembers.find(m => m.uid === d.debtorId)?.name || 'Desconhecido';
@@ -766,23 +781,17 @@ export function renderDebtsPage() {
         return `<div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border border-gray-100 dark:border-gray-700"><div class="flex justify-between items-start mb-2"><div><h4 class="font-bold text-gray-800 dark:text-gray-100">${d.name}</h4><p class="text-xs text-gray-500 dark:text-gray-400">Devedor: ${memberName}</p></div>${editBtn}</div><div class="mb-2"><div class="flex justify-between text-xs mb-1 text-gray-600 dark:text-gray-300"><span>Pago: R$ ${paid.toFixed(2)}</span><span>Total: R$ ${d.totalValue.toFixed(2)}</span></div><div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700"><div class="bg-blue-600 h-2.5 rounded-full" style="width: ${progress}%"></div></div></div><div class="flex justify-between items-center mt-3"><span class="text-xs px-2 py-1 rounded-full ${statusColor}">${status}</span>${d.dueDate ? `<span class="text-xs text-gray-500">Vence: ${new Date(d.dueDate).toLocaleDateString('pt-BR')}</span>` : ''}</div></div>`;
     }).join('') || '<p class="text-gray-500 text-sm col-span-full text-center py-4">Nenhuma dívida cadastrada.</p>';
 
-    // Parcelamentos (ATUALIZADO COM A DATA DA ÚLTIMA PARCELA)
     const installmentsHTML = state.installments.map(i => {
         const canEdit = isAdmin || i.userId === state.user.uid;
         const memberName = state.familyMembers.find(m => m.uid === i.debtorId)?.name || 'Desconhecido';
         
-        // Filtra transações vinculadas
         const linkedTrans = state.transactions.filter(t => t.linkedInstallmentId === i.id);
         const paidCount = linkedTrans.length;
         
-        // Lógica para achar a última data paga
-        let lastPaidText = "Nenhuma"; // Texto padrão
+        let lastPaidText = "Nenhuma";
         if (paidCount > 0) {
-            // Ordena as transações da mais recente para a mais antiga
             linkedTrans.sort((a, b) => new Date(b.date) - new Date(a.date));
-            // Pega a primeira (mais recente)
             const lastDate = new Date(linkedTrans[0].date + 'T12:00:00');
-            // Formata para "nov/25" (Mês abreviado / Ano curto)
             lastPaidText = lastDate.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
         }
 
@@ -823,8 +832,9 @@ export function renderDebtsPage() {
         </div>`;
     }).join('') || '<p class="text-gray-500 text-sm col-span-full text-center py-4">Nenhum parcelamento cadastrado.</p>';
 
+    // REMOVIDO animate-fade-in DA DIV ABAIXO
     return `
-    <div class="grid md:grid-cols-2 gap-8 animate-fade-in">
+    <div class="grid md:grid-cols-2 gap-8">
         <div>
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-700 dark:text-gray-200">Dívidas</h3>
@@ -877,204 +887,37 @@ export function renderFamilyDashboard() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition">Gerenciar Categorias</button>` : '';
 
-    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-fade-in"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
+    // REMOVIDO animate-fade-in DA DIV ABAIXO
+    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-green-500"><p class="text-sm text-gray-500">Receita</p><p class="text-2xl font-bold text-green-600">R$ ${summary.income.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-red-500"><p class="text-sm text-gray-500">Despesa</p><p class="text-2xl font-bold text-red-600">R$ ${summary.expenses.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-blue-500"><p class="text-sm text-gray-500">Saldo</p><p class="text-2xl font-bold text-blue-600">R$ ${summary.balance.toFixed(2)}</p></div><div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col justify-center items-center text-center"><h3 class="font-semibold text-gray-700">Acesso Rápido</h3><button id="details-button" class="w-full mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Ver Registros</button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center"><button id="prev-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-chart-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-700">Despesas por Categoria</h3>${manageCategoriesButton}</div><div class="h-80 relative"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><div class="mb-4"><h3 class="text-lg font-semibold text-gray-700">Performance do Orçamento</h3><div class="flex justify-between text-xs text-gray-500 mt-1"><span>Total Planejado: <strong>R$ ${totalBudget.toFixed(2)}</strong></span><span>Total Gasto: <strong>R$ ${totalSpentInBudgets.toFixed(2)}</strong></span></div></div><div class="h-80 relative"><canvas id="budget-performance-chart"></canvas><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem orçamentos definidos</div></div></div></div><div class="text-center mb-8"><button id="toggle-charts-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-full transition shadow flex items-center mx-auto gap-2"><span>Exibir mais gráficos</span><svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button></div><div id="secondary-charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Balanço Anual (${year})</h3><div class="h-80 relative"><canvas id="annual-balance-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Comparativo com Mês Anterior</h3><div class="h-80 relative"><canvas id="comparison-chart"></canvas></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Gasto por Pessoa</h3><div class="h-80 relative"><canvas id="person-spending-chart"></canvas><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Diária de Gastos</h3><div class="h-80 relative"><canvas id="daily-evolution-chart"></canvas></div></div></div><div class="mt-8 bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Código de Convite da Família</h3><div class="flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"><p class="text-2xl font-bold text-gray-800 tracking-widest mb-4 sm:mb-0">${state.family.code}</p><div class="flex gap-2"><button id="copy-code-button" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg">Copiar Código</button><button id="share-link-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Compartilhar Link</button></div></div></div>`;
 }
-
 export function renderRecordsPage() {
-    const month = state.displayedMonth.getMonth();
-    const year = state.displayedMonth.getFullYear();
-    const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const daysWithTransactions = new Set(state.transactions
-        .filter(t => {
-            const tDate = new Date(t.date + 'T12:00:00');
-            return tDate.getMonth() === month && tDate.getFullYear() === year;
-        })
-        .map(t => new Date(t.date + 'T12:00:00').getDate())
-    );
-
+    const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear(); const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' }); const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysWithTransactions = new Set(state.transactions.filter(t => { const tDate = new Date(t.date + 'T12:00:00'); return tDate.getMonth() === month && tDate.getFullYear() === year; }).map(t => new Date(t.date + 'T12:00:00').getDate()));
     let calendarDaysHTML = Array(firstDay).fill(`<div class="text-center p-2"></div>`).join('');
-    for (let day = 1; day <= daysInMonth; day++) {
-        const isSelected = state.selectedDate === day;
-        const hasTransaction = daysWithTransactions.has(day);
-
-        let dayClasses = 'text-gray-800';
-        if (isSelected) {
-            dayClasses = 'bg-blue-500 text-white';
-        } else if (hasTransaction) {
-            dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800';
-        } else {
-            dayClasses += ' hover:bg-gray-200';
-        }
-
-        calendarDaysHTML += `<div class="text-center p-1">
-            <button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${dayClasses}">${day}</button>
-        </div>`;
-    }
-
-    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-        <div class="flex justify-between items-center mb-4">
-            <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3>
-            <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-            </button>
-        </div>
-        <div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div>
-    </div>`;
-
-    const filtered = state.transactions.filter(t => {
-        const transactionDate = new Date(t.date + 'T12:00:00');
-        const typeMatch = state.detailsFilterType === 'all' || t.type === state.detailsFilterType;
-        const dateMatch = !state.selectedDate || transactionDate.getDate() === state.selectedDate;
-        return typeMatch && dateMatch && transactionDate.getMonth() === month && transactionDate.getFullYear() === year;
-    });
-
-    const groupedByDate = filtered.reduce((acc, t) => {
-        const day = new Date(t.date + 'T12:00:00').getDate();
-        if (!acc[day]) acc[day] = [];
-        acc[day].push(t);
-        return acc;
-    }, {});
-
+    for (let day = 1; day <= daysInMonth; day++) { const isSelected = state.selectedDate === day; const hasTransaction = daysWithTransactions.has(day); let dayClasses = 'text-gray-800'; if (isSelected) dayClasses = 'bg-blue-500 text-white'; else if (hasTransaction) dayClasses = 'bg-blue-500 bg-opacity-25 hover:bg-opacity-50 transition-opacity text-gray-800'; else dayClasses += ' hover:bg-gray-200'; calendarDaysHTML += `<div class="text-center p-1"><button data-day="${day}" class="calendar-day w-8 h-8 rounded-full ${dayClasses}">${day}</button></div>`; }
+    const calendarHTML = `<div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex justify-between items-center mb-4"><button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><h3 class="text-lg font-semibold capitalize month-selector-text">${monthName} de ${year}</h3><button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div><div class="grid grid-cols-7 gap-1">${calendarDaysHTML}</div></div>`;
+    const filtered = state.transactions.filter(t => { const transactionDate = new Date(t.date + 'T12:00:00'); const typeMatch = state.detailsFilterType === 'all' || t.type === state.detailsFilterType; const dateMatch = !state.selectedDate || transactionDate.getDate() === state.selectedDate; return typeMatch && dateMatch && transactionDate.getMonth() === month && transactionDate.getFullYear() === year; });
+    const groupedByDate = filtered.reduce((acc, t) => { const day = new Date(t.date + 'T12:00:00').getDate(); if (!acc[day]) acc[day] = []; acc[day].push(t); return acc; }, {});
     const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
-
-    // *** ALTERAÇÃO AQUI: Verificamos se o usuário logado é Admin ***
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-
-    let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada para os filtros selecionados.</p>`;
-    if (sortedDays.length > 0) {
-        transactionsHTML = sortedDays.map(day => {
-            const transactionsForDay = groupedByDate[day].map(t => {
-                
-                // *** ALTERAÇÃO AQUI: Lógica de permissão ***
-                const isOwner = t.userId === state.user.uid;
-                const canEdit = isAdmin || isOwner;
-
-                // Se pode editar: Mantém a classe 'transaction-item' (que ativa o click no main.js) e cursor-pointer
-                // Se NÃO pode editar: Remove 'transaction-item', põe cursor-default e reduz opacidade
-                const interactClasses = canEdit 
-                    ? 'transaction-item cursor-pointer' 
-                    : 'cursor-default opacity-60';
-
-                // Cor da categoria
-                const categoryColor = state.categoryColors[t.category] || '#6B7280';
-
-                return `
-                <li class="${interactClasses} flex justify-between items-center py-3 px-2 -mx-2 rounded-lg" data-transaction-id="${t.id}">
-                    <div>
-                        <p class="font-medium text-gray-800">${t.description}</p>
-                        <div class="flex items-center mt-1">
-                            <p class="text-sm text-gray-500 mr-2">${t.userName || 'Autor desconhecido'}</p>
-                            <span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${categoryColor}">${t.category}</span>
-                        </div>
-                    </div>
-                    <p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">
-                        ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
-                    </p>
-                </li>`;
-            }).join('');
-            return `<div class="mb-4"><div class="flex items-center justify-between pb-2 border-b"><p class="font-bold text-gray-700">${day} de ${monthName}</p></div><ul class="divide-y">${transactionsForDay}</ul></div>`;
-        }).join('');
-    }
-
+    let transactionsHTML = `<p class="text-center text-gray-500 py-8">Nenhuma transação encontrada.</p>`;
+    if (sortedDays.length > 0) { transactionsHTML = sortedDays.map(day => { const transactionsForDay = groupedByDate[day].map(t => { const isOwner = t.userId === state.user.uid; const canEdit = isAdmin || isOwner; const interactClasses = canEdit ? 'transaction-item cursor-pointer' : 'cursor-default opacity-60'; const categoryColor = state.categoryColors[t.category] || '#6B7280'; return `<li class="${interactClasses} flex justify-between items-center py-3 px-2 -mx-2 rounded-lg" data-transaction-id="${t.id}"><div><p class="font-medium text-gray-800">${t.description}</p><div class="flex items-center mt-1"><p class="text-sm text-gray-500 mr-2">${t.userName || 'Desconhecido'}</p><span class="text-xs px-2 py-1 rounded-full text-white" style="background-color: ${categoryColor}">${t.category}</span></div></div><p class="font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></li>`; }).join(''); return `<div class="mb-4"><div class="flex items-center justify-between pb-2 border-b"><p class="font-bold text-gray-700">${day} de ${monthName}</p></div><ul class="divide-y">${transactionsForDay}</ul></div>`; }).join(''); }
     const newButtonHTML = `<div class="flex justify-end mb-4"><button id="open-modal-button" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Adicionar Transação</button></div>`;
-
-    return `<div id="records-page-container" class="content-fade-in"><div class="grid grid-cols-1 lg:grid-cols-5 gap-6"><div class="lg:col-span-2">${calendarHTML}</div><div class="lg:col-span-3"><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-center gap-4"><button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button><button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button><button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button></div></div><div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${newButtonHTML + transactionsHTML}</div></div></div></div>`;
+    
+    // REMOVIDO content-fade-in DA DIV ABAIXO
+    return `<div id="records-page-container"><div class="grid grid-cols-1 lg:grid-cols-5 gap-6"><div class="lg:col-span-2">${calendarHTML}</div><div class="lg:col-span-3"><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-center gap-4"><button data-filter="all" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Tudo</button><button data-filter="income" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Receitas</button><button data-filter="expense" class="filter-button px-4 py-2 rounded-lg ${state.detailsFilterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200 filter-button-inactive'}">Despesas</button></div></div><div id="records-list-wrapper" class="bg-white rounded-2xl shadow-lg p-6">${newButtonHTML + transactionsHTML}</div></div></div></div>`;
 }
 
 export function renderBudgetPage() {
-    const month = state.displayedMonth.getMonth();
-    const year = state.displayedMonth.getFullYear();
-    const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear(); const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
-    
-    const activeBudgets = state.budgets.filter(b => {
-        const startDate = new Date(b.appliesFrom + 'T12:00:00');
-        const startYear = startDate.getUTCFullYear();
-        const startMonth = startDate.getUTCMonth();
-        const endDate = b.appliesTo ? new Date(b.appliesTo + 'T12:00:00') : null;
-        const currentYear = state.displayedMonth.getFullYear();
-        const currentMonth = state.displayedMonth.getMonth();
-        const budgetStartsLater = startYear > currentYear || (startYear === currentYear && startMonth > currentMonth);
-        if (budgetStartsLater) { return false; }
-        if (b.recurring === false) { return startYear === currentYear && startMonth === currentMonth; }
-        if (endDate) {
-            const endYear = endDate.getUTCFullYear();
-            const endMonth = endDate.getUTCMonth();
-            const budgetEndsEarlier = endYear < currentYear || (endYear === currentYear && endMonth < currentMonth);
-            if (budgetEndsEarlier) { return false; }
-        }
-        return true;
-    });
-
+    const activeBudgets = state.budgets.filter(b => { const startDate = new Date(b.appliesFrom + 'T12:00:00'); const startYear = startDate.getUTCFullYear(); const startMonth = startDate.getUTCMonth(); const endDate = b.appliesTo ? new Date(b.appliesTo + 'T12:00:00') : null; const currentYear = state.displayedMonth.getFullYear(); const currentMonth = state.displayedMonth.getMonth(); const budgetStartsLater = startYear > currentYear || (startYear === currentYear && startMonth > currentMonth); if (budgetStartsLater) { return false; } if (b.recurring === false) { return startYear === currentYear && startMonth === currentMonth; } if (endDate) { const endYear = endDate.getUTCFullYear(); const endMonth = endDate.getUTCMonth(); const budgetEndsEarlier = endYear < currentYear || (endYear === currentYear && endMonth < currentMonth); if (budgetEndsEarlier) { return false; } } return true; });
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-
-    const budgetItemsHTML = activeBudgets.map(budget => {
-        let progressHTML = '';
-        if(budget.type === 'expense') {
-            const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
-            const limit = budget.value;
-            const percentage = limit > 0 ? (spent / limit) * 100 : 0;
-            const barColor = percentage > 100 ? 'bg-red-500' : (percentage > 80 ? 'bg-yellow-500' : 'bg-green-500');
-            progressHTML = `
-                <div class="w-full bg-gray-200 rounded-full h-8 mt-2 relative overflow-hidden flex items-center">
-                    <div class="${barColor} h-8 rounded-full flex items-center justify-start pl-4" style="width: ${Math.min(percentage, 100)}%"></div>
-                    <span class="absolute left-4 text-sm font-bold ${percentage > 50 ? 'text-white' : 'text-gray-800'}">${budget.name}</span>
-                </div>
-                <p class="text-xs text-right text-gray-500 mt-1">Gasto: R$ ${spent.toFixed(2)} de R$ ${limit.toFixed(2)}</p>`;
-        } else {
-            const earned = monthlyTransactions.filter(t => t.type === 'income' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0);
-            const goal = budget.value;
-            const percentage = goal > 0 ? (earned / goal) * 100 : 0;
-            progressHTML = `
-                <div class="w-full bg-gray-200 rounded-full h-8 mt-2 relative overflow-hidden flex items-center">
-                    <div class="bg-green-500 h-8 rounded-full flex items-center justify-start pl-4" style="width: ${Math.min(percentage, 100)}%"></div>
-                    <span class="absolute left-4 text-sm font-bold ${percentage > 50 ? 'text-white' : 'text-gray-800'}">${budget.name}</span>
-                </div>
-                <p class="text-xs text-right text-gray-500 mt-1">Alcançado: R$ ${earned.toFixed(2)} de R$ ${goal.toFixed(2)}</p>`;
-        }
-
-        const interactionClasses = isAdmin 
-            ? 'budget-item cursor-pointer hover:bg-gray-100' 
-            : 'cursor-default';
-
-        return `
-            <div class="${interactionClasses} p-4 border rounded-lg" data-budget-id="${budget.id}">
-                ${progressHTML}
-            </div>`;
-    }).join('');
-
-    const addButtonHTML = isAdmin 
-        ? `<button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>`
-        : '';
-
-    return `
-        <main class="content-fade-in">
-            <div class="bg-white p-6 rounded-2xl shadow-lg mb-6">
-                <div class="flex items-center justify-between">
-                    <button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-                    <span class="font-semibold capitalize month-selector-text">${monthName} de ${year}</span>
-                    <button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamentos para ${monthName}</h3>
-                <div class="space-y-4">
-                    ${budgetItemsHTML}
-                    ${addButtonHTML} 
-                </div>
-            </div>
-        </main>`;
+    const budgetItemsHTML = activeBudgets.map(budget => { let progressHTML = ''; if(budget.type === 'expense') { const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0); const limit = budget.value; const percentage = limit > 0 ? (spent / limit) * 100 : 0; const barColor = percentage > 100 ? 'bg-red-500' : (percentage > 80 ? 'bg-yellow-500' : 'bg-green-500'); progressHTML = `<div class="w-full bg-gray-200 rounded-full h-8 mt-2 relative overflow-hidden flex items-center"><div class="${barColor} h-8 rounded-full flex items-center justify-start pl-4" style="width: ${Math.min(percentage, 100)}%"></div><span class="absolute left-4 text-sm font-bold ${percentage > 50 ? 'text-white' : 'text-gray-800'}">${budget.name}</span></div><p class="text-xs text-right text-gray-500 mt-1">Gasto: R$ ${spent.toFixed(2)} de R$ ${limit.toFixed(2)}</p>`; } else { const earned = monthlyTransactions.filter(t => t.type === 'income' && t.category === budget.category).reduce((sum, t) => sum + t.amount, 0); const goal = budget.value; const percentage = goal > 0 ? (earned / goal) * 100 : 0; progressHTML = `<div class="w-full bg-gray-200 rounded-full h-8 mt-2 relative overflow-hidden flex items-center"><div class="bg-green-500 h-8 rounded-full flex items-center justify-start pl-4" style="width: ${Math.min(percentage, 100)}%"></div><span class="absolute left-4 text-sm font-bold ${percentage > 50 ? 'text-white' : 'text-gray-800'}">${budget.name}</span></div><p class="text-xs text-right text-gray-500 mt-1">Alcançado: R$ ${earned.toFixed(2)} de R$ ${goal.toFixed(2)}</p>`; } const interactionClasses = isAdmin ? 'budget-item cursor-pointer hover:bg-gray-100' : 'cursor-default'; return `<div class="${interactionClasses} p-4 border rounded-lg" data-budget-id="${budget.id}">${progressHTML}</div>`; }).join('');
+    const addButtonHTML = isAdmin ? `<button id="add-budget-button" class="w-full p-4 border-2 border-dashed rounded-lg text-gray-500 hover:bg-gray-100 hover:border-green-500">+ Adicionar Novo Orçamento</button>` : '';
+    
+    // REMOVIDO content-fade-in DA TAG MAIN ABAIXO
+    return `<main><div class="bg-white p-6 rounded-2xl shadow-lg mb-6"><div class="flex items-center justify-between"><button id="prev-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><span class="font-semibold capitalize month-selector-text">${monthName} de ${year}</span><button id="next-month-button" class="p-2 rounded-md hover:bg-gray-200 month-selector-text"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button></div></div><div class="bg-white p-6 rounded-2xl shadow-lg"><h3 class="text-lg font-semibold text-gray-700 mb-4">Orçamentos para ${monthName}</h3><div class="space-y-4">${budgetItemsHTML}${addButtonHTML}</div></div></main>`;
 }
 
 export function renderMonthlyChart() {
@@ -1578,4 +1421,20 @@ export function renderConfirmationModal() {
             </div>
         </div>
     `;
+}
+
+export function renderLoadingScreen() {
+    return `
+    <div class="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 transition-colors duration-300">
+        <div class="animate-bounce mb-4">
+            ${GreenHiveLogoSVG('80')}
+        </div>
+        <div class="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
+            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Carregando...
+        </div>
+    </div>`;
 }

@@ -55,7 +55,9 @@ export const state = {
         onConfirm: null
     },
     // Armazena todas as funções de cancelamento dos listeners (transactions, budgets, etc.)
-    unsubscribers: [] 
+    unsubscribers: [],
+    isLoading: true,
+    shouldAnimate: true,
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -127,9 +129,8 @@ function forceExitFamily(message) {
 
 // Inicia todos os listeners da família (Transações, Orçamentos, etc.)
 export function subscribeToFamilyData(familyId) {
-    clearAllListeners(); // Garante que não tem lixo anterior
+    clearAllListeners(); 
 
-    // 1. Listener da Própria Família (Metadados, Membros)
     const familyRef = doc(db, "familyGroups", familyId);
     const unsubFamily = onSnapshot(familyRef, async (snapshot) => {
         if (!snapshot.exists()) {
@@ -137,83 +138,61 @@ export function subscribeToFamilyData(familyId) {
             return;
         }
         const data = snapshot.data();
-        
-        // Segurança: Se fui removido
         if (!data.members.includes(state.user.uid)) {
             forceExitFamily("Você foi removido desta família.");
             return;
         }
-
-        // Atualiza dados da família
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
         state.familyAdmins = data.admins || [];
 
-        // Se mudou membros, recarrega info dos usuários
         if (state.familyMembers.length !== data.members.length) {
             const memberPromises = data.members.map(uid => getDoc(doc(db, "users", uid)));
             const memberDocs = await Promise.all(memberPromises);
             state.familyMembers = memberDocs.map(d => ({ uid: d.id, ...d.data() }));
         }
         
+        state.isLoading = false;
         renderApp();
+        // Importante: Depois da primeira carga, desligamos a animação para as próximas atualizações de dados
+        state.shouldAnimate = false; 
     });
     state.unsubscribers.push(unsubFamily);
 
-    // 2. Listener de Transações
+    // Função auxiliar para os sub-listeners
+    const handleSubCollectionSnapshot = (snapshot, listKey, sortFunc) => {
+        const items = [];
+        snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
+        if (sortFunc) items.sort(sortFunc);
+        state[listKey] = items;
+        
+        // Renderiza sem animação, pois é update de dados
+        renderApp(); 
+        state.shouldAnimate = false; 
+    };
+
     const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId));
-    const unsubTrans = onSnapshot(qTrans, (snapshot) => {
-        const t = [];
-        snapshot.forEach(d => t.push({ id: d.id, ...d.data() }));
-        state.transactions = t.sort((a, b) => new Date(b.date) - new Date(a.date));
-        renderApp();
-    });
-    state.unsubscribers.push(unsubTrans);
+    state.unsubscribers.push(onSnapshot(qTrans, (s) => handleSubCollectionSnapshot(s, 'transactions', (a, b) => new Date(b.date) - new Date(a.date))));
 
-    // 3. Listener de Orçamentos
     const qBudg = query(collection(db, "familyGroups", familyId, "budgets"));
-    const unsubBudg = onSnapshot(qBudg, (snapshot) => {
-        const b = [];
-        snapshot.forEach(d => b.push({ id: d.id, ...d.data() }));
-        state.budgets = b;
-        renderApp();
-    });
-    state.unsubscribers.push(unsubBudg);
+    state.unsubscribers.push(onSnapshot(qBudg, (s) => handleSubCollectionSnapshot(s, 'budgets')));
 
-    // 4. Listener de Dívidas
     const qDebts = query(collection(db, "familyGroups", familyId, "debts"));
-    const unsubDebts = onSnapshot(qDebts, (snapshot) => {
-        const dbts = [];
-        snapshot.forEach(d => dbts.push({ id: d.id, ...d.data() }));
-        state.debts = dbts;
-        renderApp();
-    });
-    state.unsubscribers.push(unsubDebts);
+    state.unsubscribers.push(onSnapshot(qDebts, (s) => handleSubCollectionSnapshot(s, 'debts')));
 
-    // 5. Listener de Parcelamentos
     const qInst = query(collection(db, "familyGroups", familyId, "installments"));
-    const unsubInst = onSnapshot(qInst, (snapshot) => {
-        const insts = [];
-        snapshot.forEach(d => insts.push({ id: d.id, ...d.data() }));
-        state.installments = insts;
-        renderApp();
-    });
-    state.unsubscribers.push(unsubInst);
+    state.unsubscribers.push(onSnapshot(qInst, (s) => handleSubCollectionSnapshot(s, 'installments')));
 }
 
 // --- HANDLERS ---
 
 // Selecionar Família (Agora com persistência)
 export async function handleSelectFamily(familyId) {
-    // Não precisamos mais de 'loadFamilyData' manual, o subscribe faz tudo
+    state.shouldAnimate = true; // Garante animação ao entrar
     subscribeToFamilyData(familyId);
-    
-    // Persistência: Salva o ID no navegador
     localStorage.setItem('greenhive_last_family', familyId);
-    
     state.currentView = 'dashboard';
-    // O renderApp será chamado automaticamente pelos listeners assim que os dados chegarem
 }
 
 // Trocar Família (Limpa persistência)
@@ -464,22 +443,50 @@ export async function handleDeleteInstallment() {
         } catch (e) { showToast("Erro ao excluir.", 'error'); }
     });
 }
+
 export async function handleSaveBudget(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
     const id = state.editingBudgetItemId;
-    const budgetData = { name: formData.get('budgetName'), type: formData.get('budgetType'), category: formData.get('budgetCategory'), value: parseFloat(formData.get('budgetValue')), appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', recurring: formData.get('budgetRecurring') === 'on' };
+    const budgetData = { 
+        name: formData.get('budgetName'), 
+        type: formData.get('budgetType'), 
+        category: formData.get('budgetCategory'), 
+        value: parseFloat(formData.get('budgetValue')), 
+        appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', 
+        recurring: formData.get('budgetRecurring') === 'on' 
+    };
+    
     try {
-        const col = firebase.collection(db, "familyGroups", state.family.id, "budgets");
-        if (id) { await firebase.updateDoc(firebase.doc(col, id), budgetData); }
-        else { await firebase.addDoc(col, budgetData); }
-        state.editingBudgetItemId = null; state.isModalOpen = false; showToast("Orçamento salvo!", 'success');
+        const col = collection(db, "familyGroups", state.family.id, "budgets");
+        if (id) { 
+            await updateDoc(doc(col, id), budgetData); 
+        } else { 
+            await addDoc(col, budgetData); 
+        }
+        
+        // CORREÇÃO: Fecha o modal e atualiza
+        state.editingBudgetItemId = null; 
+        state.isModalOpen = false; 
+        renderApp(); 
+        
+        showToast("Orçamento salvo!", 'success');
     } catch (e) { showToast("Erro ao salvar orçamento.", 'error'); }
 }
 
 export async function handleDeleteBudget() {
     if (!state.editingBudgetItemId) return;
-    try { await firebase.deleteDoc(firebase.doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); state.editingBudgetItemId = null; state.isModalOpen = false; showToast("Orçamento excluído!", 'success'); } catch (e) { showToast("Erro ao excluir.", 'error'); }
+    try { 
+        await deleteDoc(doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); 
+        
+        // CORREÇÃO: Fecha o modal, reseta confirmação e atualiza
+        state.editingBudgetItemId = null; 
+        state.isModalOpen = false; 
+        state.confirmingDelete = false;
+        renderApp(); 
+        
+        showToast("Orçamento excluído!", 'success'); 
+    } catch (e) { showToast("Erro ao excluir.", 'error'); }
 }
 
 export async function handleSaveNewTag(event) {

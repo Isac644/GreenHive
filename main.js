@@ -6,7 +6,7 @@ import {
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
-    renderDebtsPage, renderDebtModal, renderInstallmentModal 
+    renderDebtsPage, renderDebtModal, renderInstallmentModal, renderLoadingScreen
 } from "./ui-components.js";
 
 const root = document.getElementById('root');
@@ -23,6 +23,13 @@ export function showToast(message, type) {
 }
 
 export function renderApp() {
+
+    // NOVO: Se estiver carregando, mostra tela de load e para por aqui
+    if (state.isLoading) {
+        root.innerHTML = renderLoadingScreen();
+        return;
+    }
+
     document.documentElement.className = state.theme;
     document.querySelector('body > header')?.remove();
     if (state.user) document.body.insertAdjacentHTML('afterbegin', renderHeader());
@@ -78,8 +85,6 @@ function attachEventListeners() {
         const newView = e.currentTarget.dataset.view;
         if (state.currentView !== newView) { state.currentView = newView; renderApp(); }
     });
-    const detailsBtn = document.getElementById('details-button'); if (detailsBtn) detailsBtn.onclick = () => { state.currentView = 'records'; renderApp(); };
-
     // Transaction Modal
     const openModalBtn = document.getElementById('open-modal-button'); if (openModalBtn) openModalBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'transaction'; state.editingTransactionId = null; state.modalTransactionType = 'expense'; renderApp(); };
     document.querySelectorAll('.transaction-item').forEach(i => i.onclick = e => { state.editingTransactionId = e.currentTarget.dataset.transactionId; state.isModalOpen = true; state.modalView = 'transaction'; renderApp(); });
@@ -229,50 +234,86 @@ function attachEventListeners() {
         state.confirmingDelete = false; 
         renderApp(); 
     };
+
+    document.querySelectorAll('.nav-tab').forEach(tab => tab.onclick = e => {
+        const newView = e.currentTarget.dataset.view;
+        if (state.currentView !== newView) {
+            state.shouldAnimate = true; // ATIVA A ANIMAÇÃO PARA A TROCA DE TELA
+            state.currentView = newView; 
+            renderApp(); 
+        }
+    });
+    
+    // Botão "Ver Registros" no Dashboard
+    const detailsBtn = document.getElementById('details-button'); 
+    if (detailsBtn) detailsBtn.onclick = () => { 
+        state.shouldAnimate = true; // ATIVA A ANIMAÇÃO
+        state.currentView = 'records'; 
+        renderApp(); 
+    };
 }
 
 let unsubscribeNotifications = null;
 firebase.onAuthStateChanged(auth, async (user) => {
     if (state.isSigningUp) return;
     
+    // Garante loading true ao iniciar a verificação
+    state.isLoading = true;
+    renderApp(); // Mostra o spinner imediatamente
+
     if (user) {
         const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
         state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0], photoURL: user.photoURL, isGoogle: isGoogle };
         
-        // Carrega a lista de famílias disponíveis para o usuário
         state.userFamilies = await fetchUserFamilies();
         
-        // Notificações
         if (unsubscribeNotifications) unsubscribeNotifications();
         unsubscribeNotifications = subscribeToNotifications();
         
-        // LÓGICA DE PERSISTÊNCIA (NOVO)
         const lastFamilyId = localStorage.getItem('greenhive_last_family');
-        
-        // URL Params (Convite por Link) tem prioridade
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('code');
         
         if (inviteCode && !state.family) {
             const success = await handleJoinFamilyFromLink(inviteCode);
             if (success || inviteCode) history.replaceState(null, '', window.location.pathname);
+            // handleSelectFamily já foi chamado dentro do Join, ele cuida do loading = false
         } else if (lastFamilyId) {
-            // Verifica se o usuário ainda tem acesso a essa família
+            // Verifica acesso
             const hasAccess = state.userFamilies.some(f => f.id === lastFamilyId);
             if (hasAccess) {
-                // Se tiver, entra direto (os listeners vão carregar os dados)
+                // IMPORTANTE: Entra na família e NÃO chama renderApp() aqui manualmente.
+                // Deixa o 'state.isLoading = true' ativo.
+                // O listener 'subscribeToFamilyData' vai baixar os dados e setar 'isLoading = false'
                 handleSelectFamily(lastFamilyId);
             } else {
-                // Se não tiver mais acesso (foi removido), limpa o storage
+                // Sem acesso, limpa e mostra seleção
                 localStorage.removeItem('greenhive_last_family');
+                state.isLoading = false;
+                renderApp();
             }
+        } else {
+            // Sem família anterior, mostra seleção
+            state.isLoading = false;
+            renderApp();
         }
 
     } else {
         if (unsubscribeNotifications) unsubscribeNotifications();
-        state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = []; state.debts = []; state.installments = [];
-        state.isModalOpen = false; state.modalView = ''; state.isNotificationMenuOpen = false;
+        state.user = null; 
+        state.family = null; 
+        state.transactions = []; 
+        state.userFamilies = []; 
+        state.budgets = []; 
+        state.debts = []; 
+        state.installments = [];
+        state.isModalOpen = false; 
+        state.modalView = ''; 
+        state.isNotificationMenuOpen = false;
+        
         if (state.authView !== 'signup-success') state.currentView = 'auth';
+        
+        state.isLoading = false; // Para de carregar para mostrar login
+        renderApp();
     }
-    renderApp();
 });
