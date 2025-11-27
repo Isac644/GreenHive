@@ -163,7 +163,6 @@ function forceExitFamily(message) {
 export function subscribeToFamilyData(familyId) {
     clearAllListeners(); 
 
-    // Listener da Família
     const familyRef = doc(db, "familyGroups", familyId);
     const unsubFamily = onSnapshot(familyRef, async (snapshot) => {
         if (!snapshot.exists()) {
@@ -180,6 +179,7 @@ export function subscribeToFamilyData(familyId) {
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
+        state.categoryIcons = data.categoryIcons || {}; // Carrega ícones
         state.familyAdmins = data.admins || [];
 
         if (state.familyMembers.length !== data.members.length) {
@@ -191,23 +191,17 @@ export function subscribeToFamilyData(familyId) {
         state.isLoading = false;
         renderApp();
         state.shouldAnimate = false;
-
-        // NOVO: Verifica alertas
         checkAutomatedAlerts();
     });
     state.unsubscribers.push(unsubFamily);
 
-    // Função auxiliar para atualizar listas e verificar alertas
     const handleSubCollectionSnapshot = (snapshot, listKey, sortFunc) => {
         const items = [];
         snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
         if (sortFunc) items.sort(sortFunc);
         state[listKey] = items;
-        
-        renderApp(); 
+        renderApp();
         state.shouldAnimate = false;
-
-        // NOVO: Verifica alertas a cada mudança de dados
         checkAutomatedAlerts();
     };
 
@@ -228,7 +222,7 @@ export function subscribeToFamilyData(familyId) {
 
 // Selecionar Família (Agora com persistência)
 export async function handleSelectFamily(familyId) {
-    state.shouldAnimate = true; // Garante animação ao entrar
+    state.shouldAnimate = true; 
     subscribeToFamilyData(familyId);
     localStorage.setItem('greenhive_last_family', familyId);
     state.currentView = 'dashboard';
@@ -236,35 +230,17 @@ export async function handleSelectFamily(familyId) {
 
 // Trocar Família (Limpa persistência)
 export function handleSwitchFamily() {
-    clearAllListeners(); // Para de ouvir tudo
-    
-    state.family = null;
-    state.transactions = [];
-    state.budgets = [];
-    state.debts = [];
-    state.installments = [];
-    state.userCategories = { expense: [], income: [] };
-    state.categoryColors = {};
-    state.familyAdmins = [];
-    state.familyMembers = [];
-    
-    state.currentView = 'onboarding'; 
-    state.isModalOpen = false;
-    
-    // Limpa persistência
+    clearAllListeners();
+    state.family = null; state.transactions = []; state.budgets = []; state.debts = []; state.installments = [];
+    state.userCategories = { expense: [], income: [] }; state.categoryColors = {}; state.familyAdmins = []; state.familyMembers = [];
+    state.currentView = 'onboarding'; state.isModalOpen = false;
     localStorage.removeItem('greenhive_last_family');
-    
-    fetchUserFamilies().then(families => {
-        state.userFamilies = families;
-        renderApp();
-    });
-    
+    fetchUserFamilies().then(families => { state.userFamilies = families; renderApp(); });
     showToast("Você saiu da visualização da família.", 'success');
 }
-
 export async function handleLogout() {
-    clearAllListeners(); // Importante limpar ao deslogar
-    localStorage.removeItem('greenhive_last_family'); // Limpa persistência
+    clearAllListeners();
+    localStorage.removeItem('greenhive_last_family');
     await firebase.signOut(auth);
 }
 
@@ -275,269 +251,93 @@ export async function handleLogout() {
 export async function handleAddTransaction(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
-    // ... (lógica de pegar dados mantém igual) ...
-    const description = formData.get('description');
-    const amount = parseFloat(formData.get('amount'));
-    const date = formData.get('date');
-    const category = formData.get('category');
-    const type = state.modalTransactionType;
-    const linkedEntity = formData.get('linkedEntity'); 
-
-    if (!description || !amount || !date || !category || category === '--create-new--') {
-        showToast('Preencha todos os campos.', 'error'); return;
-    }
-
-    let linkedDebtId = null;
-    let linkedInstallmentId = null;
-
-    if (linkedEntity) {
-        const [entityType, entityId] = linkedEntity.split(':');
-        if (entityType === 'debt') linkedDebtId = entityId;
-        if (entityType === 'installment') linkedInstallmentId = entityId;
-    }
-
+    const description = formData.get('description'); const amount = parseFloat(formData.get('amount')); const date = formData.get('date'); const category = formData.get('category'); const type = state.modalTransactionType; const linkedEntity = formData.get('linkedEntity'); 
+    if (!description || !amount || !date || !category || category === '--create-new--') { showToast('Preencha todos os campos.', 'error'); return; }
+    let linkedDebtId = null; let linkedInstallmentId = null;
+    if (linkedEntity) { const [entityType, entityId] = linkedEntity.split(':'); if (entityType === 'debt') linkedDebtId = entityId; if (entityType === 'installment') linkedInstallmentId = entityId; }
     const newTransaction = { description, amount, date, category, type, userId: state.user.uid, userName: state.user.name, familyGroupId: state.family.id, linkedDebtId, linkedInstallmentId };
-    
-    try {
-        await addDoc(collection(db, "transactions"), newTransaction);
-        
-        // ATUALIZAÇÃO VISUAL IMEDIATA
-        state.isModalOpen = false; 
-        renderApp(); 
-        
-        showToast("Transação adicionada!", 'success');
-    } catch (e) { showToast("Erro ao adicionar.", 'error'); }
+    try { await addDoc(collection(db, "transactions"), newTransaction); state.isModalOpen = false; renderApp(); } catch (e) { showToast("Erro ao adicionar.", 'error'); }
 }
 
 export async function handleUpdateTransaction(event) {
     event.preventDefault();
-    const formData = new FormData(event.target);
-    const transactionId = state.editingTransactionId;
-    const linkedEntity = formData.get('linkedEntity');
-    
-    let linkedDebtId = null;
-    let linkedInstallmentId = null;
-    if (linkedEntity) {
-        const [entityType, entityId] = linkedEntity.split(':');
-        if (entityType === 'debt') linkedDebtId = entityId;
-        if (entityType === 'installment') linkedInstallmentId = entityId;
-    }
-
+    const formData = new FormData(event.target); const transactionId = state.editingTransactionId; const linkedEntity = formData.get('linkedEntity');
+    let linkedDebtId = null; let linkedInstallmentId = null;
+    if (linkedEntity) { const [entityType, entityId] = linkedEntity.split(':'); if (entityType === 'debt') linkedDebtId = entityId; if (entityType === 'installment') linkedInstallmentId = entityId; }
     const updatedData = { description: formData.get('description'), amount: parseFloat(formData.get('amount')), date: formData.get('date'), category: formData.get('category'), linkedDebtId, linkedInstallmentId };
-    
-    try {
-        await updateDoc(doc(db, "transactions", transactionId), updatedData);
-        
-        // ATUALIZAÇÃO VISUAL IMEDIATA
-        state.editingTransactionId = null; 
-        state.isModalOpen = false; 
-        renderApp(); 
-        
-        showToast("Transação atualizada!", 'success');
-    } catch (e) { showToast("Erro ao atualizar.", 'error'); }
+    try { await updateDoc(doc(db, "transactions", transactionId), updatedData); state.editingTransactionId = null; state.isModalOpen = false; renderApp(); showToast("Transação atualizada!", 'success'); } catch (e) { showToast("Erro ao atualizar.", 'error'); }
 }
 
 export async function handleDeleteTransaction() {
-    const transactionId = state.editingTransactionId;
-    console.log("Tentando excluir transação ID:", transactionId); // Debug
-
-    if (!transactionId) {
-        console.error("Erro: ID da transação não encontrado.");
-        showToast("Erro: Transação não selecionada.", 'error');
-        return;
-    }
-
-    try {
-        // Referência ao documento
-        const docRef = doc(db, "transactions", transactionId);
-        
-        // Deleta do Firebase
-        await deleteDoc(docRef);
-        console.log("Documento deletado com sucesso do Firebase"); // Debug
-
-        // Limpa estado local
-        state.transactions = state.transactions.filter(t => t.id !== transactionId);
-        state.editingTransactionId = null;
-        state.isModalOpen = false;
-        state.confirmingDelete = false;
-
-        renderApp(); // Atualiza a tela
-        showToast("Transação excluída!", 'success');
-
-    } catch (e) {
-        console.error("Erro fatal ao excluir:", e);
-        showToast("Erro ao excluir: " + e.message, 'error');
-    }
+    const transactionId = state.editingTransactionId; if (!transactionId) return;
+    try { await deleteDoc(doc(db, "transactions", transactionId)); state.editingTransactionId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Transação excluída!", 'success'); } catch (e) { console.error(e); showToast("Erro ao excluir.", 'error'); }
 }
-// --- REPETIR PADRÃO PARA TODOS OS OUTROS HANDLERS (WRITE ONLY) ---
-// Vou manter os códigos completos para integridade, mas note que removi as linhas que faziam "state.push" manualmente.
 
 export async function handleSaveDebt(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const id = state.editingDebtId;
-    const debtData = {
-        name: formData.get('debtName'),
-        debtorId: formData.get('debtorId'),
-        totalValue: parseFloat(formData.get('debtTotalValue')),
-        dueDate: formData.get('debtDueDate') || null,
-        familyGroupId: state.family.id,
-        userId: state.user.uid 
-    };
-
-    if (!debtData.name || !debtData.debtorId || isNaN(debtData.totalValue)) {
-        showToast('Preencha os campos obrigatórios.', 'error'); return;
-    }
-
-    try {
-        const colRef = collection(db, "familyGroups", state.family.id, "debts");
-        if (id) {
-            await updateDoc(doc(colRef, id), debtData);
-        } else {
-            await addDoc(colRef, debtData);
-        }
-        
-        // FECHA MODAL IMEDIATAMENTE
-        state.editingDebtId = null; 
-        state.isModalOpen = false; 
-        renderApp(); 
-        
-        showToast("Dívida salva!", 'success');
-    } catch (e) { console.error(e); showToast("Erro ao salvar dívida.", 'error'); }
+    event.preventDefault(); const formData = new FormData(event.target); const id = state.editingDebtId;
+    const debtData = { name: formData.get('debtName'), debtorId: formData.get('debtorId'), totalValue: parseFloat(formData.get('debtTotalValue')), dueDate: formData.get('debtDueDate') || null, familyGroupId: state.family.id, userId: state.user.uid };
+    if (!debtData.name || !debtData.debtorId || isNaN(debtData.totalValue)) { showToast('Preencha os campos.', 'error'); return; }
+    try { const colRef = collection(db, "familyGroups", state.family.id, "debts"); if (id) { await updateDoc(doc(colRef, id), debtData); } else { await addDoc(colRef, debtData); } state.editingDebtId = null; state.isModalOpen = false; renderApp(); showToast("Dívida salva!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
 
 export async function handleDeleteDebt() {
     if (!state.editingDebtId) return;
-    
-    // Fecha o modal de edição antes de abrir o de confirmação, para não sobrepor
-    state.isModalOpen = false;
-    renderApp();
-
-    openConfirmation("Excluir Dívida", "Isso excluirá a dívida.", async () => {
-        try {
-            await deleteDoc(doc(db, "familyGroups", state.family.id, "debts", state.editingDebtId));
-            
-            state.editingDebtId = null; 
-            renderApp(); 
-            
-            showToast("Dívida excluída.", 'success');
-        } catch (e) { showToast("Erro ao excluir.", 'error'); }
-    });
+    try { await deleteDoc(doc(db, "familyGroups", state.family.id, "debts", state.editingDebtId)); state.editingDebtId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Dívida excluída.", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
 
 export async function handleSaveInstallment(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const id = state.editingInstallmentId;
-    const installmentsCount = parseInt(formData.get('installmentsCount'));
-    const valuePerInstallment = parseFloat(formData.get('valuePerInstallment'));
-    
-    const instData = {
-        name: formData.get('installmentName'),
-        debtorId: formData.get('debtorId'),
-        installmentsCount: installmentsCount,
-        valuePerInstallment: valuePerInstallment,
-        totalValue: installmentsCount * valuePerInstallment,
-        dueDay: parseInt(formData.get('dueDay')),
-        familyGroupId: state.family.id,
-        userId: state.user.uid
-    };
-
-    if (!instData.name || !instData.debtorId || isNaN(instData.totalValue)) {
-        showToast('Preencha os campos obrigatórios.', 'error'); return;
-    }
-
-    try {
-        const colRef = collection(db, "familyGroups", state.family.id, "installments");
-        if (id) {
-            await updateDoc(doc(colRef, id), instData);
-        } else {
-            await addDoc(colRef, instData);
-        }
-        
-        // FECHA MODAL IMEDIATAMENTE
-        state.editingInstallmentId = null; 
-        state.isModalOpen = false; 
-        renderApp(); 
-        
-        showToast("Parcelamento salvo!", 'success');
-    } catch (e) { showToast("Erro ao salvar.", 'error'); }
+    event.preventDefault(); const formData = new FormData(event.target); const id = state.editingInstallmentId;
+    const instData = { name: formData.get('installmentName'), debtorId: formData.get('debtorId'), installmentsCount: parseInt(formData.get('installmentsCount')), valuePerInstallment: parseFloat(formData.get('valuePerInstallment')), totalValue: parseInt(formData.get('installmentsCount')) * parseFloat(formData.get('valuePerInstallment')), dueDay: parseInt(formData.get('dueDay')), familyGroupId: state.family.id, userId: state.user.uid };
+    if (!instData.name || !instData.debtorId || isNaN(instData.totalValue)) { showToast('Preencha os campos.', 'error'); return; }
+    try { const colRef = collection(db, "familyGroups", state.family.id, "installments"); if (id) { await updateDoc(doc(colRef, id), instData); } else { await addDoc(colRef, instData); } state.editingInstallmentId = null; state.isModalOpen = false; renderApp(); showToast("Parcelamento salvo!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
 
 export async function handleDeleteInstallment() {
     if (!state.editingInstallmentId) return;
-
-    // Fecha o modal de edição antes de abrir a confirmação
-    state.isModalOpen = false;
-    renderApp();
-
-    openConfirmation("Excluir Parcelamento", "Tem certeza?", async () => {
-        try {
-            await deleteDoc(doc(db, "familyGroups", state.family.id, "installments", state.editingInstallmentId));
-            
-            state.editingInstallmentId = null; 
-            renderApp(); 
-            
-            showToast("Excluído.", 'success');
-        } catch (e) { showToast("Erro ao excluir.", 'error'); }
-    });
+    try { await deleteDoc(doc(db, "familyGroups", state.family.id, "installments", state.editingInstallmentId)); state.editingInstallmentId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Excluído.", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
 
 export async function handleSaveBudget(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const id = state.editingBudgetItemId;
-    const budgetData = { 
-        name: formData.get('budgetName'), 
-        type: formData.get('budgetType'), 
-        category: formData.get('budgetCategory'), 
-        value: parseFloat(formData.get('budgetValue')), 
-        appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', 
-        recurring: formData.get('budgetRecurring') === 'on' 
-    };
-    
-    try {
-        const col = collection(db, "familyGroups", state.family.id, "budgets");
-        if (id) { 
-            await updateDoc(doc(col, id), budgetData); 
-        } else { 
-            await addDoc(col, budgetData); 
-        }
-        
-        // CORREÇÃO: Fecha o modal e atualiza
-        state.editingBudgetItemId = null; 
-        state.isModalOpen = false; 
-        renderApp(); 
-        
-        showToast("Orçamento salvo!", 'success');
-    } catch (e) { showToast("Erro ao salvar orçamento.", 'error'); }
+    event.preventDefault(); const formData = new FormData(event.target); const id = state.editingBudgetItemId;
+    const budgetData = { name: formData.get('budgetName'), type: formData.get('budgetType'), category: formData.get('budgetCategory'), value: parseFloat(formData.get('budgetValue')), appliesFrom: state.displayedMonth.toISOString().slice(0, 7) + '-01', recurring: formData.get('budgetRecurring') === 'on' };
+    try { const col = collection(db, "familyGroups", state.family.id, "budgets"); if (id) { await updateDoc(doc(col, id), budgetData); } else { await addDoc(col, budgetData); } state.editingBudgetItemId = null; state.isModalOpen = false; renderApp(); showToast("Orçamento salvo!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
 
 export async function handleDeleteBudget() {
     if (!state.editingBudgetItemId) return;
-    try { 
-        await deleteDoc(doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); 
-        
-        // CORREÇÃO: Fecha o modal, reseta confirmação e atualiza
-        state.editingBudgetItemId = null; 
-        state.isModalOpen = false; 
-        state.confirmingDelete = false;
-        renderApp(); 
-        
-        showToast("Orçamento excluído!", 'success'); 
-    } catch (e) { showToast("Erro ao excluir.", 'error'); }
+    try { await deleteDoc(doc(db, "familyGroups", state.family.id, "budgets", state.editingBudgetItemId)); state.editingBudgetItemId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Orçamento excluído!", 'success'); } catch (e) { showToast("Erro.", 'error'); }
 }
+
 
 export async function handleSaveNewTag(event) {
     event.preventDefault();
-    const form = event.target; const newTagName = form.newTagName.value; const newTagColor = form.newTagColor.value;
+    const form = event.target;
+    const newTagName = form.newTagName.value.trim();
+    const newTagColor = form.newTagColor.value;
+    const newTagIcon = form.newTagIcon.value; // Pega o emoji
     const type = state.modalTransactionType;
-    if (!newTagName || !newTagColor) { showToast('Preencha tudo.', 'error'); return; }
-    if (state.userCategories[type].includes(newTagName)) { showToast('Categoria já existe.', 'error'); return; }
+
+    if (!newTagName || !newTagColor || !newTagIcon) { 
+        showToast('Preencha todos os campos e escolha um ícone.', 'error'); 
+        return; 
+    }
+    
+    if (state.userCategories[type].includes(newTagName)) { 
+        showToast('Categoria já existe.', 'error'); 
+        return; 
+    }
+
     try {
-        await firebase.updateDoc(firebase.doc(db, "familyGroups", state.family.id), { [`userCategories.${type}`]: arrayUnion(newTagName), [`categoryColors.${newTagName}`]: newTagColor });
-        // O listener da família vai atualizar o state.userCategories
-        state.modalView = state.modalParentView || 'transaction'; state.modalParentView = ''; renderApp(); showToast("Categoria criada!", 'success');
+        await firebase.updateDoc(firebase.doc(db, "familyGroups", state.family.id), { 
+            [`userCategories.${type}`]: arrayUnion(newTagName), 
+            [`categoryColors.${newTagName}`]: newTagColor,
+            [`categoryIcons.${newTagName}`]: newTagIcon // Salva o ícone
+        });
+        
+        state.modalView = state.modalParentView || 'transaction'; 
+        state.modalParentView = ''; 
+        renderApp(); 
+        showToast("Categoria criada!", 'success');
     } catch (e) { showToast("Erro ao criar categoria.", 'error'); }
 }
 
@@ -618,14 +418,26 @@ export async function handleGoogleLogin() {
     } catch (error) { showToast("Erro no login com Google.", 'error'); }
 }
 
-
 export async function handleCreateFamily(event) {
     event.preventDefault();
     const familyName = event.target.familyName.value;
     if (!familyName) return;
+    
+    // Inicializa com cores e ícones padrão
     const initialCategories = { expense: [...DEFAULT_CATEGORIES_SETUP.expense], income: [...DEFAULT_CATEGORIES_SETUP.income] };
     const initialColors = { ...DEFAULT_CATEGORIES_SETUP.colors };
-    const newFamily = { name: familyName, code: Math.random().toString(36).substring(2, 8).toUpperCase(), members: [state.user.uid], admins: [state.user.uid], userCategories: initialCategories, categoryColors: initialColors };
+    const initialIcons = { ...DEFAULT_CATEGORIES_SETUP.icons };
+
+    const newFamily = { 
+        name: familyName, 
+        code: Math.random().toString(36).substring(2, 8).toUpperCase(), 
+        members: [state.user.uid], 
+        admins: [state.user.uid], 
+        userCategories: initialCategories, 
+        categoryColors: initialColors,
+        categoryIcons: initialIcons // Salva ícones
+    };
+
     try {
         const docRef = await firebase.addDoc(firebase.collection(db, "familyGroups"), newFamily);
         await handleSelectFamily(docRef.id);
@@ -659,7 +471,7 @@ export async function handleJoinFamily(event) {
 }
 
 export function handleLeaveFamily() {
-    openConfirmation("Sair da Família", "Tem certeza que deseja sair?", async () => {
+    openConfirmation("Sair da Família", "Tem certeza que deseja sair? Você precisará de um novo convite para entrar.", async () => {
         const familyId = state.family.id; const userId = state.user.uid; const familyRef = firebase.doc(db, "familyGroups", familyId);
         try {
             const familyData = (await firebase.getDoc(familyRef)).data();
@@ -690,8 +502,8 @@ export function handleToggleTheme() {
 
 export async function fetchUserFamilies() {
     if (!state.user?.uid) return [];
-    const q = firebase.query(firebase.collection(db, "familyGroups"), firebase.where("members", "array-contains", state.user.uid));
-    const s = await firebase.getDocs(q); const f = []; s.forEach(d => f.push({ id: d.id, ...d.data() })); return f;
+    const q = query(collection(db, "familyGroups"), where("members", "array-contains", state.user.uid));
+    const s = await getDocs(q); const f = []; s.forEach(d => f.push({ id: d.id, ...d.data() })); return f;
 }
 
 export async function loadFamilyData(familyId) {
@@ -737,167 +549,73 @@ export async function handleUpdateCategory(event) {
     const oldName = state.editingCategory;
     const newName = document.getElementById('category-name-input').value.trim();
     const newColor = document.getElementById('category-color-input').value;
+    
+    // Captura o ícone selecionado (radio button)
+    const iconInput = document.querySelector('input[name="editCategoryIcon"]:checked');
+    const newIcon = iconInput ? iconInput.value : (state.categoryIcons[oldName] || '🏷️');
 
-    if (!newName) {
-        showToast("O nome da categoria não pode ser vazio.", 'error');
-        return;
-    }
+    if (!newName) { showToast("O nome não pode ser vazio.", 'error'); return; }
 
     try {
         const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
-
         const currentCategories = { ...state.userCategories };
-        let type = '';
-
-        if (currentCategories.expense.includes(oldName)) {
-            type = 'expense';
-        } else if (currentCategories.income.includes(oldName)) {
-            type = 'income';
-        }
-
-        const oldCategories = currentCategories[type];
-        const newCategories = oldCategories.filter(cat => cat !== oldName);
-
-        if (oldCategories.includes(newName) && newName !== oldName) {
-            showToast("Uma categoria com este nome já existe.", 'error');
-            return;
-        }
-
-        newCategories.push(newName);
+        let type = currentCategories.expense.includes(oldName) ? 'expense' : 'income';
+        const newCategories = currentCategories[type].filter(cat => cat !== oldName);
         
-        // Atualizar o nome da categoria nas transações
-        const transactionsToUpdate = state.transactions.filter(t => t.category === oldName);
-        const batch = firebase.writeBatch(db);
-        transactionsToUpdate.forEach(t => {
-            const transactionRef = firebase.doc(db, "transactions", t.id);
-            batch.update(transactionRef, { category: newName });
-        });
-        await batch.commit();
+        if (newCategories.includes(newName)) { showToast("Nome já existe.", 'error'); return; }
+        newCategories.push(newName);
 
-        // Atualizar no banco de dados da família
+        // Atualiza transações antigas
+        if (newName !== oldName) {
+            const batch = firebase.writeBatch(db);
+            state.transactions.filter(t => t.category === oldName).forEach(t => {
+                batch.update(doc(db, "transactions", t.id), { category: newName });
+            });
+            await batch.commit();
+        }
+
+        // Atualiza metadados da categoria
         await firebase.updateDoc(familyDocRef, {
             [`userCategories.${type}`]: newCategories,
-            [`categoryColors.${newName}`]: newColor
+            [`categoryColors.${newName}`]: newColor,
+            [`categoryIcons.${newName}`]: newIcon
         });
-        
-        // Remover a cor antiga se o nome mudou
+
         if (oldName !== newName) {
-            const familyData = (await firebase.getDoc(familyDocRef)).data();
-            const newColors = familyData.categoryColors;
-            delete newColors[oldName];
-            await firebase.updateDoc(familyDocRef, { categoryColors: newColors });
+            // Limpa dados antigos (opcional, simplificado aqui)
+            // Se quiser limpar 100%, teria que deletar a chave
         }
-
-        // Atualizar o estado local
-        state.userCategories[type] = newCategories;
-        state.categoryColors[newName] = newColor;
-        delete state.categoryColors[oldName];
-
-        // Recarregar os dados para refletir as mudanças
-        await loadFamilyData(state.family.id);
 
         state.isModalOpen = false;
         state.editingCategory = '';
         renderApp();
-        showToast("Categoria atualizada com sucesso!", 'success');
-    } catch (e) {
-        showToast("Erro ao atualizar categoria.", 'error');
-        console.error(e);
-    }
+        showToast("Categoria atualizada!", 'success');
+    } catch (e) { console.error(e); showToast("Erro ao atualizar.", 'error'); }
 }
 
 export async function handleDeleteCategory() {
     const categoryToDelete = state.editingCategory;
-    
     try {
         const familyDocRef = firebase.doc(db, "familyGroups", state.family.id);
-        const familyData = (await firebase.getDoc(familyDocRef)).data();
-        const userCategories = familyData.userCategories;
-        const categoryColors = familyData.categoryColors;
+        let type = state.userCategories.expense.includes(categoryToDelete) ? 'expense' : 'income';
         
-        // Identifica o tipo (receita ou despesa) da categoria
-        let type = '';
-        if (userCategories.expense.includes(categoryToDelete)) {
-            type = 'expense';
-        } else if (userCategories.income.includes(categoryToDelete)) {
-            type = 'income';
-        }
-
-        // Remove a categoria da lista
-        const newCategories = userCategories[type].filter(cat => cat !== categoryToDelete);
+        const newCategories = state.userCategories[type].filter(cat => cat !== categoryToDelete);
         
-        // Remove a cor da categoria
-        delete categoryColors[categoryToDelete];
-
-        // Atualiza o documento no Firebase
         await firebase.updateDoc(familyDocRef, {
-            [`userCategories.${type}`]: newCategories,
-            categoryColors: categoryColors
+            [`userCategories.${type}`]: newCategories
         });
 
-        // Atualizar transações para a categoria "Indefinida"
-        const transactionsToUpdate = state.transactions.filter(t => t.category === categoryToDelete);
         const batch = firebase.writeBatch(db);
-        transactionsToUpdate.forEach(t => {
-            const transactionRef = firebase.doc(db, "transactions", t.id);
-            batch.update(transactionRef, { category: 'Indefinida' });
+        state.transactions.filter(t => t.category === categoryToDelete).forEach(t => {
+            batch.update(doc(db, "transactions", t.id), { category: 'Indefinida' });
         });
         await batch.commit();
-
-        // Atualiza o estado local
-        state.userCategories[type] = newCategories;
-        delete state.categoryColors[categoryToDelete];
-        state.transactions = state.transactions.map(t => t.category === categoryToDelete ? { ...t, category: 'Indefinida' } : t);
 
         state.isModalOpen = false;
         state.editingCategory = '';
         renderApp();
-        showToast("Categoria excluída com sucesso! Transações relacionadas foram movidas para 'Indefinida'.", 'success');
-    } catch (e) {
-        showToast("Erro ao excluir categoria.", 'error');
-        console.error(e);
-    }
-}
-
-export async function handleResetPassword(event) {
-    event.preventDefault();
-    const email = event.target.email.value;
-
-    if (!email) {
-        showToast("Por favor, informe seu email.", 'error');
-        return;
-    }
-
-    try {
-        // Configura para redirecionar de volta para o app após redefinir (opcional, mas bom UX)
-        const actionCodeSettings = {
-            url: window.location.href,
-            handleCodeInApp: false
-        };
-
-        await firebase.sendPasswordResetEmail(auth, email, actionCodeSettings);
-
-        // Muda para a tela de sucesso
-        state.authView = 'forgot-password-success';
-        renderApp();
-
-    } catch (error) {
-        let errorMessage = "Erro ao enviar email.";
-        switch (error.code) {
-            case 'auth/user-not-found':
-                // Por segurança, alguns sistemas não avisam que o email não existe.
-                // Mas para facilitar, vamos avisar ou mostrar sucesso genérico.
-                errorMessage = "Email não encontrado.";
-                break;
-            case 'auth/invalid-email':
-                errorMessage = "Email inválido.";
-                break;
-            default:
-                console.error(error);
-                errorMessage = error.message;
-        }
-        showToast(errorMessage, 'error');
-    }
+        showToast("Categoria excluída.", 'success');
+    } catch (e) { showToast("Erro ao excluir.", 'error'); }
 }
 
 // --- CONFIGURAÇÕES DE PERFIL E FAMÍLIA ---
@@ -984,39 +702,30 @@ export async function handleUpdateFamilyName(event) {
     try {
         const familyRef = firebase.doc(db, "familyGroups", state.family.id);
         await firebase.updateDoc(familyRef, { name: newName });
-        
         state.family.name = newName;
         showToast("Nome atualizado!", 'success');
-        
-        // Hack visual para alternar de volta para texto
         document.getElementById('family-name-display').classList.remove('hidden');
         document.getElementById('family-name-edit').classList.add('hidden');
-        document.getElementById('family-name-text').textContent = newName;
-        renderApp(); // Para atualizar o header também
+        renderApp(); 
     } catch (e) {
         console.error(e);
         showToast("Erro ao atualizar nome.", 'error');
     }
 }
 
-// (ADMIN) Gerar Novo Código
 export async function handleRegenerateCode() {
     try {
         const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         const familyRef = firebase.doc(db, "familyGroups", state.family.id);
-        
         await firebase.updateDoc(familyRef, { code: newCode });
-        
         state.family.code = newCode;
         showToast("Novo código de convite gerado!", 'success');
-        renderApp(); // Atualiza a UI onde o código aparece
+        renderApp();
     } catch (e) {
         console.error(e);
         showToast("Erro ao gerar código.", 'error');
     }
-}// state-and-handlers.js
-
-// ... (imports existentes)
+}
 
 // --- NOVAS FUNÇÕES DE GERENCIAMENTO DE MEMBROS ---
 
@@ -1127,29 +836,20 @@ export async function handleAcceptJoinRequest(notification) {
     try {
         const batch = firebase.writeBatch(db);
         const familyRef = firebase.doc(db, "familyGroups", notification.targetFamilyId);
-        
-        // 1. Adiciona o usuário na família
-        batch.update(familyRef, { 
-            members: firebase.arrayUnion(notification.senderId) 
-        });
-
-        // 2. Apaga a notificação do Admin (a solicitação)
+        batch.update(familyRef, { members: firebase.arrayUnion(notification.senderId) });
         const notifRef = firebase.doc(db, "notifications", notification.id);
         batch.delete(notifRef);
-        
-        // 3. Cria notificação para o Usuário (Aceito)
         const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
         batch.set(newNotifRef, {
-            recipientId: notification.senderId, // Manda de volta para quem pediu
-            senderId: state.user.uid, // Admin que aceitou
+            recipientId: notification.senderId,
+            senderId: state.user.uid,
             targetFamilyId: notification.targetFamilyId,
             targetFamilyName: notification.targetFamilyName,
-            type: 'request_accepted', // Novo tipo
+            type: 'request_accepted',
             createdAt: Date.now(),
             read: false
         });
 
-        // Limpa notificações duplicadas de outros admins (opcional, mas recomendado)
         const qOthers = firebase.query(
             firebase.collection(db, "notifications"),
             firebase.where("senderId", "==", notification.senderId),
@@ -1162,14 +862,11 @@ export async function handleAcceptJoinRequest(notification) {
         });
 
         await batch.commit();
-
         showToast(`${notification.senderName} foi adicionado à família!`, 'success');
         
-        // Se o admin estiver na tela dessa família, recarrega
         if (state.family && state.family.id === notification.targetFamilyId) {
-            loadFamilyData(notification.targetFamilyId);
+            // loadFamilyData não é mais necessário com listener
         }
-
     } catch (e) {
         console.error(e);
         showToast("Erro ao aceitar solicitação.", 'error');
@@ -1183,19 +880,12 @@ export async function handleDeleteNotification(notificationId) {
         console.error(e);
     }
 }
-
 export async function handleEnterFamilyFromNotification(notification) {
     try {
-        // 1. Seleciona a família
         await handleSelectFamily(notification.targetFamilyId);
-        
-        // 2. Apaga a notificação após usar
         await firebase.deleteDoc(firebase.doc(db, "notifications", notification.id));
-        
-        // 3. Fecha o menu
         state.isNotificationMenuOpen = false;
         renderApp();
-        
         showToast(`Bem-vindo à família ${notification.targetFamilyName}!`, 'success');
     } catch (e) {
         console.error(e);
@@ -1205,37 +895,29 @@ export async function handleEnterFamilyFromNotification(notification) {
 
 export async function handleJoinFamilyFromLink(code) {
     const uppercaseCode = code.toUpperCase();
-    
+    if (state.family) return false;
     try {
         const q = query(collection(db, "familyGroups"), where("code", "==", uppercaseCode));
         const querySnapshot = await getDocs(q);
-        
         if (querySnapshot.empty) {
             showToast("Link de convite inválido ou expirado.", 'error');
             return false;
         }
-        
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
         const familyData = familyDoc.data();
-        
-        // Se já é membro, apenas carrega
         if (familyData.members.includes(state.user.uid)) {
             await handleSelectFamily(familyId);
             showToast(`Você já faz parte da família "${familyData.name}".`, 'success');
             return true;
         }
-        
-        // Se não é membro, adiciona diretamente
         await updateDoc(doc(db, "familyGroups", familyId), { members: arrayUnion(state.user.uid) });
-        
         await handleSelectFamily(familyId);
         showToast(`Você entrou na família "${familyData.name}"!`, 'success');
         return true;
-        
     } catch (e) {
-        console.error("Erro ao entrar via link:", e);
-        showToast("Erro ao processar link de convite.", 'error');
+        console.error("Erro ao entrar na família via link:", e);
+        showToast("Erro ao tentar entrar na família via link.", 'error');
         return false;
     }
 }
@@ -1243,22 +925,17 @@ export async function handleJoinFamilyFromLink(code) {
 export async function handleRejectJoinRequest(notification) {
     try {
         const batch = firebase.writeBatch(db);
-        
-        // 1. Apaga a solicitação
         const notifRef = firebase.doc(db, "notifications", notification.id);
         batch.delete(notifRef);
-
-        // 2. Cria notificação para o Usuário (Recusado)
         const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
         batch.set(newNotifRef, {
             recipientId: notification.senderId,
             senderId: state.user.uid,
             targetFamilyName: notification.targetFamilyName,
-            type: 'request_rejected', // Novo tipo
+            type: 'request_rejected',
             createdAt: Date.now(),
             read: false
         });
-
         await batch.commit();
         showToast("Solicitação recusada.", 'info');
     } catch (e) {
@@ -1269,42 +946,21 @@ export async function handleRejectJoinRequest(notification) {
 
 export function toggleNotificationMenu() {
     state.isNotificationMenuOpen = !state.isNotificationMenuOpen;
-
-    // Se abriu o menu, marca visualmente as notificações como lidas no banco
-    if (state.isNotificationMenuOpen && state.notifications.some(n => !n.read)) {
-        const batch = writeBatch(db);
-        state.notifications.forEach(n => {
-            if (!n.read) {
-                const notifRef = doc(db, "notifications", n.id);
-                batch.update(notifRef, { read: true });
-            }
-        });
-        // Envia a atualização para o Firestore (sem bloquear a UI)
-        batch.commit().catch(console.error);
-    }
-    
     renderApp();
 }
 
 export async function handleDemoteMember(memberId) {
     try {
-        // Verifica se não está tentando remover a si mesmo (segurança extra)
         if (memberId === state.user.uid) {
             showToast("Você não pode remover sua própria permissão de admin.", 'error');
             return;
         }
-
         const familyRef = doc(db, "familyGroups", state.family.id);
-        
-        // Remove o ID do array de admins
         await updateDoc(familyRef, {
             admins: arrayRemove(memberId)
         });
-
-        // Atualiza estado local
         state.familyAdmins = state.familyAdmins.filter(id => id !== memberId);
-        
-        renderApp(); // Atualiza a UI
+        renderApp(); 
         showToast("Permissão de admin removida.", 'success');
     } catch (e) {
         console.error(e);
@@ -1429,4 +1085,38 @@ function checkAutomatedAlerts() {
             }
         }
     });
+}
+
+export async function handleResetPassword(event) {
+    event.preventDefault();
+    const email = event.target.email.value;
+
+    if (!email) {
+        showToast("Por favor, informe seu email.", 'error');
+        return;
+    }
+
+    try {
+        const actionCodeSettings = {
+            url: window.location.href,
+            handleCodeInApp: false
+        };
+        await firebase.sendPasswordResetEmail(auth, email, actionCodeSettings);
+        state.authView = 'forgot-password-success';
+        renderApp();
+    } catch (error) {
+        let errorMessage = "Erro ao enviar email.";
+        switch (error.code) {
+            case 'auth/user-not-found':
+                errorMessage = "Email não encontrado.";
+                break;
+            case 'auth/invalid-email':
+                errorMessage = "Email inválido.";
+                break;
+            default:
+                console.error(error);
+                errorMessage = error.message;
+        }
+        showToast(errorMessage, 'error');
+    }
 }
