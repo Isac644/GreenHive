@@ -199,48 +199,64 @@ export function renderFamilyOnboardingPage() {
     return `
     <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
          <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-brand-200/40 via-transparent to-transparent dark:from-brand-900/20"></div>
-         <div class="w-full max-w-4xl relative z-10">
-            <div class="text-center mb-12">
-                <h1 class="text-4xl sm:text-5xl font-heading font-bold text-gray-900 dark:text-white mb-4">Olá, ${state.user.name.split(' ')[0]}! 👋</h1>
-                <p class="text-xl text-gray-500 dark:text-gray-400">Vamos organizar as finanças da sua casa?</p>
+         
+         <div class="w-full max-w-4xl relative z-10 flex flex-col justify-center min-h-[80vh] sm:min-h-0">
+            
+            <div class="text-center mb-8 sm:mb-12">
+                <h1 class="text-3xl sm:text-5xl font-heading font-bold text-gray-900 dark:text-white mb-2 sm:mb-4">Olá, ${state.user.name.split(' ')[0]}! 👋</h1>
+                <p class="text-base sm:text-xl text-gray-500 dark:text-gray-400">Vamos organizar as finanças da sua casa?</p>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
-                <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:border-brand-200 transition-colors group">
-                    <div class="w-14 h-14 bg-brand-100 dark:bg-brand-900/30 rounded-2xl flex items-center justify-center text-brand-600 mb-6 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            <div class="grid md:grid-cols-2 gap-6">
+                
+                <div class="bg-white dark:bg-gray-800 p-5 sm:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:border-brand-200 transition-all group">
+                    <div class="flex items-start gap-4 mb-6">
+                        <div class="w-12 h-12 bg-brand-100 dark:bg-brand-900/30 rounded-2xl flex-shrink-0 flex items-center justify-center text-brand-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-2xl font-heading font-bold text-gray-900 dark:text-white leading-tight">Criar nova família</h2>
+                            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Comece do zero e convide membros.</p>
+                        </div>
                     </div>
-                    <h2 class="text-2xl font-heading font-bold text-gray-900 dark:text-white mb-2">Criar nova família</h2>
-                    <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Comece do zero, defina as categorias e convide quem você quiser.</p>
-                    <form id="create-family-form">
-                        <input id="familyName" name="familyName" type="text" class="w-full px-5 py-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white mb-4" placeholder="Ex: Casa de Praia" required />
-                        <button type="submit" class="w-full py-4 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all">Começar agora</button>
+                    <form id="create-family-form" class="flex gap-3">
+                        <input id="familyName" name="familyName" type="text" class="flex-1 min-w-0 px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white text-sm font-medium" placeholder="Nome da Família" required />
+                        <button type="submit" class="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all text-sm whitespace-nowrap">
+                            Criar
+                        </button>
                     </form>
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 transition-colors group">
-                    <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                <div class="bg-white dark:bg-gray-800 p-5 sm:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 transition-all group">
+                    <div class="flex items-start gap-4 mb-6">
+                        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex-shrink-0 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-2xl font-heading font-bold text-gray-900 dark:text-white leading-tight">Já tenho convite</h2>
+                            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Cole o código de acesso.</p>
+                        </div>
                     </div>
-                    <h2 class="text-2xl font-heading font-bold text-gray-900 dark:text-white mb-2">Já tenho um convite</h2>
-                    <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">Cole o código de 6 dígitos que você recebeu para entrar.</p>
-                    <form id="join-family-form">
-                        <input id="inviteCode" name="inviteCode" type="text" class="w-full px-5 py-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition dark:text-white mb-4 uppercase tracking-widest font-mono text-center" placeholder="CÓDIGO" required maxlength="6" />
-                        ${state.joinRequestMessage ? `<p class="mb-4 text-sm text-amber-600 font-medium text-center bg-amber-50 p-2 rounded-lg">${state.joinRequestMessage}</p>` : ''}
-                        <button type="submit" class="w-full py-4 bg-white border-2 border-gray-200 dark:border-gray-600 hover:border-blue-500 hover:text-blue-600 text-gray-700 dark:text-white font-bold rounded-xl transition-all">Solicitar Acesso</button>
-                    </form>
+                    <form id="join-family-form" class="flex gap-3 h-12 relative">
+    <input id="inviteCode" name="inviteCode" type="text" class="w-2/3 px-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition dark:text-white text-sm font-mono uppercase tracking-widest text-center font-bold" placeholder="CÓDIGO" required maxlength="6" />
+    
+    <button type="submit" class="w-1/3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 text-gray-600 dark:text-white font-bold rounded-xl transition-all text-xs sm:text-sm flex items-center justify-center">
+        Entrar
+    </button>
+</form>
+                    ${state.joinRequestMessage ? `<p class="mt-3 text-xs font-bold text-amber-600 text-center bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg animate-fade-in">${state.joinRequestMessage}</p>` : ''}
                 </div>
             </div>
 
             ${state.userFamilies.length > 0 ? `
-            <div class="mt-12">
-                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Suas Famílias</h3>
-                <div class="flex flex-wrap justify-center gap-4">
+            <div class="mt-8 sm:mt-12">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Suas Famílias</h3>
+                <div class="flex flex-wrap justify-center gap-3 sm:gap-4">
                     ${state.userFamilies.map(f => `
-                    <button data-family-id="${f.id}" class="select-family-button flex items-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all border border-gray-100 dark:border-gray-700 group">
-                        <div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/50 text-brand-600 flex items-center justify-center font-bold text-lg">${f.name.charAt(0)}</div>
-                        <span class="font-heading font-bold text-gray-800 dark:text-white text-lg group-hover:text-brand-600 transition-colors">${f.name}</span>
-                        <svg class="w-5 h-5 text-gray-300 group-hover:text-brand-500 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <button data-family-id="${f.id}" class="select-family-button flex items-center gap-3 px-5 py-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all border border-gray-100 dark:border-gray-700 group w-full sm:w-auto justify-center">
+                        <div class="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/50 text-brand-600 flex items-center justify-center font-bold text-sm">${f.name.charAt(0)}</div>
+                        <span class="font-heading font-bold text-gray-800 dark:text-white text-base group-hover:text-brand-600 transition-colors">${f.name}</span>
+                        <svg class="w-4 h-4 text-gray-300 group-hover:text-brand-500 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     </button>`).join('')}
                 </div>
             </div>` : ''}

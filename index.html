@@ -47,6 +47,8 @@
     </script>
 
     <style>
+
+        
         /* Animações Suaves */
         .content-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
@@ -61,13 +63,27 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
 
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Previne scroll lateral */
+        }
+
+        #root {
+            flex: 1; /* Faz o root ocupar todo o espaço disponível */
+            display: flex;
+            flex-direction: column;
+        }
+
         /* Gradiente de Fundo Global */
         body {
             /* Light: Branco topo -> Verde muito suave em baixo */
             background: linear-gradient(180deg, #f8fafc 0%, #f0fdf4 100%);
-            min-height: 100vh;
             color: #1e293b; /* Slate-800 */
             transition: background-color 0.3s ease, color 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Dark: Verde/Azul Profundo */
