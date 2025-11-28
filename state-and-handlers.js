@@ -36,6 +36,7 @@ export const state = {
     editingInstallmentId: null,
     modalView: '',
     modalTransactionType: 'expense',
+    modalBudgetType: 'expense',
     confirmingDelete: false,
     errorMessage: '',
     familyAdmins: [],
@@ -978,12 +979,18 @@ export function closeConfirmation() {
 
 export async function handleAcceptJoinRequest(notification) {
     try {
-        const batch = firebase.writeBatch(db);
-        const familyRef = firebase.doc(db, "familyGroups", notification.targetFamilyId);
-        batch.update(familyRef, { members: firebase.arrayUnion(notification.senderId) });
-        const notifRef = firebase.doc(db, "notifications", notification.id);
+        const batch = writeBatch(db);
+        const familyRef = doc(db, "familyGroups", notification.targetFamilyId);
+        
+        // Adiciona membro
+        batch.update(familyRef, { members: arrayUnion(notification.senderId) });
+        
+        // Apaga solicitação
+        const notifRef = doc(db, "notifications", notification.id);
         batch.delete(notifRef);
-        const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
+        
+        // Avisa o usuário que foi aceito
+        const newNotifRef = doc(collection(db, "notifications"));
         batch.set(newNotifRef, {
             recipientId: notification.senderId,
             senderId: state.user.uid,
@@ -994,23 +1001,25 @@ export async function handleAcceptJoinRequest(notification) {
             read: false
         });
 
-        const qOthers = firebase.query(
-            firebase.collection(db, "notifications"),
-            firebase.where("senderId", "==", notification.senderId),
-            firebase.where("targetFamilyId", "==", notification.targetFamilyId),
-            firebase.where("type", "==", "join_request")
-        );
-        const otherDocs = await firebase.getDocs(qOthers);
-        otherDocs.forEach(d => {
-            if (d.id !== notification.id) batch.delete(d.ref);
-        });
+        // Limpa duplicatas
+        const qOthers = query(collection(db, "notifications"), where("senderId", "==", notification.senderId), where("targetFamilyId", "==", notification.targetFamilyId), where("type", "==", "join_request"));
+        const otherDocs = await getDocs(qOthers);
+        otherDocs.forEach(d => { if (d.id !== notification.id) batch.delete(d.ref); });
 
         await batch.commit();
-        showToast(`${notification.senderName} foi adicionado à família!`, 'success');
         
-        if (state.family && state.family.id === notification.targetFamilyId) {
-            // loadFamilyData não é mais necessário com listener
-        }
+        // --- NOVO: NOTIFICA A FAMÍLIA ---
+        // Como o estado local ainda não atualizou, usamos os dados que temos
+        // Mas idealmente, chamamos a função auxiliar passando o ID de quem entrou para excluir ele do aviso
+        // Nota: Aqui usamos uma lógica direta pois o state.family pode não estar sincronizado na visão do admin para pegar a lista atualizada instantaneamente.
+        // Vamos notificar usando a lista atual do state (que são os membros ANTES desse novo entrar), o que é perfeito.
+        notifyAllMembers(
+            "Novo Membro! 👋", 
+            `${notification.senderName} acabou de entrar na família. Dê as boas-vindas!`, 
+            state.user.uid // Não avisa o Admin que acabou de clicar no botão
+        );
+
+        showToast(`${notification.senderName} foi adicionado!`, 'success');
     } catch (e) {
         console.error(e);
         showToast("Erro ao aceitar solicitação.", 'error');
@@ -1043,25 +1052,36 @@ export async function handleJoinFamilyFromLink(code) {
     try {
         const q = query(collection(db, "familyGroups"), where("code", "==", uppercaseCode));
         const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
-            showToast("Link de convite inválido ou expirado.", 'error');
-            return false;
-        }
+        if (querySnapshot.empty) { showToast("Link inválido.", 'error'); return false; }
+        
         const familyDoc = querySnapshot.docs[0];
         const familyId = familyDoc.id;
         const familyData = familyDoc.data();
+        
         if (familyData.members.includes(state.user.uid)) {
             await handleSelectFamily(familyId);
-            showToast(`Você já faz parte da família "${familyData.name}".`, 'success');
+            showToast(`Você já faz parte da família.`, 'success');
             return true;
         }
+        
         await updateDoc(doc(db, "familyGroups", familyId), { members: arrayUnion(state.user.uid) });
+        
+        // Carrega a família para ter o state.family preenchido
         await handleSelectFamily(familyId);
-        showToast(`Você entrou na família "${familyData.name}"!`, 'success');
+        
+        // --- NOVO: NOTIFICA A FAMÍLIA ---
+        // Agora que state.family está carregado, podemos avisar os outros
+        notifyAllMembers(
+            "Novo Membro! 👋", 
+            `${state.user.name} entrou na família através do link.`, 
+            state.user.uid // Não avisa a si mesmo
+        );
+
+        showToast(`Bem-vindo à "${familyData.name}"!`, 'success');
         return true;
     } catch (e) {
-        console.error("Erro ao entrar na família via link:", e);
-        showToast("Erro ao tentar entrar na família via link.", 'error');
+        console.error("Erro link:", e);
+        showToast("Erro ao entrar.", 'error');
         return false;
     }
 }
@@ -1113,7 +1133,6 @@ export async function handleDemoteMember(memberId) {
 }
 
 async function createSystemNotification(type, title, message, metadata = {}) {
-    // Evita criar alertas duplicados se já existir um igual não lido
     const exists = state.notifications.some(n => 
         n.type === type && 
         n.targetFamilyId === state.family.id &&
@@ -1122,6 +1141,7 @@ async function createSystemNotification(type, title, message, metadata = {}) {
 
     if (!exists) {
         try {
+            // 1. Salva no Banco (Para aparecer na lista)
             await addDoc(collection(db, "notifications"), {
                 recipientId: state.user.uid,
                 senderId: "SYSTEM",
@@ -1135,6 +1155,17 @@ async function createSystemNotification(type, title, message, metadata = {}) {
                 createdAt: Date.now(),
                 read: false
             });
+
+            // 2. Dispara Notificação Nativa (Se permitido e se a página estiver oculta ou minimizada)
+            // Na verdade, mandamos sempre para garantir que ele veja
+            if (Notification.permission === "granted") {
+                new Notification(`GreenHive: ${title}`, {
+                    body: message,
+                    icon: 'assets/icon-192.png', // Caminho do seu ícone
+                    tag: type // Evita flood de notificações iguais
+                });
+            }
+
         } catch (e) {
             console.error("Erro ao criar alerta automático:", e);
         }
@@ -1144,7 +1175,17 @@ async function createSystemNotification(type, title, message, metadata = {}) {
 function checkAutomatedAlerts() {
     if (!state.user || !state.family) return;
 
-    // 1. ALERTA DE SALDO NEGATIVO
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const today = new Date();
+    const todayDay = today.getDate();
+    
+    // Calculando datas para alertas de vencimento
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDay = tomorrow.getDate();
+
+    // --- 1. ALERTA DE SALDO NEGATIVO ---
     const myBalance = state.transactions
         .filter(t => t.userId === state.user.uid)
         .reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
@@ -1157,78 +1198,120 @@ function checkAutomatedAlerts() {
             createSystemNotification(
                 'balance_alert', 
                 'Saldo Negativo', 
-                `Cuidado! Seu saldo atual está negativo em R$ ${Math.abs(myBalance).toFixed(2)}.`,
+                `Cuidado! Seu saldo na família "${state.family.name}" está negativo em R$ ${Math.abs(myBalance).toFixed(2)}.`,
                 { threshold: 'negative' } 
             );
             localStorage.setItem(balanceStateKey, 'negative');
         }
     } else {
-        if (lastState !== 'positive') {
-            localStorage.setItem(balanceStateKey, 'positive');
-        }
+        if (lastState !== 'positive') localStorage.setItem(balanceStateKey, 'positive');
     }
 
-    // 2. ALERTA DE ORÇAMENTO ESTOURADO (Com Reset)
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
+    // --- 2. ALERTAS DE ORÇAMENTO (Despesa e Receita) ---
     state.budgets.forEach(budget => {
+        // Filtra transações da categoria deste orçamento no mês atual
+        const currentVal = state.transactions
+            .filter(t => {
+                const tDate = new Date(t.date + 'T12:00:00');
+                return t.category === budget.category && 
+                       t.type === budget.type && // Verifica se é o mesmo tipo
+                       tDate.getMonth() === currentMonth &&
+                       tDate.getFullYear() === currentYear;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        const budgetKey = `gh_budget_alert_${budget.id}_${currentMonth}_${currentYear}`;
+        const alreadyAlerted = localStorage.getItem(budgetKey);
+
         if (budget.type === 'expense') {
-            const spent = state.transactions
-                .filter(t => {
-                    const tDate = new Date(t.date + 'T12:00:00');
-                    return t.category === budget.category && 
-                           t.type === 'expense' &&
-                           tDate.getMonth() === currentMonth &&
-                           tDate.getFullYear() === currentYear;
-                })
-                .reduce((sum, t) => sum + t.amount, 0);
-
-            const budgetKey = `gh_budget_alert_${budget.id}_${currentMonth}_${currentYear}`;
-            const alreadyAlerted = localStorage.getItem(budgetKey);
-
-            if (spent > budget.value) {
-                // Só avisa se ainda não avisou
+            // ORÇAMENTO ESTOURADO
+            if (currentVal > budget.value) {
                 if (!alreadyAlerted) {
                     createSystemNotification(
                         'budget_alert',
                         'Orçamento Excedido',
-                        `Você ultrapassou o limite de ${budget.name} em R$ ${(spent - budget.value).toFixed(2)}.`,
+                        `Você ultrapassou o limite de "${budget.name}" em R$ ${(currentVal - budget.value).toFixed(2)}.`,
                         { budgetId: budget.id, month: currentMonth, year: currentYear }
                     );
-                    localStorage.setItem(budgetKey, 'true');
+                    localStorage.setItem(budgetKey, 'exceeded');
                 }
-            } else {
-                // NOVO: Se o gasto voltou para dentro do limite (exclusão/edição),
-                // removemos a marcação. Assim, se estourar de novo, avisará novamente.
-                if (alreadyAlerted) {
-                    localStorage.removeItem(budgetKey);
+            } else if (alreadyAlerted === 'exceeded') {
+                localStorage.removeItem(budgetKey); // Reset se voltar ao normal
+            }
+        } else {
+            // META DE RECEITA ATINGIDA (Novo!)
+            if (currentVal >= budget.value && budget.value > 0) {
+                if (alreadyAlerted !== 'achieved') { // Só avisa uma vez
+                    createSystemNotification(
+                        'goal_alert', // Tipo novo (Verde)
+                        'Meta Atingida! 🏆',
+                        `Parabéns! Você atingiu sua meta de receita em "${budget.name}".`,
+                        { budgetId: budget.id, month: currentMonth, year: currentYear }
+                    );
+                    localStorage.setItem(budgetKey, 'achieved');
                 }
             }
         }
     });
 
-    // 3. ALERTA DE PARCELAMENTO
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDay = tomorrow.getDate();
-
+    // --- 3. ALERTAS DE PARCELAMENTO (Amanhã e Hoje) ---
     state.installments.forEach(inst => {
-        if (inst.debtorId === state.user.uid && inst.dueDay === tomorrowDay) {
-            const instKey = `gh_inst_alert_${inst.id}_${currentMonth}_${tomorrowDay}`;
+        if (inst.debtorId === state.user.uid) {
+            const instKeyPrefix = `gh_inst_alert_${inst.id}_${currentMonth}`;
             
-            if (!localStorage.getItem(instKey)) {
-                createSystemNotification(
-                    'installment_alert',
-                    'Parcela Vence Amanhã',
-                    `O parcelamento "${inst.name}" vence amanhã (dia ${inst.dueDay}).`,
-                    { installmentId: inst.id, dueDay: tomorrowDay, month: currentMonth }
-                );
-                localStorage.setItem(instKey, 'true');
+            // Vence Amanhã
+            if (inst.dueDay === tomorrowDay) {
+                const key = `${instKeyPrefix}_tomorrow`;
+                if (!localStorage.getItem(key)) {
+                    createSystemNotification(
+                        'installment_alert',
+                        'Parcela Vence Amanhã',
+                        `Prepare-se: O parcelamento "${inst.name}" vence amanhã.`,
+                        { installmentId: inst.id, type: 'tomorrow' }
+                    );
+                    localStorage.setItem(key, 'true');
+                }
+            }
+            
+            // Vence HOJE (Novo!)
+            if (inst.dueDay === todayDay) {
+                const key = `${instKeyPrefix}_today`;
+                if (!localStorage.getItem(key)) {
+                    createSystemNotification(
+                        'installment_due_today', // Tipo novo (Laranja/Urgente)
+                        'Vence Hoje!',
+                        `O parcelamento "${inst.name}" vence hoje! Já efetuou o pagamento?`,
+                        { installmentId: inst.id, type: 'today' }
+                    );
+                    localStorage.setItem(key, 'true');
+                }
             }
         }
     });
+
+    // --- 4. ALERTA DE INATIVIDADE (Novo!) ---
+    // Verifica se a última transação do usuário foi há mais de 5 dias
+    const userTrans = state.transactions.filter(t => t.userId === state.user.uid);
+    if (userTrans.length > 0) {
+        // Como a lista já vem ordenada por data (do mais recente pro mais antigo) no listener
+        const lastDate = new Date(userTrans[0].date + 'T12:00:00');
+        const diffTime = Math.abs(today - lastDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+        if (diffDays >= 5) {
+            const inactivityKey = `gh_inactivity_${lastDate.toISOString().split('T')[0]}`; // Chave baseada na data da última
+            
+            if (!localStorage.getItem(inactivityKey)) {
+                createSystemNotification(
+                    'inactivity_alert', // Tipo novo (Cinza/Neutro)
+                    'Sentimos sua falta!',
+                    `Faz ${diffDays} dias que você não registra nada. Mantenha suas contas em dia!`,
+                    { lastDate: lastDate.toISOString() }
+                );
+                localStorage.setItem(inactivityKey, 'true');
+            }
+        }
+    }
 }
 
 export async function handleResetPassword(event) {
@@ -1263,4 +1346,52 @@ export async function handleResetPassword(event) {
         }
         showToast(errorMessage, 'error');
     }
+}
+
+// --- NOVO: Função para pedir permissão ao navegador ---
+export async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        showToast("Este navegador não suporta notificações.", "error");
+        return;
+    }
+
+    if (Notification.permission === "granted") {
+        // showToast("Notificações já estão ativas!", "success"); // Opcional
+        return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+        showToast("Notificações ativadas com sucesso!", "success");
+        // Teste imediato
+        new Notification("GreenHive", { 
+            body: "As notificações estão ativas!", 
+            icon: 'assets/icon-192.png' 
+        });
+    }
+}
+
+// Função para notificar todos da família (menos quem causou a ação)
+async function notifyAllMembers(title, message, excludeUserId = null) {
+    if (!state.family) return;
+    
+    const batch = writeBatch(db);
+    const membersToNotify = state.family.members.filter(uid => uid !== excludeUserId);
+
+    membersToNotify.forEach(recipientId => {
+        const notifRef = doc(collection(db, "notifications"));
+        batch.set(notifRef, {
+            recipientId: recipientId,
+            senderId: "SYSTEM",
+            senderName: "GreenHive",
+            targetFamilyId: state.family.id,
+            type: 'new_member_alert', // Tipo novo
+            title: title,
+            message: message,
+            createdAt: Date.now(),
+            read: false
+        });
+    });
+
+    await batch.commit();
 }

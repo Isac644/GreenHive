@@ -50,61 +50,107 @@ export function renderHeader() {
     const hasUnread = state.notifications && state.notifications.some(n => !n.read);
     const badgeHTML = hasUnread ? `<span class="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 bg-brand-500 animate-pulse"></span>` : '';
     
-    // ... (mantém lógica de notificações) ...
     let notificationsListHTML = state.notifications.length > 0 
         ? state.notifications.map(notif => {
-            // ... (mesmo código anterior para notif) ...
             let bgClass = 'bg-white dark:bg-gray-800';
             let borderClass = 'border-gray-100 dark:border-gray-700';
             let icon = '';
-            if (['balance_alert', 'budget_alert', 'installment_alert'].includes(notif.type)) {
-                if (notif.type === 'balance_alert') { bgClass = 'bg-red-50 dark:bg-red-900/20'; icon = '⚠️'; } 
-                else if (notif.type === 'budget_alert') { bgClass = 'bg-yellow-50 dark:bg-yellow-900/20'; icon = '📉'; } 
-                else { bgClass = 'bg-blue-50 dark:bg-blue-900/20'; icon = '📅'; }
-            }
-            const finalBg = !notif.read ? bgClass + ' border-l-4 border-brand-500' : bgClass;
-            const content = notif.title ? 
-                `<div class="flex gap-3"><span class="text-xl">${icon}</span><div><p class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-1">${notif.title}</p><p class="text-xs text-gray-600 dark:text-gray-300">${notif.message}</p></div></div>` :
-                `<p class="text-sm text-gray-800 dark:text-gray-200 pr-4 mb-2"><strong>${notif.senderName}</strong> ${notif.type === 'join_request' ? 'quer entrar na família' : 'aceitou seu convite'}.</p>`;
-            let actions = '';
-            if (notif.type === 'join_request') { actions = `<div class="flex gap-2 mt-2"><button class="accept-request-btn px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Aceitar</button><button class="reject-request-btn px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 transition" data-notif-id="${notif.id}">Recusar</button></div>`; } 
-            else if (notif.type === 'request_accepted') { actions = `<button class="enter-family-notif-btn w-full mt-2 px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Entrar Agora</button>`; }
-            return `<div class="p-4 border-b ${borderClass} ${finalBg} relative group transition hover:bg-gray-50/50 dark:hover:bg-gray-700/30"><button class="delete-notif-btn absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition" data-id="${notif.id}">&times;</button>${content}${actions}</div>`;
-        }).join('') 
-        : `<div class="p-8 text-center text-gray-400 text-sm font-medium flex flex-col items-center gap-2"><svg class="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>Tudo limpo por aqui!</div>`;
+            let borderLeftColor = 'border-l-gray-300'; // Default
 
+            // --- Lógica de Estilos por Tipo ---
+            
+            // 1. Saldo Negativo (Erro/Perigo)
+            if (notif.type === 'balance_alert') { 
+                bgClass = 'bg-red-50 dark:bg-red-900/20'; 
+                borderLeftColor = 'border-l-red-500';
+                icon = '⚠️'; 
+            } 
+            // 2. Orçamento Estourado (Aviso)
+            else if (notif.type === 'budget_alert') { 
+                bgClass = 'bg-amber-50 dark:bg-amber-900/20'; 
+                borderLeftColor = 'border-l-amber-500';
+                icon = '📉'; 
+            } 
+            // 3. Parcela Amanhã (Info)
+            else if (notif.type === 'installment_alert') { 
+                bgClass = 'bg-blue-50 dark:bg-blue-900/20'; 
+                borderLeftColor = 'border-l-blue-500';
+                icon = '📅'; 
+            }
+            // 4. Parcela HOJE (Urgente) - NOVO
+            else if (notif.type === 'installment_due_today') {
+                bgClass = 'bg-orange-50 dark:bg-orange-900/20';
+                borderLeftColor = 'border-l-orange-500';
+                icon = '⏰';
+            }
+            // 5. Meta Atingida (Sucesso) - NOVO
+            else if (notif.type === 'goal_alert') {
+                bgClass = 'bg-green-50 dark:bg-green-900/20';
+                borderLeftColor = 'border-l-green-500';
+                icon = '🏆';
+            }
+            // 6. Inatividade (Neutro) - NOVO
+            else if (notif.type === 'inactivity_alert') {
+                bgClass = 'bg-gray-50 dark:bg-gray-800';
+                borderLeftColor = 'border-l-gray-400';
+                icon = 'zzz';
+            }
+            // 7. Convites (Brand)
+            else if (notif.type === 'join_request' || notif.type === 'request_accepted') {
+                borderLeftColor = 'border-l-brand-500';
+                icon = '👋';
+            }
+            // Dentro do map de notificações em renderHeader...
+            if (notif.type === 'goal_alert' || notif.type === 'new_member_alert') { // Adicionei aqui
+                bgClass = 'bg-green-50 dark:bg-green-900/20';
+                borderLeftColor = 'border-l-green-500';
+                icon = notif.type === 'goal_alert' ? '🏆' : '👋';
+            }
+
+            // Se não lida, escurece um pouco o fundo para destacar
+            const finalBg = !notif.read ? bgClass.replace('bg-', 'bg-opacity-100 bg-') : bgClass; // Ajuste fino se necessário, ou manter o bgClass base
+            
+            const content = notif.title ? 
+                `<div class="flex gap-3 pr-6">
+                    <span class="text-xl mt-1">${icon}</span>
+                    <div>
+                        <p class="text-sm font-bold text-gray-800 dark:text-gray-100 mb-0.5">${notif.title}</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 leading-snug">${notif.message}</p>
+                    </div>
+                </div>` :
+                `<div class="flex gap-3 pr-6">
+                    <span class="text-xl mt-1">${icon}</span>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 leading-snug">
+                        <strong>${notif.senderName}</strong> ${notif.type === 'join_request' ? 'quer entrar na família' : 'aceitou seu convite'} <strong>${notif.targetFamilyName || ''}</strong>.
+                    </p>
+                </div>`;
+
+            let actions = '';
+            if (notif.type === 'join_request') {
+                actions = `<div class="flex gap-2 mt-3 pl-8"><button class="accept-request-btn px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Aceitar</button><button class="reject-request-btn px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition" data-notif-id="${notif.id}">Recusar</button></div>`;
+            } else if (notif.type === 'request_accepted') {
+                actions = `<div class="mt-3 pl-8"><button class="enter-family-notif-btn w-full px-3 py-1.5 text-xs font-bold text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition" data-notif-id="${notif.id}">Entrar Agora</button></div>`;
+            }
+
+            return `
+            <div class="p-4 border-b border-gray-100 dark:border-gray-700 ${finalBg} ${borderLeftColor} border-l-4 relative transition hover:brightness-95 dark:hover:brightness-110">
+                <button class="delete-notif-btn absolute top-3 right-3 p-1 text-gray-400 hover:text-red-500 transition rounded-md hover:bg-red-50 dark:hover:bg-red-900/20" data-id="${notif.id}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+                ${content}
+                ${actions}
+            </div>`;
+        }).join('') 
+        : `<div class="p-12 text-center text-gray-400 text-sm font-medium flex flex-col items-center gap-3"><div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center"><svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg></div><p>Tudo limpo por aqui!</p></div>`;
+
+    // ... (Resto da função renderHeader: Avatar e HTML Final IGUAL AO ANTERIOR) ...
     let userAvatar = `<div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-300 flex items-center justify-center font-heading font-bold text-lg shadow-sm ring-2 ring-white dark:ring-gray-800 select-none">${state.user.name.charAt(0).toUpperCase()}</div>`;
     if (state.user.photoURL) { 
         if(state.user.photoURL.includes('|')) { const [emoji, bg] = state.user.photoURL.split('|'); userAvatar = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" style="background-color: ${bg};">${emoji}</div>`; } 
         else { userAvatar = `<img src="${state.user.photoURL}" class="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" />`; }
     }
-    
-    const dropdownHTML = state.isNotificationMenuOpen ? `<div class="absolute right-0 mt-4 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black/5"><div class="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 border-b border-gray-100 dark:border-gray-700 font-heading font-bold text-gray-700 dark:text-gray-200 text-sm">Notificações</div><div class="max-h-96 overflow-y-auto custom-scrollbar">${notificationsListHTML}</div></div>` : '';
-
-    // ATUALIZAÇÃO: Chamar GreenHiveLogoSVG('48') para o logo ficar maior
-    return `
-    <header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">
-                    ${GreenHiveLogoSVG('48')} 
-                </div>
-                <div class="flex items-center gap-2 sm:gap-4">
-                    <div class="relative"><button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${Icons.Bell}${badgeHTML}</button>${dropdownHTML}</div>
-                    <button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${state.theme === 'light' ? Icons.Moon : Icons.Sun}</button>
-                    <div class="relative pl-2">
-                        <button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">${userAvatar}</button>
-                        <div id="user-menu" class="hidden absolute right-0 mt-4 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 animate-fade-in origin-top-right z-50 ring-1 ring-black/5">
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2"><p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p></div>
-                            <button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button>
-                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
-                            <button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>`;
+    const dropdownHTML = state.isNotificationMenuOpen ? `<div class="fixed left-4 right-4 top-20 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-4 sm:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black/5"><div class="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center"><span class="font-heading font-bold text-gray-700 dark:text-gray-200 text-sm">Notificações</span><button id="enable-push-btn" class="text-[10px] font-bold text-brand-600 hover:underline" title="Ativar avisos no celular/PC">Ativar Alertas</button></div><div class="max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar">${notificationsListHTML}</div></div>` : '';
+    return `<header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-20"><div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">${GreenHiveLogoSVG('48')}</div><div class="flex items-center gap-2 sm:gap-4"><div class="relative"><button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${Icons.Bell}${badgeHTML}</button>${dropdownHTML}</div><button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${state.theme === 'light' ? Icons.Moon : Icons.Sun}</button><div class="relative pl-2"><button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">${userAvatar}</button><div id="user-menu" class="hidden absolute right-0 mt-4 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 animate-fade-in origin-top-right z-50 ring-1 ring-black/5"><div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2"><p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p></div><button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button><div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div><button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button></div></div></div></div></div></header>`;
 }
 
 // --- 3. TELAS DE AUTENTICAÇÃO E ENTRADA ---
@@ -866,29 +912,63 @@ export function renderTransactionModal() {
 
 export function renderBudgetModal() {
     if (!state.isModalOpen || state.modalView !== 'budget') return '';
+
     const isEditing = state.editingBudgetItemId !== null;
     const budget = isEditing ? state.budgets.find(b => b.id === state.editingBudgetItemId) : null;
-    const type = budget?.type || 'expense';
+    
+    // CORREÇÃO: Agora usa o estado modalBudgetType se for criação
+    const type = isEditing ? budget.type : state.modalBudgetType;
     
     const allIncomeCategories = [...CATEGORIES.income, ...(state.userCategories.income || [])];
     const allExpenseCategories = [...CATEGORIES.expense, ...(state.userCategories.expense || [])];
-    const renderOpts = (cats) => cats.map(c => `<option value="${c}" ${budget?.category === c ? 'selected' : ''}>${state.categoryIcons[c]||'🏷️'} ${c}</option>`).join('');
     
+    // Renderiza opções baseado no tipo atual
+    const currentCategories = type === 'expense' ? allExpenseCategories : allIncomeCategories;
+    const renderOpts = currentCategories.map(c => `<option value="${c}" ${budget?.category === c ? 'selected' : ''}>${state.categoryIcons[c]||'🏷️'} ${c}</option>`).join('');
+    
+    const deleteButtonHTML = isEditing ? `<button type="button" id="delete-budget-button" class="px-4 py-3.5 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition">Excluir</button>` : '';
     const confirmDeleteHTML = state.confirmingDelete ? `<div class="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-center animate-fade-in"><p class="text-red-600 dark:text-red-400 font-bold mb-3 text-sm">Excluir este orçamento?</p><div class="flex justify-center gap-3"><button type="button" id="confirm-delete-no" class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 rounded-lg border font-bold text-xs">Não</button><button type="button" id="confirm-delete-yes" class="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs shadow-md">Sim</button></div></div>` : '';
+
+    // Classes de estilo (reaproveitando do arquivo para manter padrão)
+    const inputClass = "w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white font-medium outline-none";
+    const selectClass = "w-full px-4 py-3.5 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white font-medium outline-none appearance-none cursor-pointer";
+    const labelClass = "block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 ml-1";
 
     const contentHTML = `
         <form id="budget-form" class="space-y-5">
             <div><label class="${labelClass}">Nome do Orçamento</label><input id="budgetName" name="budgetName" type="text" class="${inputClass}" value="${budget?.name || ''}" placeholder="Ex: Limite Mercado" required /></div>
-            <div><label class="${labelClass}">Tipo</label><select id="budgetType" name="budgetType" class="${selectClass}"><option value="expense" ${type === 'expense' ? 'selected' : ''}>Limite de Despesa</option><option value="income" ${type === 'income' ? 'selected' : ''}>Meta de Receita</option></select></div>
-            <div id="budget-category-wrapper"><label class="${labelClass}">Categoria</label><select id="budgetCategory" name="budgetCategory" class="${selectClass}">${renderOpts(type === 'expense' ? allExpenseCategories : allIncomeCategories)}</select></div>
+            
+            <div>
+                <label class="${labelClass}">Tipo</label>
+                <select id="budgetType" name="budgetType" class="${selectClass}">
+                    <option value="expense" ${type === 'expense' ? 'selected' : ''}>Limite de Despesa</option>
+                    <option value="income" ${type === 'income' ? 'selected' : ''}>Meta de Receita</option>
+                </select>
+            </div>
+            
+            <div id="budget-category-wrapper">
+                <label class="${labelClass}">Categoria</label>
+                <select id="budgetCategory" name="budgetCategory" class="${selectClass}">
+                    ${renderOpts}
+                </select>
+            </div>
+            
             <div><label class="${labelClass}">Valor Mensal (R$)</label><input id="budgetValue" name="budgetValue" type="number" step="0.01" class="${inputClass}" value="${budget?.value || ''}" required /></div>
-            <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-700"><input id="budgetRecurring" name="budgetRecurring" type="checkbox" class="w-5 h-5 text-brand-600 rounded focus:ring-brand-500 border-gray-300" ${budget?.recurring ?? true ? 'checked' : ''}><label for="budgetRecurring" class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">Repetir todos os meses</label></div>
+            
+            <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-700">
+                <input id="budgetRecurring" name="budgetRecurring" type="checkbox" class="w-5 h-5 text-brand-600 rounded focus:ring-brand-500 border-gray-300" ${budget?.recurring ?? true ? 'checked' : ''}>
+                <label for="budgetRecurring" class="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">Repetir todos os meses</label>
+            </div>
+            
             <div class="mt-8 flex gap-3">
-                ${isEditing ? `<button type="button" id="delete-budget-button" class="px-4 py-3.5 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 transition">Excluir</button>` : ''}
+                ${deleteButtonHTML}
                 <button type="submit" class="flex-1 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition">${isEditing ? 'Salvar' : 'Criar Orçamento'}</button>
             </div>
             ${confirmDeleteHTML}
         </form>`;
+    
+    // Atenção: Estou assumindo que ModalBase está disponível no escopo ou importado
+    // Se ModalBase for interno do ui-components, está tudo certo.
     return ModalBase(isEditing ? 'Editar Orçamento' : 'Criar Orçamento', contentHTML);
 }
 

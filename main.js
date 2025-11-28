@@ -16,7 +16,8 @@ import {
     handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment,
     handleClearFilters, handleToggleFilterMember, handleToggleFilterCategory, 
     handleToggleFilterType, handleToggleFilterDate, handleOpenFilters, handleApplyFilters,
-    handleDeleteFamily // <--- ELA PRECISA ESTAR AQUI
+    handleDeleteFamily, // <--- ELA PRECISA ESTAR AQUI
+    requestNotificationPermission
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -197,11 +198,11 @@ function attachEventListeners() {
     const catSelect = document.getElementById('category'); if (catSelect) catSelect.onchange = (e) => { if (e.target.value === '--create-new--') { state.modalParentView = 'transaction'; state.modalView = 'newTag'; renderApp(); } };
 
     // Budget Modal
-    const addBudgetBtn = document.getElementById('add-budget-button'); if (addBudgetBtn) addBudgetBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'budget'; state.editingBudgetItemId = null; renderApp(); };
+    
     document.querySelectorAll('.budget-item').forEach(i => i.onclick = e => { state.editingBudgetItemId = e.currentTarget.dataset.budgetId; state.isModalOpen = true; state.modalView = 'budget'; renderApp(); });
     const budgetForm = document.getElementById('budget-form'); if (budgetForm) budgetForm.onsubmit = handleSaveBudget;
     const delBudgetBtn = document.getElementById('delete-budget-button'); if (delBudgetBtn) delBudgetBtn.onclick = () => { state.confirmingDelete = true; renderApp(); };
-    const budgetTypeSelect = document.getElementById('budgetType'); if (budgetTypeSelect) budgetTypeSelect.onchange = () => { /* Logica visual simples, ou re-render */ renderApp(); };
+    
 
     // Dívidas e Parcelas
     const addDebtBtn = document.getElementById('add-debt-btn'); if(addDebtBtn) addDebtBtn.onclick = () => { state.isModalOpen = true; state.modalView = 'debt'; state.editingDebtId = null; renderApp(); };
@@ -345,6 +346,34 @@ function attachEventListeners() {
             renderApp(); 
         };
     });
+
+    // Listener para ativar notificações (dentro do dropdown)
+    // Usamos 'document' pois o dropdown é recriado dinamicamente
+    const enablePushBtn = document.getElementById('enable-push-btn');
+    if (enablePushBtn) {
+        enablePushBtn.onclick = (e) => {
+            e.stopPropagation();
+            requestNotificationPermission();
+        };
+    }
+
+    const addBudgetBtn = document.getElementById('add-budget-button'); 
+    if (addBudgetBtn) addBudgetBtn.onclick = () => { 
+        state.isModalOpen = true; 
+        state.modalView = 'budget'; 
+        state.editingBudgetItemId = null; 
+        state.modalBudgetType = 'expense'; // Reset para padrão
+        renderApp(); 
+    };
+    
+    // ... (listener de budget-item mantém igual) ...
+
+    // CORREÇÃO: Listener do Select de Tipo
+    const budgetTypeSelect = document.getElementById('budgetType'); 
+    if (budgetTypeSelect) budgetTypeSelect.onchange = (e) => { 
+        state.modalBudgetType = e.target.value; // Salva a escolha!
+        renderApp(); // Agora pode renderizar que o estado está salvo
+    };
 }
 
 let unsubscribeNotifications = null;
