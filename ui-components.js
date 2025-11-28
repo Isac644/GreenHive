@@ -47,68 +47,32 @@ export function renderLoadingScreen() {
 
 export function renderHeader() {
     if (!state.user) return '';
+
+    // 1. Notificações (Badge)
     const hasUnread = state.notifications && state.notifications.some(n => !n.read);
     const badgeHTML = hasUnread ? `<span class="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 bg-brand-500 animate-pulse"></span>` : '';
     
+    // 2. Lista de Notificações (HTML)
     let notificationsListHTML = state.notifications.length > 0 
         ? state.notifications.map(notif => {
             let bgClass = 'bg-white dark:bg-gray-800';
             let borderClass = 'border-gray-100 dark:border-gray-700';
             let icon = '';
-            let borderLeftColor = 'border-l-gray-300'; // Default
+            let borderLeftColor = 'border-l-gray-300';
 
-            // --- Lógica de Estilos por Tipo ---
-            
-            // 1. Saldo Negativo (Erro/Perigo)
-            if (notif.type === 'balance_alert') { 
-                bgClass = 'bg-red-50 dark:bg-red-900/20'; 
-                borderLeftColor = 'border-l-red-500';
-                icon = '⚠️'; 
-            } 
-            // 2. Orçamento Estourado (Aviso)
-            else if (notif.type === 'budget_alert') { 
-                bgClass = 'bg-amber-50 dark:bg-amber-900/20'; 
-                borderLeftColor = 'border-l-amber-500';
-                icon = '📉'; 
-            } 
-            // 3. Parcela Amanhã (Info)
-            else if (notif.type === 'installment_alert') { 
-                bgClass = 'bg-blue-50 dark:bg-blue-900/20'; 
-                borderLeftColor = 'border-l-blue-500';
-                icon = '📅'; 
+            // Estilização por Tipo
+            if (['balance_alert', 'budget_alert', 'installment_alert'].includes(notif.type)) {
+                if (notif.type === 'balance_alert') { bgClass = 'bg-red-50 dark:bg-red-900/20'; borderLeftColor = 'border-l-red-500'; icon = '⚠️'; } 
+                else if (notif.type === 'budget_alert') { bgClass = 'bg-yellow-50 dark:bg-yellow-900/20'; borderLeftColor = 'border-l-amber-500'; icon = '📉'; } 
+                else { bgClass = 'bg-blue-50 dark:bg-blue-900/20'; borderLeftColor = 'border-l-blue-500'; icon = '📅'; }
             }
-            // 4. Parcela HOJE (Urgente) - NOVO
-            else if (notif.type === 'installment_due_today') {
-                bgClass = 'bg-orange-50 dark:bg-orange-900/20';
-                borderLeftColor = 'border-l-orange-500';
-                icon = '⏰';
-            }
-            // 5. Meta Atingida (Sucesso) - NOVO
-            else if (notif.type === 'goal_alert') {
-                bgClass = 'bg-green-50 dark:bg-green-900/20';
-                borderLeftColor = 'border-l-green-500';
-                icon = '🏆';
-            }
-            // 6. Inatividade (Neutro) - NOVO
-            else if (notif.type === 'inactivity_alert') {
-                bgClass = 'bg-gray-50 dark:bg-gray-800';
-                borderLeftColor = 'border-l-gray-400';
-                icon = 'zzz';
-            }
-            // 7. Convites (Brand)
-            else if (notif.type === 'join_request' || notif.type === 'request_accepted') {
-                borderLeftColor = 'border-l-brand-500';
-                icon = '👋';
-            }
-            // Dentro do map de notificações em renderHeader...
-            if (notif.type === 'goal_alert' || notif.type === 'new_member_alert') { // Adicionei aqui
-                bgClass = 'bg-green-50 dark:bg-green-900/20';
-                borderLeftColor = 'border-l-green-500';
-                icon = notif.type === 'goal_alert' ? '🏆' : '👋';
-            }
+            else if (notif.type === 'installment_due_today') { bgClass = 'bg-orange-50 dark:bg-orange-900/20'; borderLeftColor = 'border-l-orange-500'; icon = '⏰'; }
+            else if (notif.type === 'goal_alert') { bgClass = 'bg-green-50 dark:bg-green-900/20'; borderLeftColor = 'border-l-green-500'; icon = '🏆'; }
+            else if (notif.type === 'inactivity_alert') { bgClass = 'bg-gray-50 dark:bg-gray-800'; borderLeftColor = 'border-l-gray-400'; icon = 'zzz'; }
+            else if (notif.type === 'join_request' || notif.type === 'request_accepted') { borderLeftColor = 'border-l-brand-500'; icon = '👋'; }
+            else if (notif.type === 'new_member_alert') { bgClass = 'bg-green-50 dark:bg-green-900/20'; borderLeftColor = 'border-l-green-500'; icon = '👋'; }
 
-            // Se não lida, escurece um pouco o fundo para destacar
-            const finalBg = !notif.read ? bgClass.replace('bg-', 'bg-opacity-100 bg-') : bgClass; // Ajuste fino se necessário, ou manter o bgClass base
+            const finalBg = !notif.read ? bgClass.replace('bg-', 'bg-opacity-100 bg-') : bgClass;
             
             const content = notif.title ? 
                 `<div class="flex gap-3 pr-6">
@@ -143,14 +107,72 @@ export function renderHeader() {
         }).join('') 
         : `<div class="p-12 text-center text-gray-400 text-sm font-medium flex flex-col items-center gap-3"><div class="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center"><svg class="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg></div><p>Tudo limpo por aqui!</p></div>`;
 
-    // ... (Resto da função renderHeader: Avatar e HTML Final IGUAL AO ANTERIOR) ...
+    // 3. Avatar do Usuário
     let userAvatar = `<div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-300 flex items-center justify-center font-heading font-bold text-lg shadow-sm ring-2 ring-white dark:ring-gray-800 select-none">${state.user.name.charAt(0).toUpperCase()}</div>`;
     if (state.user.photoURL) { 
         if(state.user.photoURL.includes('|')) { const [emoji, bg] = state.user.photoURL.split('|'); userAvatar = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" style="background-color: ${bg};">${emoji}</div>`; } 
         else { userAvatar = `<img src="${state.user.photoURL}" class="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-white dark:ring-gray-800 select-none" />`; }
     }
+    
+    // 4. Dropdown Notificações
     const dropdownHTML = state.isNotificationMenuOpen ? `<div class="fixed left-4 right-4 top-20 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-4 sm:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black/5"><div class="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center"><span class="font-heading font-bold text-gray-700 dark:text-gray-200 text-sm">Notificações</span><button id="enable-push-btn" class="text-[10px] font-bold text-brand-600 hover:underline" title="Ativar avisos no celular/PC">Ativar Alertas</button></div><div class="max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar">${notificationsListHTML}</div></div>` : '';
-    return `<header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-20"><div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">${GreenHiveLogoSVG('48')}</div><div class="flex items-center gap-2 sm:gap-4"><div class="relative"><button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${Icons.Bell}${badgeHTML}</button>${dropdownHTML}</div><button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${state.theme === 'light' ? Icons.Moon : Icons.Sun}</button><div class="relative pl-2"><button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">${userAvatar}</button><div id="user-menu" class="hidden absolute right-0 mt-4 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 animate-fade-in origin-top-right z-50 ring-1 ring-black/5"><div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2"><p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p></div><button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button><div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div><button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button></div></div></div></div></div></header>`;
+
+    // 5. Botão Tutorial (Condicional)
+    const showTutorialBtn = state.family && state.currentView === 'dashboard';
+    const tutorialButtonHTML = showTutorialBtn ? `
+        <button id="start-tutorial-btn" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            Ajuda / Tutorial
+        </button>
+        <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>` : '';
+
+    // HTML Final do Header
+    return `<header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">
+                    ${GreenHiveLogoSVG('48')}
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <div class="relative">
+                        <button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">
+                            ${Icons.Bell}${badgeHTML}
+                        </button>
+                        ${dropdownHTML}
+                    </div>
+                    <button id="theme-toggle-button" class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">
+                        ${state.theme === 'light' ? Icons.Moon : Icons.Sun}
+                    </button>
+                    <div class="relative pl-2">
+                        <button id="user-menu-button" class="flex items-center gap-2 transition-transform active:scale-95 focus:outline-none">
+                            ${userAvatar}
+                        </button>
+                        
+                        <div id="user-menu" class="hidden absolute right-0 mt-4 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 py-2 animate-fade-in origin-top-right z-50 ring-1 ring-black/5">
+                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 mb-2">
+                                <p class="text-sm font-heading font-bold text-gray-800 dark:text-white truncate">${state.user.name}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${state.user.email}</p>
+                            </div>
+                            
+                            <button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.29 1.52 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Configurações
+                            </button>
+                            
+                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
+                            
+                            ${tutorialButtonHTML}
+                            
+                            <button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                Sair da Conta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>`;
 }
 
 // --- 3. TELAS DE AUTENTICAÇÃO E ENTRADA ---

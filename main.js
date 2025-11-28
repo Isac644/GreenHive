@@ -24,7 +24,9 @@ import {
     handleToggleFilterMember, 
     handleToggleFilterCategory, 
     handleToggleFilterType, 
-    handleToggleFilterDate
+    handleToggleFilterDate,
+    checkAndStartTutorial, 
+    startTutorial 
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -88,6 +90,10 @@ export function renderApp() {
     if (state.shouldAnimate) {
         state.shouldAnimate = false;
     }
+
+    // Tenta iniciar o tutorial se for a primeira vez
+    // (A função checkAndStartTutorial já tem as proteções necessárias)
+    checkAndStartTutorial();
 }
 
 function attachEventListeners() {
@@ -453,6 +459,15 @@ function attachEventListeners() {
             console.log("click");
             state.confirmingDelete = true; 
             renderApp(); 
+        };
+    }
+
+    // Botão de Tutorial no Menu
+    const tutorialBtn = document.getElementById('start-tutorial-btn');
+    if (tutorialBtn) {
+        tutorialBtn.onclick = () => {
+            document.getElementById('user-menu')?.classList.add('hidden');
+            startTutorial();
         };
     }
 }

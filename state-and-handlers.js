@@ -1713,3 +1713,53 @@ async function checkRecurringTransactions(familyId) {
         console.error("Erro ao processar recorrências:", e);
     }
 }
+
+export function startTutorial() {
+    if (!window.driver) return;
+
+    const driver = window.driver.js.driver;
+
+    const tour = driver({
+        showProgress: true,
+        // Animação suave
+        animate: true,
+        // Permite clicar fora para fechar (opcional, mas bom pra UX)
+        allowClose: true,
+        
+        // Textos dos botões
+        nextBtnText: 'Próximo →',
+        prevBtnText: '← Voltar',
+        doneBtnText: 'Vamos lá! 🚀',
+        
+        // Passos
+        steps: [
+            { element: '#family-info-button', popover: { title: 'Sua Família 🏡', description: 'Aqui você gerencia os membros e pega o código de convite.' } },
+            { element: '.nav-tab[data-view="dashboard"]', popover: { title: 'Dashboard 📊', description: 'Visão geral do saldo, receitas e despesas em tempo real.' } },
+            { element: '.nav-tab[data-view="records"]', popover: { title: 'Registros 📝', description: 'Adicione suas transações diárias aqui. Use filtros para encontrar gastos antigos.' } },
+            { element: '.nav-tab[data-view="budget"]', popover: { title: 'Orçamentos 💰', description: 'Defina limites (teto) para não gastar demais em cada categoria.' } },
+            { element: '.nav-tab[data-view="debts"]', popover: { title: 'Dívidas 💳', description: 'Gerencie empréstimos e parcelamentos de cartão de crédito.' } },
+            { element: '.nav-tab[data-view="goals"]', popover: { title: 'Metas 🚀', description: 'Crie cofrinhos para guardar dinheiro para seus sonhos.' } },
+            { element: '#user-menu-button', popover: { title: 'Seu Perfil 👤', description: 'Mude seu avatar, senha e acesse este tutorial novamente por aqui.' } },
+        ],
+
+        // O QUE FAZER AO TERMINAR OU FECHAR
+        onDestroyStarted: () => {
+            // Se o tour for destruído (clicou em Done ou Close), salvamos que foi visto.
+            // O driver.js v1.x não tem callback específico para o botão Done separado do Close na config padrão facilmente,
+            // mas o onDestroyStarted roda em ambos os casos, o que é o que queremos.
+            localStorage.setItem('greenhive_tutorial_seen', 'true');
+            tour.destroy(); // Garante que ele suma da tela
+        }
+    });
+
+    tour.drive();
+}
+
+// Função que verifica se deve rodar o tutorial automaticamente
+export function checkAndStartTutorial() {
+    // Só roda se estiver no Dashboard e a chave não existir no localStorage
+    if (state.currentView === 'dashboard' && !localStorage.getItem('greenhive_tutorial_seen')) {
+        // Pequeno delay para garantir que o HTML renderizou
+        setTimeout(() => startTutorial(), 1500);
+    }
+}
