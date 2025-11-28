@@ -17,7 +17,8 @@ import {
     handleClearFilters, handleToggleFilterMember, handleToggleFilterCategory, 
     handleToggleFilterType, handleToggleFilterDate, handleOpenFilters, handleApplyFilters,
     handleDeleteFamily, // <--- ELA PRECISA ESTAR AQUI
-    requestNotificationPermission
+    requestNotificationPermission,
+    handleExportCSV
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -374,6 +375,11 @@ function attachEventListeners() {
         state.modalBudgetType = e.target.value; // Salva a escolha!
         renderApp(); // Agora pode renderizar que o estado está salvo
     };
+
+    const exportBtn = document.getElementById('export-csv-btn');
+    if (exportBtn) {
+        exportBtn.onclick = handleExportCSV;
+    }
 }
 
 let unsubscribeNotifications = null;

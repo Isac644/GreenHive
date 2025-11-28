@@ -1395,3 +1395,52 @@ async function notifyAllMembers(title, message, excludeUserId = null) {
 
     await batch.commit();
 }
+
+// --- EXPORTAÇÃO ---
+export function handleExportCSV() {
+    // 1. Verifica se há dados
+    if (!state.transactions || state.transactions.length === 0) {
+        showToast("Não há transações para exportar.", "error");
+        return;
+    }
+
+    // 2. Cabeçalho do CSV
+    // Importante: 'sep=,' ajuda o Excel a entender a separação em alguns sistemas
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Data,Descrição,Categoria,Tipo,Valor,Quem,Família\n";
+
+    // 3. Linhas
+    state.transactions.forEach(t => {
+        const dateStr = new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR');
+        
+        // Tratamento para evitar quebra se a descrição tiver vírgulas
+        const description = t.description ? `"${t.description.replace(/"/g, '""')}"` : "";
+        
+        // Formatação de moeda (R$ 1.200,50 -> 1200.50 ou mantém com vírgula dependendo da preferência)
+        // Para CSV padrão internacional, ponto é melhor. Para Excel PT-BR, vírgula.
+        // Vamos usar o padrão numérico bruto para facilitar cálculos.
+        const amount = t.amount.toString().replace('.', ','); 
+
+        const type = t.type === 'income' ? 'Receita' : 'Despesa';
+        const user = t.userName || 'Desconhecido';
+        const family = state.family.name;
+
+        const row = [dateStr, description, t.category, type, amount, user, family].join(",");
+        csvContent += row + "\n";
+    });
+
+    // 4. Download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    // Nome do arquivo: relatorio_mes_ano.csv
+    const fileName = `greenhive_relatorio_${state.displayedMonth.getMonth()+1}_${state.displayedMonth.getFullYear()}.csv`;
+    link.setAttribute("download", fileName);
+    
+    document.body.appendChild(link); // Necessário para Firefox
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast("Relatório baixado com sucesso!", "success");
+}

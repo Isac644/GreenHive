@@ -478,7 +478,7 @@ export function renderRecordsPage() {
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
 
-    // Lógica de Filtro (Usa os filtros REAIS)
+    // Lógica de Filtro (Mantida)
     const filtered = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
         const isSameMonth = tDate.getMonth() === month && tDate.getFullYear() === year;
@@ -513,8 +513,6 @@ export function renderRecordsPage() {
     if (sortedDays.length > 0) {
         transactionsHTML = sortedDays.map(day => {
             const transactionsForDay = groupedByDate[day].map(t => {
-                // ... (código de renderização do item da transação IGUAL AO ANTERIOR) ...
-                // Copie o bloco <li>...</li> do código que você já tem
                 const isOwner = t.userId === state.user.uid;
                 const canEdit = isAdmin || isOwner;
                 const interactClasses = canEdit ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.99] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800' : 'cursor-default opacity-80';
@@ -523,9 +521,6 @@ export function renderRecordsPage() {
                 const memberName = t.userName ? t.userName.split(' ')[0] : '???';
                 return `<li class="transaction-item ${interactClasses} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${t.id}"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div><div><p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${t.description}</p><div class="flex items-center gap-2 mt-1.5"><span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${t.category}</span><span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${memberName}</span></div></div></div><div class="text-right"><p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></div></li>`;
             }).join('');
-            
-            // Note: Adicionei animate-fade-in-up AQUI nas listas internas, para elas entrarem suave
-            // mas o container principal não tem animação forçada.
             return `<div class="mb-8 animate-fade-in-up"><div class="flex items-center gap-3 mb-4 ml-1"><h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4><span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span><div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div></div><ul class="space-y-1">${transactionsForDay}</ul></div>`;
         }).join('');
     }
@@ -537,24 +532,30 @@ export function renderRecordsPage() {
     if (state.selectedDate) activeFiltersCount++;
     const filterBadge = activeFiltersCount > 0 ? `<span class="absolute -top-1 -right-1 bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-bounce">${activeFiltersCount}</span>` : '';
 
-    // REMOVIDO: A classe 'content-fade-in' da div principal. 
-    // Agora ela obedece o pai (renderMainContent) ou é estática.
     return `
     <div id="records-page-container" class="pb-32">
         
         <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl py-4 border-b border-gray-200/50 dark:border-gray-800 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
             <div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
+                
                 <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
                     <button id="prev-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
                     <span class="font-heading font-bold capitalize text-sm md:text-base px-3 w-36 text-center text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</span>
                     <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
 
-                <div class="flex gap-3">
+                <div class="flex gap-2">
+                    <button id="export-csv-btn" class="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 group" title="Baixar Relatório">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+
                     <button id="open-filter-modal-btn" class="relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         ${filterBadge}
                     </button>
+                    
                     <button id="open-modal-button" class="flex items-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                         <span class="hidden sm:inline">Novo</span>
