@@ -69,6 +69,8 @@ export const state = {
         member: null,
         date: null
     },
+    editingGoalId: null, // NOVO: ID da meta em edição
+    goals: [], // NOVO: Lista de Metas
 };
 
 export const PALETTE_COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#78716c', '#6b7280'];
@@ -223,7 +225,7 @@ export function subscribeToFamilyData(familyId) {
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
-        state.categoryIcons = data.categoryIcons || {}; // Carrega ícones
+        state.categoryIcons = data.categoryIcons || {}; 
         state.familyAdmins = data.admins || [];
 
         if (state.familyMembers.length !== data.members.length) {
@@ -236,6 +238,10 @@ export function subscribeToFamilyData(familyId) {
         renderApp();
         state.shouldAnimate = false;
         checkAutomatedAlerts();
+        
+        // NOVO: VERIFICA RECORRÊNCIAS (Apenas uma vez ao carregar os dados da família)
+        // Colocamos aqui dentro para garantir que temos acesso ao banco
+        checkRecurringTransactions(familyId);
     });
     state.unsubscribers.push(unsubFamily);
 
@@ -260,9 +266,91 @@ export function subscribeToFamilyData(familyId) {
 
     const qInst = query(collection(db, "familyGroups", familyId, "installments"));
     state.unsubscribers.push(onSnapshot(qInst, (s) => handleSubCollectionSnapshot(s, 'installments')));
+
+    const qGoals = query(collection(db, "familyGroups", familyId, "goals"));
+    const unsubGoals = onSnapshot(qGoals, (snapshot) => {
+        const g = [];
+        snapshot.forEach(d => g.push({ id: d.id, ...d.data() }));
+        state.goals = g;
+        renderApp();
+    });
+    state.unsubscribers.push(unsubGoals);
 }
 
 // --- HANDLERS ---
+
+export async function handleSaveGoal(event) {
+    event.preventDefault();
+    
+    // PROTEÇÃO DE PERMISSÃO
+    if (!state.familyAdmins.includes(state.user.uid)) {
+        showToast("Apenas administradores podem gerenciar metas.", 'error');
+        return;
+    }
+
+    const formData = new FormData(event.target);
+    const id = state.editingGoalId;
+    
+    const goalData = {
+        name: formData.get('goalName'),
+        targetAmount: parseFloat(formData.get('targetAmount')),
+        deadline: formData.get('deadline') || null,
+        icon: formData.get('goalIcon') || '🎯',
+        color: formData.get('goalColor') || '#10B981',
+        familyGroupId: state.family.id,
+        userId: state.user.uid
+    };
+
+    if (!goalData.name || isNaN(goalData.targetAmount)) {
+        showToast('Preencha nome e valor da meta.', 'error'); return;
+    }
+
+    try {
+        const colRef = collection(db, "familyGroups", state.family.id, "goals");
+        if (id) {
+            await updateDoc(doc(colRef, id), goalData);
+        } else {
+            await addDoc(colRef, goalData);
+        }
+        
+        // FECHAMENTO CORRETO
+        state.editingGoalId = null; 
+        state.isModalOpen = false; 
+        renderApp(); 
+        
+        showToast("Meta salva com sucesso!", 'success');
+    } catch (e) { 
+        console.error(e);
+        showToast("Erro ao salvar meta.", 'error'); 
+    }
+}
+
+export async function handleDeleteGoal() {
+    if (!state.editingGoalId) return;
+    
+    // PROTEÇÃO DE PERMISSÃO
+    if (!state.familyAdmins.includes(state.user.uid)) {
+        showToast("Apenas administradores podem excluir metas.", 'error');
+        return;
+    }
+
+    // REMOVIDO O openConfirmation (Modal Global)
+    // Agora a exclusão é direta, pois o usuário já clicou em "Sim" no modal inline.
+    try {
+        await deleteDoc(doc(db, "familyGroups", state.family.id, "goals", state.editingGoalId));
+        
+        // FECHAMENTO CORRETO
+        state.editingGoalId = null; 
+        state.isModalOpen = false; 
+        state.confirmingDelete = false; // Reseta o estado do botão
+        renderApp(); 
+        
+        showToast("Meta excluída.", 'success');
+    } catch (e) { 
+        console.error(e);
+        showToast("Erro ao excluir.", 'error'); 
+    }
+}
 
 // Selecionar Família (Agora com persistência)
 export async function handleSelectFamily(familyId) {
@@ -295,25 +383,137 @@ export async function handleLogout() {
 export async function handleAddTransaction(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
-    const description = formData.get('description'); const amount = parseFloat(formData.get('amount')); const date = formData.get('date'); const category = formData.get('category'); const type = state.modalTransactionType; const linkedEntity = formData.get('linkedEntity'); 
-    if (!description || !amount || !date || !category || category === '--create-new--') { showToast('Preencha todos os campos.', 'error'); return; }
-    let linkedDebtId = null; let linkedInstallmentId = null;
-    if (linkedEntity) { const [entityType, entityId] = linkedEntity.split(':'); if (entityType === 'debt') linkedDebtId = entityId; if (entityType === 'installment') linkedInstallmentId = entityId; }
-    const newTransaction = { description, amount, date, category, type, userId: state.user.uid, userName: state.user.name, familyGroupId: state.family.id, linkedDebtId, linkedInstallmentId };
-    try { await addDoc(collection(db, "transactions"), newTransaction); state.isModalOpen = false; renderApp(); } catch (e) { showToast("Erro ao adicionar.", 'error'); }
-}
+    const description = formData.get('description');
+    const amount = parseFloat(formData.get('amount'));
+    const date = formData.get('date');
+    const category = formData.get('category');
+    const type = state.modalTransactionType;
+    const linkedEntity = formData.get('linkedEntity'); 
+    const isRecurring = formData.get('isRecurring') === 'on'; // NOVO
 
+    if (!description || !amount || !date || !category || category === '--create-new--') {
+        showToast('Preencha todos os campos.', 'error'); return;
+    }
+
+    let linkedDebtId = null;
+    let linkedInstallmentId = null;
+    let linkedGoalId = null;
+
+    if (linkedEntity) {
+        const [entityType, entityId] = linkedEntity.split(':');
+        if (entityType === 'debt') linkedDebtId = entityId;
+        if (entityType === 'installment') linkedInstallmentId = entityId;
+        if (entityType === 'goal') linkedGoalId = entityId;
+    }
+
+    const newTransaction = { description, amount, date, category, type, userId: state.user.uid, userName: state.user.name, familyGroupId: state.family.id, linkedDebtId, linkedInstallmentId, linkedGoalId };
+    
+    try {
+        // 1. Salva a transação normal
+        await addDoc(collection(db, "transactions"), newTransaction);
+        
+        // 2. Se for recorrente, salva o modelo na subcoleção 'recurring'
+        if (isRecurring) {
+            const transactionDate = new Date(date + 'T12:00:00');
+            const dayOfMonth = transactionDate.getDate(); // Dia que deve repetir
+            
+            await addDoc(collection(db, "familyGroups", state.family.id, "recurring"), {
+                description, amount, category, type, 
+                userId: state.user.uid, userName: state.user.name,
+                dayOfMonth: dayOfMonth,
+                lastProcessedDate: date, // Data da última criação (hoje)
+                linkedDebtId, linkedInstallmentId,
+                familyGroupId: state.family.id
+            });
+            showToast("Transação e recorrência criadas!", 'success');
+        } else {
+            showToast("Transação adicionada!", 'success');
+        }
+
+        state.isModalOpen = false; 
+        renderApp(); 
+    } catch (e) { 
+        console.error(e);
+        showToast("Erro ao adicionar.", 'error'); 
+    }
+}
 export async function handleUpdateTransaction(event) {
+event.preventDefault();
+    const transactionId = state.editingTransactionId;
+    
+    // Verifica Permissão
+    const transaction = state.transactions.find(t => t.id === transactionId);
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+    if (!isAdmin && transaction.userId !== state.user.uid) {
+        showToast("Você não tem permissão para editar este registro.", 'error');
+        return;
+    }
+
     event.preventDefault();
-    const formData = new FormData(event.target); const transactionId = state.editingTransactionId; const linkedEntity = formData.get('linkedEntity');
-    let linkedDebtId = null; let linkedInstallmentId = null;
-    if (linkedEntity) { const [entityType, entityId] = linkedEntity.split(':'); if (entityType === 'debt') linkedDebtId = entityId; if (entityType === 'installment') linkedInstallmentId = entityId; }
-    const updatedData = { description: formData.get('description'), amount: parseFloat(formData.get('amount')), date: formData.get('date'), category: formData.get('category'), linkedDebtId, linkedInstallmentId };
-    try { await updateDoc(doc(db, "transactions", transactionId), updatedData); state.editingTransactionId = null; state.isModalOpen = false; renderApp(); showToast("Transação atualizada!", 'success'); } catch (e) { showToast("Erro ao atualizar.", 'error'); }
+    const formData = new FormData(event.target);
+    const linkedEntity = formData.get('linkedEntity');
+    // NOVO: Pega o estado do checkbox
+    const isRecurring = formData.get('isRecurring') === 'on';
+    
+    
+    let linkedDebtId = null; let linkedInstallmentId = null; let linkedGoalId = null; // NOVO
+    if (linkedEntity) { const [entityType, entityId] = linkedEntity.split(':'); if (entityType === 'debt') linkedDebtId = entityId; if (entityType === 'installment') linkedInstallmentId = entityId; if (entityType === 'goal') linkedGoalId = entityId;}
+    
+    const updatedData = { 
+        description: formData.get('description'), 
+        amount: parseFloat(formData.get('amount')), 
+        date: formData.get('date'), 
+        category: formData.get('category'), 
+        linkedDebtId, 
+        linkedInstallmentId,
+        linkedGoalId // NOVO: Salva no banco
+    };
+    
+    try {
+        // 1. Atualiza a transação existente
+        await updateDoc(doc(db, "transactions", transactionId), updatedData);
+        
+        // 2. Se marcou como recorrente, cria a entrada na coleção 'recurring'
+        if (isRecurring) {
+             const transactionDate = new Date(updatedData.date + 'T12:00:00');
+             await addDoc(collection(db, "familyGroups", state.family.id, "recurring"), {
+                description: updatedData.description,
+                amount: updatedData.amount,
+                category: updatedData.category,
+                type: state.transactions.find(t => t.id === transactionId)?.type || 'expense',
+                userId: state.user.uid, 
+                userName: state.user.name,
+                dayOfMonth: transactionDate.getDate(),
+                lastProcessedDate: updatedData.date,
+                linkedDebtId, linkedInstallmentId,
+                familyGroupId: state.family.id
+            });
+            showToast("Atualizado e recorrência criada!", 'success');
+        } else {
+            showToast("Transação atualizada!", 'success');
+        }
+
+        state.editingTransactionId = null; 
+        state.isModalOpen = false; 
+        renderApp(); 
+        
+    } catch (e) { 
+        console.error(e);
+        showToast("Erro ao atualizar.", 'error'); 
+    }
 }
 
 export async function handleDeleteTransaction() {
-    const transactionId = state.editingTransactionId; if (!transactionId) return;
+    const transactionId = state.editingTransactionId;
+    if (!transactionId) return;
+    
+    // Verifica Permissão
+    const transaction = state.transactions.find(t => t.id === transactionId);
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+    if (!isAdmin && transaction.userId !== state.user.uid) {
+        showToast("Você não tem permissão para excluir este registro.", 'error');
+        return;
+    }
     try { await deleteDoc(doc(db, "transactions", transactionId)); state.editingTransactionId = null; state.isModalOpen = false; state.confirmingDelete = false; renderApp(); showToast("Transação excluída!", 'success'); } catch (e) { console.error(e); showToast("Erro ao excluir.", 'error'); }
 }
 
@@ -1443,4 +1643,73 @@ export function handleExportCSV() {
     document.body.removeChild(link);
     
     showToast("Relatório baixado com sucesso!", "success");
+}
+
+async function checkRecurringTransactions(familyId) {
+    try {
+        const recurringRef = collection(db, "familyGroups", familyId, "recurring");
+        const snapshot = await getDocs(recurringRef); // Lê uma vez (não precisa ser realtime)
+        
+        const batch = writeBatch(db);
+        let hasUpdates = false;
+        const today = new Date();
+        today.setHours(0,0,0,0); // Zera hora para comparar apenas data
+
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            // Pega a data da última vez que foi processado
+            const lastDate = new Date(data.lastProcessedDate + 'T12:00:00');
+            
+            // Calcula quando deveria ser a PRÓXIMA (mês seguinte)
+            let nextDate = new Date(lastDate);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            
+            // Ajuste fino de dias (ex: 31 de jan -> 28 fev)
+            // Se o dia mudou (ex: era 31, virou 02), volta pro último dia do mês correto
+            if (nextDate.getDate() !== data.dayOfMonth) {
+                 nextDate.setDate(0); 
+            }
+
+            // Loop para criar transações pendentes (caso tenha ficado meses sem abrir)
+            // Limitamos a 12 meses para evitar loop infinito ou bugs massivos
+            let iterations = 0;
+            while (nextDate <= today && iterations < 12) {
+                hasUpdates = true;
+                iterations++;
+                
+                const isoDate = nextDate.toISOString().split('T')[0];
+                
+                // Cria a transação nova
+                const newTransRef = doc(collection(db, "transactions"));
+                batch.set(newTransRef, {
+                    description: data.description + " (Recorrente)", // Identificador visual
+                    amount: data.amount,
+                    category: data.category,
+                    type: data.type,
+                    date: isoDate,
+                    userId: data.userId,
+                    userName: data.userName,
+                    familyGroupId: familyId,
+                    linkedDebtId: data.linkedDebtId || null,
+                    linkedInstallmentId: data.linkedInstallmentId || null,
+                    isAutoGenerated: true
+                });
+                
+                // Atualiza a data de referência para a próxima volta
+                batch.update(docSnap.ref, { lastProcessedDate: isoDate });
+                
+                // Prepara para a próxima iteração
+                lastDate.setTime(nextDate.getTime());
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                if (nextDate.getDate() !== data.dayOfMonth) nextDate.setDate(0);
+            }
+        });
+
+        if (hasUpdates) {
+            await batch.commit();
+            showToast("Transações recorrentes processadas com sucesso.", "info");
+        }
+    } catch (e) {
+        console.error("Erro ao processar recorrências:", e);
+    }
 }

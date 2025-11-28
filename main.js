@@ -14,15 +14,21 @@ import {
     handlePromoteMember, handleKickMember, handleDemoteMember, 
     handleConfirmAction, closeConfirmation,
     handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment,
-    handleClearFilters, handleToggleFilterMember, handleToggleFilterCategory, 
-    handleToggleFilterType, handleToggleFilterDate, handleOpenFilters, handleApplyFilters,
-    handleDeleteFamily, // <--- ELA PRECISA ESTAR AQUI
-    requestNotificationPermission,
-    handleExportCSV
+    handleDeleteFamily, requestNotificationPermission,
+    handleExportCSV, handleSaveGoal, handleDeleteGoal,
+    
+    // --- AS FUNÇÕES QUE ESTAVAM FALTANDO ---
+    handleOpenFilters, 
+    handleApplyFilters, 
+    handleClearFilters, 
+    handleToggleFilterMember, 
+    handleToggleFilterCategory, 
+    handleToggleFilterType, 
+    handleToggleFilterDate
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
-    renderDebtsPage, renderDebtModal, renderInstallmentModal, renderLoadingScreen, renderFilterModal
+    renderDebtsPage, renderDebtModal, renderInstallmentModal, renderLoadingScreen, renderFilterModal, renderGoalsPage, renderGoalModal
 } from "./ui-components.js";
 
 const root = document.getElementById('root');
@@ -62,7 +68,7 @@ export function renderApp() {
 
     root.innerHTML = contentHTML;
 
-    // Modals
+    // Modals (APENAS MODAIS AQUI, NADA DE PÁGINAS)
     root.insertAdjacentHTML('beforeend', renderTransactionModal());
     root.insertAdjacentHTML('beforeend', renderBudgetModal());
     root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
@@ -73,13 +79,12 @@ export function renderApp() {
     root.insertAdjacentHTML('beforeend', renderDebtModal());
     root.insertAdjacentHTML('beforeend', renderInstallmentModal());
     root.insertAdjacentHTML('beforeend', renderFilterModal());
+    
+    // CORREÇÃO: Removemos renderGoalsPage() daqui.
+    root.insertAdjacentHTML('beforeend', renderGoalModal()); // Mantém apenas o modal
 
     attachEventListeners();
 
-    // --- A CORREÇÃO MÁGICA ---
-    // Desliga a animação imediatamente após renderizar.
-    // Assim, qualquer renderização subsequente (abrir modal, update de dados) 
-    // será estática, a menos que uma função diga explicitamente o contrário.
     if (state.shouldAnimate) {
         state.shouldAnimate = false;
     }
@@ -228,17 +233,6 @@ function attachEventListeners() {
         renderApp(); 
     });
     
-    const confirmYes = document.getElementById('confirm-delete-yes'); 
-    if (confirmYes) confirmYes.onclick = async () => { 
-        const orig = confirmYes.innerText; confirmYes.innerText = "..."; 
-        if (state.editingCategory) await handleDeleteCategory(); 
-        else if (state.editingTransactionId) await handleDeleteTransaction(); 
-        else if (state.editingBudgetItemId) await handleDeleteBudget(); 
-        else if (state.editingDebtId) await handleDeleteDebt(); 
-        else if (state.editingInstallmentId) await handleDeleteInstallment(); 
-        
-        if(state.isModalOpen) { state.confirmingDelete = false; renderApp(); } 
-    };
     const confirmNo = document.getElementById('confirm-delete-no'); if (confirmNo) confirmNo.onclick = () => { state.confirmingDelete = false; renderApp(); };
 
     // Family Info & Actions
@@ -379,6 +373,87 @@ function attachEventListeners() {
     const exportBtn = document.getElementById('export-csv-btn');
     if (exportBtn) {
         exportBtn.onclick = handleExportCSV;
+    }
+
+    // Metas (Goals)
+    
+    
+    document.querySelectorAll('.goal-item').forEach(b => {
+        b.onclick = e => { 
+            state.editingGoalId = e.currentTarget.dataset.goalId; 
+            state.isModalOpen = true; 
+            state.modalView = 'goal'; 
+            renderApp(); 
+        };
+    });
+    // --- METAS FINANCEIRAS (COFRINHOS) ---
+    
+   
+    // 2. Clique no Card da Meta (para Editar)
+    document.querySelectorAll('.goal-item').forEach(b => {
+        b.onclick = (e) => { 
+            // Pega o ID do atributo data-goal-id do card
+            state.editingGoalId = e.currentTarget.dataset.goalId; 
+            state.isModalOpen = true; 
+            state.modalView = 'goal'; 
+            renderApp(); 
+        };
+    });
+    // Atualize o confirmYes.onclick para incluir este 'else if':
+    const confirmYes = document.getElementById('confirm-delete-yes'); 
+    if (confirmYes) confirmYes.onclick = async () => { 
+        const orig = confirmYes.innerText; confirmYes.innerText = "..."; 
+        
+        if (state.editingCategory) await handleDeleteCategory(); 
+        else if (state.editingTransactionId) await handleDeleteTransaction(); 
+        else if (state.editingBudgetItemId) await handleDeleteBudget(); 
+        else if (state.editingDebtId) await handleDeleteDebt(); 
+        else if (state.editingInstallmentId) await handleDeleteInstallment(); 
+        // ESTA LINHA FALTAVA:
+        else if (state.editingGoalId) await handleDeleteGoal(); 
+        
+        if(state.isModalOpen) { state.confirmingDelete = false; renderApp(); } 
+    };
+
+    // --- LISTENERS DAS METAS (COFRINHOS) ---
+
+    // 1. Botão "+ Nova Meta" (Verde)
+    const addGoalBtn = document.getElementById('add-goal-btn'); 
+    if (addGoalBtn) {
+        addGoalBtn.onclick = () => { 
+            state.isModalOpen = true; 
+            state.modalView = 'goal'; 
+            state.editingGoalId = null; 
+            renderApp(); 
+        };
+    }
+    
+    // 2. Clique no Card da Meta (Para Editar)
+    document.querySelectorAll('.goal-item').forEach(b => {
+        b.onclick = (e) => { 
+            // Pega o ID do atributo data-goal-id do card
+            state.editingGoalId = e.currentTarget.dataset.goalId; 
+            state.isModalOpen = true; 
+            state.modalView = 'goal'; 
+            renderApp(); 
+        };
+    });
+    
+    // 3. Salvar Meta (Formulário)
+    const goalForm = document.getElementById('goal-form'); 
+    if (goalForm) {
+        goalForm.onsubmit = handleSaveGoal;
+    }
+    
+    // 4. Excluir Meta (Botão dentro do modal)
+    const delGoalBtn = document.getElementById('delete-goal-modal-btn'); 
+    if (delGoalBtn) {
+        console.log("listener ativado");
+        delGoalBtn.onclick = () => { 
+            console.log("click");
+            state.confirmingDelete = true; 
+            renderApp(); 
+        };
     }
 }
 

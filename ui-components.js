@@ -280,6 +280,7 @@ export function renderMainContent() {
             <button data-view="records" class="nav-tab ${state.currentView === 'records' ? activeClass : inactiveClass} flex-1 py-2.5 px-6 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap">Registros</button>
             <button data-view="budget" class="nav-tab ${state.currentView === 'budget' ? activeClass : inactiveClass} flex-1 py-2.5 px-6 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap">Orçamento</button>
             <button data-view="debts" class="nav-tab ${state.currentView === 'debts' ? activeClass : inactiveClass} flex-1 py-2.5 px-6 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap">Dívidas</button>
+            <button data-view="goals" class="nav-tab ${state.currentView === 'goals' ? activeClass : inactiveClass} flex-1 py-2.5 px-6 rounded-xl text-sm font-heading font-bold transition-all duration-200 whitespace-nowrap">Metas</button>
         </nav>
     </div>`;
 
@@ -289,6 +290,7 @@ export function renderMainContent() {
     else if (state.currentView === 'records') viewContent = renderRecordsPage();
     else if (state.currentView === 'budget') viewContent = renderBudgetPage();
     else if (state.currentView === 'debts') viewContent = renderDebtsPage();
+    else if (state.currentView === 'goals') viewContent = renderGoalsPage(); // NOVO
 
     // Animação condicional (só anima na troca de abas/entrada)
     const animationClass = state.shouldAnimate ? 'content-fade-in' : '';
@@ -478,7 +480,6 @@ export function renderRecordsPage() {
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
 
-    // Lógica de Filtro (Mantida)
     const filtered = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
         const isSameMonth = tDate.getMonth() === month && tDate.getFullYear() === year;
@@ -500,7 +501,6 @@ export function renderRecordsPage() {
     const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
     const isAdmin = state.familyAdmins.includes(state.user.uid);
 
-    // HTML da Lista
     let transactionsHTML = `
         <div class="flex flex-col items-center justify-center py-20 text-gray-400 animate-fade-in">
             <div class="w-24 h-24 bg-gray-50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-6 border border-gray-100 dark:border-gray-700">
@@ -515,11 +515,37 @@ export function renderRecordsPage() {
             const transactionsForDay = groupedByDate[day].map(t => {
                 const isOwner = t.userId === state.user.uid;
                 const canEdit = isAdmin || isOwner;
-                const interactClasses = canEdit ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.99] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800' : 'cursor-default opacity-80';
+                
+                // CORREÇÃO DE SEGURANÇA:
+                // A classe 'transaction-item' (que ativa o clique no main.js) SÓ é adicionada se canEdit for true.
+                // Se for false, o item não será clicável.
+                const itemClass = canEdit ? 'transaction-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800' : 'cursor-default opacity-75';
+                
                 const categoryColor = state.categoryColors[t.category] || '#9ca3af';
                 const categoryIcon = state.categoryIcons[t.category] || '🏷️';
                 const memberName = t.userName ? t.userName.split(' ')[0] : '???';
-                return `<li class="transaction-item ${interactClasses} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${t.id}"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div><div><p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${t.description}</p><div class="flex items-center gap-2 mt-1.5"><span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${t.category}</span><span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${memberName}</span></div></div></div><div class="text-right"><p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'}">${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}</p></div></li>`;
+                
+                return `
+                <li class="${itemClass} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${t.id}">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div>
+                        <div>
+                            <p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${t.description}</p>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${t.category}</span>
+                                <span class="text-xs text-gray-400 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    ${memberName}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'}">
+                            ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                        </p>
+                    </div>
+                </li>`;
             }).join('');
             return `<div class="mb-8 animate-fade-in-up"><div class="flex items-center gap-3 mb-4 ml-1"><h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4><span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span><div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div></div><ul class="space-y-1">${transactionsForDay}</ul></div>`;
         }).join('');
@@ -632,14 +658,14 @@ export function renderBudgetPage() {
                 </div>`;
         }
 
-        const interactionClasses = isAdmin 
-            ? 'cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-gray-600' 
-            : 'cursor-default';
+        // CORREÇÃO DE SEGURANÇA:
+        // Só adiciona a classe 'budget-item' se for Admin. Se não, o main.js não vai adicionar o listener de clique.
+        const clickClass = isAdmin ? 'budget-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-gray-600' : 'cursor-default opacity-90';
         
         const catIcon = state.categoryIcons[budget.category] || '🎯';
 
         return `
-            <div class="${interactionClasses} budget-item bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-200 group" data-budget-id="${budget.id}">
+            <div class="${clickClass} bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-200 group" data-budget-id="${budget.id}">
                 <div class="flex items-center gap-4 mb-4">
                     <div class="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 text-2xl flex items-center justify-center border border-gray-100 dark:border-gray-700">
                         ${catIcon}
@@ -653,6 +679,7 @@ export function renderBudgetPage() {
             </div>`;
     }).join('');
 
+    // Botão Novo corrigido
     const newButtonHTML = isAdmin ? `
         <button id="add-budget-button" class="flex items-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
@@ -671,9 +698,7 @@ export function renderBudgetPage() {
                         <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                     </div>
 
-                    <div>
-                        ${newButtonHTML}
-                    </div>
+                    <div>${newButtonHTML}</div>
                 </div>
             </div>
             
@@ -812,6 +837,85 @@ export function renderDebtsPage() {
     </div>`;
 }
 
+export function renderGoalsPage() {
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+    
+    const goalsHTML = state.goals.map(g => {
+        const saved = state.transactions
+            .filter(t => t.linkedGoalId === g.id && t.type === 'expense')
+            .reduce((sum, t) => sum + t.amount, 0);
+        
+        const percentage = Math.min((saved / g.targetAmount) * 100, 100);
+        const isCompleted = saved >= g.targetAmount;
+        const statusColor = isCompleted ? 'text-green-500' : 'text-brand-600 dark:text-brand-400';
+        const barColor = g.color || '#10B981';
+
+        // LÓGICA DE PERMISSÃO VISUAL
+        // Se for Admin: Tem classe 'goal-item' (ativa o click) e cursor pointer
+        // Se Membro: Sem classe 'goal-item' e cursor default
+        const interactionClasses = isAdmin 
+            ? 'goal-item cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all' 
+            : 'cursor-default opacity-90';
+
+        return `
+        <div class="${interactionClasses} bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 group relative overflow-hidden" data-goal-id="${g.id}">
+            <div class="absolute bottom-0 left-0 h-1.5 bg-gray-100 dark:bg-gray-700 w-full">
+                <div class="h-full transition-all duration-700 ease-out" style="width: ${percentage}%; background-color: ${barColor}"></div>
+            </div>
+
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm ring-1 ring-black/5" style="background-color: ${barColor}20; color: ${barColor}">
+                        ${g.icon || '🎯'}
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5 block">Meta</span>
+                        <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white">${g.name}</h4>
+                    </div>
+                </div>
+                ${isCompleted ? '<span class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold px-2 py-1 rounded-lg">Concluída!</span>' : ''}
+            </div>
+
+            <div class="space-y-1">
+                <div class="flex justify-between items-end">
+                    <p class="text-3xl font-heading font-bold ${statusColor}">R$ ${saved.toFixed(0)}</p>
+                    <p class="text-sm text-gray-400 font-medium mb-1">de R$ ${g.targetAmount.toFixed(0)}</p>
+                </div>
+                <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-700 ease-out relative" style="width: ${percentage}%; background-color: ${barColor}">
+                        ${percentage >= 100 ? '<div class="absolute inset-0 bg-white/20 animate-pulse"></div>' : ''}
+                    </div>
+                </div>
+                <div class="flex justify-between mt-2">
+                    <p class="text-xs text-gray-400 font-bold">${percentage.toFixed(0)}%</p>
+                    ${g.deadline ? `<p class="text-xs text-gray-400">Alvo: ${new Date(g.deadline).toLocaleDateString('pt-BR')}</p>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('') || '<div class="col-span-full py-16 text-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700"><p class="text-lg font-medium">Nenhuma meta criada.</p></div>';
+
+    // Botão Novo (Só para Admin)
+    const newGoalButton = isAdmin ? `
+        <button id="add-goal-btn" class="flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/20 transition transform active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <span class="hidden sm:inline">Nova Meta</span>
+        </button>` : '';
+
+    return `
+    <div class="animate-fade-in pb-24">
+        <div class="flex justify-between items-center mb-6 px-2">
+            <h3 class="text-xl font-heading font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <span class="text-2xl">🚀</span> Meus Cofrinhos
+            </h3>
+            ${newGoalButton}
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+            ${goalsHTML}
+        </div>
+    </div>`;
+}
+
 // --- 6. MODAIS DE AÇÃO (CRUD & FILTROS) ---
 
 // Utilitário de Modal Genérico (Padronização Visual)
@@ -860,71 +964,109 @@ export function renderTransactionModal() {
             const selected = transaction?.linkedInstallmentId === i.id ? 'selected' : '';
             linkOptions += `<option value="installment:${i.id}" ${selected}>Parcela: ${i.name}</option>`;
         });
+        // NOVO: Adiciona metas na lista de vínculos
+        // Se eu vincular uma despesa a uma meta, significa que estou "gastando" na carteira para "depositar" na meta.
+        state.goals.forEach(g => {
+            const selected = transaction?.linkedGoalId === g.id ? 'selected' : '';
+            linkOptions += `<option value="goal:${g.id}" ${selected}>🎯 Meta: ${g.name}</option>`;
+        });
     }
+
+    // --- CORREÇÃO VISUAL DARK MODE ---
+    // Usando cores mais sólidas e bordas mais claras no dark mode
+    const inputClass = "w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white dark:placeholder-gray-400 font-medium outline-none";
+    const selectClass = "w-full px-4 py-3.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white font-medium outline-none appearance-none cursor-pointer";
+    const labelClass = "block text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1.5 ml-1";
 
     let contentHTML = '';
     if (state.modalView === 'newTag') {
-        const colorSwatches = PALETTE_COLORS.map(color => `<label class="cursor-pointer hover:scale-110 transition"><input type="radio" name="newTagColor" value="${color}" class="sr-only peer"><div class="w-9 h-9 rounded-full peer-checked:ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 shadow-sm" style="background-color: ${color};"></div></label>`).join('');
+        const colorSwatches = PALETTE_COLORS.map(color => `<label class="cursor-pointer hover:scale-110 transition"><input type="radio" name="newTagColor" value="${color}" class="sr-only peer"><div class="w-8 h-8 rounded-full peer-checked:ring-2 ring-offset-2 ring-blue-500" style="background-color: ${color};"></div></label>`).join('');
         const categoryEmojis = ['🏠', '🍔', '🚗', '🎮', '💊', '💰', '💻', '📈', '🛒', '👕', '🎓', '✈️', '💡', '🎁', '🔧', '🧾', '🏋️', '📚', '🎨', '🍺', '🐶', '🧹', '⛽', '🏦'];
-        const categoryEmojiOptions = categoryEmojis.map(e => `<label class="cursor-pointer group"><input type="radio" name="newTagIcon" value="${e}" class="sr-only peer" ${e === '🏠' ? 'checked' : ''}><div class="w-10 h-10 flex items-center justify-center text-xl rounded-xl border-2 border-transparent bg-gray-50 dark:bg-gray-700 peer-checked:border-brand-500 peer-checked:bg-brand-50 dark:peer-checked:bg-brand-900/30 hover:bg-gray-100 dark:hover:bg-gray-600 transition">${e}</div></label>`).join('');
+        const categoryEmojiOptions = categoryEmojis.map(e => `<label class="cursor-pointer group"><input type="radio" name="newTagIcon" value="${e}" class="sr-only peer"><div class="w-10 h-10 flex items-center justify-center text-xl rounded-xl border-2 border-transparent bg-gray-50 dark:bg-gray-600 peer-checked:border-brand-500 peer-checked:bg-brand-50 dark:peer-checked:bg-brand-900/30 hover:bg-gray-100 dark:hover:bg-gray-500 transition">${e}</div></label>`).join('');
 
         contentHTML = `
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Criar Nova Categoria</h3>
             <form id="create-tag-form" class="space-y-5">
                 <div><label class="${labelClass}">Nome da Categoria</label><input id="newTagName" name="newTagName" type="text" class="${inputClass}" placeholder="Ex: Assinaturas" required /></div>
-                <div><label class="${labelClass}">Ícone</label><div class="flex flex-wrap gap-2 p-3 bg-gray-50/50 dark:bg-gray-900/30 rounded-2xl border border-gray-100 dark:border-gray-700 max-h-36 overflow-y-auto custom-scrollbar">${categoryEmojiOptions}</div></div>
+                <div><label class="${labelClass}">Ícone</label><div class="flex flex-wrap gap-2 p-3 bg-gray-50/50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-600 max-h-36 overflow-y-auto custom-scrollbar">${categoryEmojiOptions}</div></div>
                 <div><label class="${labelClass}">Cor</label><div class="flex flex-wrap gap-3 p-2">${colorSwatches}</div></div>
                 <div class="flex justify-end gap-3 pt-4">
                     <button type="button" id="cancel-tag-creation" class="px-5 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition">Cancelar</button>
                     <button type="submit" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-lg shadow-brand-500/20 transition transform active:scale-95">Salvar</button>
                 </div>
             </form>`;
-        return ModalBase(`Nova Categoria`, contentHTML);
-    } 
+    } else {
+        let categoryOptions = `<option value="" disabled ${!transaction?.category ? 'selected' : ''}>Selecione...</option>`;
+        allCategories.forEach(cat => {
+            const icon = state.categoryIcons[cat] || '🏷️';
+            const isSelected = transaction?.category === cat ? 'selected' : '';
+            categoryOptions += `<option value="${cat}" ${isSelected}>${icon} ${cat}</option>`;
+        });
 
-    // Form Principal
-    let categoryOptions = `<option value="" disabled ${!transaction?.category ? 'selected' : ''}>Selecione...</option>`;
-    allCategories.forEach(cat => {
-        const icon = state.categoryIcons[cat] || '🏷️';
-        const isSelected = transaction?.category === cat ? 'selected' : '';
-        categoryOptions += `<option value="${cat}" ${isSelected}>${icon} ${cat}</option>`;
-    });
-    if (isAdmin) categoryOptions += `<option value="--create-new--" class="font-bold text-brand-600 bg-brand-50 dark:bg-brand-900/20">+ ✨ Criar Nova</option>`;
-
-    const typeSelectorHTML = `
-        <div class="flex gap-1 mb-6 p-1 bg-gray-100 dark:bg-gray-700/50 rounded-xl">
-            <button type="button" data-type="expense" class="transaction-type-button flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${type === 'expense' ? 'bg-white dark:bg-gray-800 text-red-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}">Despesa</button>
-            <button type="button" data-type="income" class="transaction-type-button flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${type === 'income' ? 'bg-white dark:bg-gray-800 text-green-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}">Receita</button>
-        </div>`;
-    
-    const confirmDeleteHTML = state.confirmingDelete ? 
-        `<div class="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-center animate-fade-in">
-            <p class="text-red-600 dark:text-red-400 font-bold mb-3 text-sm">Tem certeza que deseja excluir?</p>
-            <div class="flex justify-center gap-3">
-                <button type="button" id="confirm-delete-no" class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-700 font-bold text-xs hover:bg-gray-50">Cancelar</button>
-                <button type="button" id="confirm-delete-yes" class="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 shadow-md">Sim, excluir</button>
-            </div>
-        </div>` : '';
-
-    contentHTML = `
-        <form id="${isEditing ? 'edit' : 'add'}-transaction-form">
-            ${typeSelectorHTML}
-            <div class="space-y-5">
-                <div><label class="${labelClass}">Descrição</label><input name="description" type="text" class="${inputClass}" value="${transaction?.description || ''}" required placeholder="Ex: Supermercado" /></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="${labelClass}">Categoria</label><select id="category" name="category" class="${selectClass}">${categoryOptions}</select></div>
-                    <div><label class="${labelClass}">Valor</label><input name="amount" type="number" step="0.01" class="${inputClass}" value="${transaction?.amount || ''}" required placeholder="0,00" /></div>
+        const typeSelectorHTML = `
+            <div class="flex gap-1 mb-6 p-1 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                <button type="button" data-type="expense" class="transaction-type-button flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${type === 'expense' ? 'bg-white dark:bg-gray-600 text-red-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}">Despesa</button>
+                <button type="button" data-type="income" class="transaction-type-button flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${type === 'income' ? 'bg-white dark:bg-gray-600 text-green-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}">Receita</button>
+            </div>`;
+        
+        const confirmDeleteHTML = state.confirmingDelete ? 
+            `<div class="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-center animate-fade-in">
+                <p class="text-red-600 dark:text-red-400 font-bold mb-3 text-sm">Tem certeza que deseja excluir?</p>
+                <div class="flex justify-center gap-3">
+                    <button type="button" id="confirm-delete-no" class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-700 font-bold text-xs hover:bg-gray-50">Cancelar</button>
+                    <button type="button" id="confirm-delete-yes" class="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 shadow-md">Sim, excluir</button>
                 </div>
-                <div><label class="${labelClass}">Data</label><input name="date" type="date" class="${inputClass}" value="${transaction?.date || new Date().toISOString().slice(0, 10)}" required /></div>
-                ${type === 'expense' ? `<div><label class="${labelClass}">Vincular (Opcional)</label><select name="linkedEntity" class="${selectClass}">${linkOptions}</select></div>` : ''}
-            </div>
-            <div class="mt-8 flex gap-3">
-                ${isEditing ? `<button type="button" id="delete-transaction-button" class="px-4 py-3.5 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/30 transition">Excluir</button>` : ''}
-                <button type="submit" class="flex-1 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition transform active:scale-95">${isEditing ? 'Salvar Alterações' : 'Adicionar Transação'}</button>
-            </div>
-            ${confirmDeleteHTML}
-        </form>`;
+            </div>` : '';
 
-    return ModalBase(isEditing ? 'Editar Transação' : 'Nova Transação', contentHTML);
+        // --- CORREÇÃO: RECORRÊNCIA AGORA APARECE SEMPRE ---
+        const recurringCheckboxHTML = `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-600 mt-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition">
+                <input id="isRecurring" name="isRecurring" type="checkbox" class="w-5 h-5 text-brand-600 rounded focus:ring-brand-500 border-gray-300 dark:border-gray-500 dark:bg-gray-600 cursor-pointer">
+                <label for="isRecurring" class="text-sm font-medium text-gray-700 dark:text-gray-200 select-none cursor-pointer flex-1">
+                    Repetir mensalmente (Fixo)
+                </label>
+            </div>`;
+
+        contentHTML = `
+            <form id="${isEditing ? 'edit' : 'add'}-transaction-form">
+                ${typeSelectorHTML}
+                <div class="space-y-5">
+                    <div><label class="${labelClass}">Descrição</label><input name="description" type="text" class="${inputClass}" value="${transaction?.description || ''}" required placeholder="Ex: Supermercado" /></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="${labelClass}">Categoria</label><select id="category" name="category" class="${selectClass}">${categoryOptions}${isAdmin ? `<option value="--create-new--" class="font-bold text-brand-600 bg-brand-50 dark:bg-brand-900/20">+ ✨ Criar Nova</option>` : ''}</select></div>
+                        <div><label class="${labelClass}">Valor</label><input name="amount" type="number" step="0.01" class="${inputClass}" value="${transaction?.amount || ''}" required placeholder="0,00" /></div>
+                    </div>
+                    <div><label class="${labelClass}">Data</label><input name="date" type="date" class="${inputClass}" value="${transaction?.date || new Date().toISOString().slice(0, 10)}" required /></div>
+                    ${type === 'expense' ? `<div><label class="${labelClass}">Vincular (Opcional)</label><select name="linkedEntity" class="${selectClass}">${linkOptions}</select></div>` : ''}
+                    
+                    ${recurringCheckboxHTML}
+                </div>
+                <div class="mt-8 flex gap-3">
+                    ${isEditing ? `<button type="button" id="delete-transaction-button" class="px-4 py-3.5 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/30 transition">Excluir</button>` : ''}
+                    <button type="submit" class="flex-1 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition transform active:scale-95">${isEditing ? 'Salvar Alterações' : 'Adicionar Transação'}</button>
+                </div>
+                ${confirmDeleteHTML}
+            </form>`;
+    }
+
+    // Botão de fechar com classe padronizada
+    const closeBtn = `<button class="close-modal-btn p-2 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition focus:outline-none"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>`;
+
+    // Usando o ModalBase (se disponível no escopo) ou HTML direto
+    // Para garantir, vou retornar o HTML completo do modal aqui
+    return `
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 modal-overlay p-4 animate-fade-in">
+            <div class="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden modal-content flex flex-col transform transition-all scale-100 border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800 sticky top-0 z-10">
+                    <h2 class="text-xl font-heading font-bold text-gray-900 dark:text-white">${isEditing ? 'Editar Transação' : state.modalView === 'newTag' ? 'Nova Categoria' : 'Nova Transação'}</h2>
+                    ${closeBtn}
+                </div>
+                <div class="p-6 overflow-y-auto custom-scrollbar">
+                    ${contentHTML}
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 export function renderBudgetModal() {
@@ -1225,6 +1367,55 @@ export function renderEditCategoryModal() {
     `;
 
     return ModalBase('Editar Categoria', contentHTML);
+}
+
+export function renderGoalModal() {
+    if (!state.isModalOpen || state.modalView !== 'goal') return '';
+
+    const g = state.editingGoalId ? state.goals.find(x => x.id === state.editingGoalId) : null;
+    
+    // Botão de Excluir (só aparece se estiver editando)
+    const deleteBtn = state.editingGoalId ? `<button type="button" id="delete-goal-modal-btn" class="px-4 py-3.5 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/30 transition">Excluir</button>` : '';
+    
+    // --- LÓGICA QUE FALTAVA: CONFIRMAÇÃO DE EXCLUSÃO ---
+    const confirmDeleteHTML = state.confirmingDelete ? 
+        `<div class="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-center animate-fade-in">
+            <p class="text-red-600 dark:text-red-400 font-bold mb-3 text-sm">Tem certeza que deseja excluir esta meta?</p>
+            <div class="flex justify-center gap-3">
+                <button type="button" id="confirm-delete-no" class="px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-gray-700 font-bold text-xs hover:bg-gray-50">Não</button>
+                <button type="button" id="confirm-delete-yes" class="px-4 py-2 bg-red-500 text-white rounded-lg font-bold text-xs hover:bg-red-600 shadow-md">Sim</button>
+            </div>
+        </div>` : '';
+    // ---------------------------------------------------
+
+    const goalEmojis = ['✈️', '🚗', '🏠', '🎮', '💻', '📱', '💍', '🎓', '🏥', '👶', '🎉', '💰', '☂️'];
+    const currentIcon = g?.icon || '🎯';
+    const emojiOptions = goalEmojis.map(e => `<label class="cursor-pointer group"><input type="radio" name="goalIcon" value="${e}" class="sr-only peer" ${e === currentIcon ? 'checked' : ''}><div class="w-10 h-10 flex items-center justify-center text-xl rounded-xl border-2 border-transparent bg-gray-50 dark:bg-gray-700 peer-checked:border-brand-500 peer-checked:bg-brand-50 dark:peer-checked:bg-brand-900/30 hover:scale-110 transition">${e}</div></label>`).join('');
+
+    const currentColor = g?.color || '#10B981';
+    const colorSwatches = PALETTE_COLORS.map(color => `<label class="cursor-pointer hover:scale-110 transition"><input type="radio" name="goalColor" value="${color}" class="sr-only peer" ${color === currentColor ? 'checked' : ''}><div class="w-8 h-8 rounded-full peer-checked:ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 shadow-sm" style="background-color: ${color};"></div></label>`).join('');
+
+    const inputClass = "w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent transition dark:text-white font-medium outline-none";
+    const labelClass = "block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5 ml-1";
+
+    const contentHTML = `
+        <form id="goal-form" class="space-y-5">
+            <div><label class="${labelClass}">Nome da Meta</label><input name="goalName" type="text" class="${inputClass}" value="${g?.name || ''}" placeholder="Ex: Viagem Disney" required /></div>
+            <div><label class="${labelClass}">Valor Alvo (R$)</label><input name="targetAmount" type="number" step="0.01" class="${inputClass}" value="${g?.targetAmount || ''}" required /></div>
+            <div><label class="${labelClass}">Data Alvo (Opcional)</label><input name="deadline" type="date" class="${inputClass}" value="${g?.deadline || ''}" /></div>
+            
+            <div><label class="${labelClass}">Ícone</label><div class="flex flex-wrap gap-2 p-3 bg-gray-50/50 dark:bg-gray-900/30 rounded-2xl border border-gray-100 dark:border-gray-700">${emojiOptions}</div></div>
+            <div><label class="${labelClass}">Cor</label><div class="flex flex-wrap gap-3 p-2">${colorSwatches}</div></div>
+
+            <div class="mt-8 flex gap-3">
+                ${deleteBtn}
+                <button type="submit" class="flex-1 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition transform active:scale-95">Salvar Meta</button>
+            </div>
+            
+            ${confirmDeleteHTML}
+        </form>`;
+        
+    return ModalBase(g ? 'Editar Meta' : 'Nova Meta', contentHTML);
 }
 
 // --- 7. MODAIS DE SISTEMA & CONFIGURAÇÕES ---
