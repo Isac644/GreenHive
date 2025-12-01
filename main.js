@@ -54,15 +54,14 @@ export function showToast(message, type) {
 }
 
 export function renderApp() {
-    // CORREÇÃO: Aplica o tema ANTES de verificar o loading
-    // Assim a tela de loading já pega a classe 'dark' se necessário
     document.documentElement.className = state.theme;
+
 
     if (state.isLoading) {
         root.innerHTML = renderLoadingScreen();
         return;
     }
-
+    
     document.querySelector('body > header')?.remove();
     if (state.user) document.body.insertAdjacentHTML('afterbegin', renderHeader());
 
@@ -87,6 +86,15 @@ export function renderApp() {
     root.insertAdjacentHTML('beforeend', renderGoalModal());
 
     attachEventListeners();
+
+    // --- CORREÇÃO DE UX MOBILE ---
+    // Encontra a aba ativa e rola a barra horizontal até ela ficar no centro
+    const activeTab = document.querySelector(`.nav-tab[data-view="${state.currentView}"]`);
+    if (activeTab) {
+        // 'behavior: auto' faz o salto ser instantâneo (parece que nem moveu)
+        // 'inline: center' garante que a aba fique no meio da tela se possível
+        activeTab.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    }
 
     if (state.shouldAnimate) {
         state.shouldAnimate = false;
