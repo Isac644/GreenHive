@@ -26,7 +26,8 @@ import {
     handleToggleFilterType, 
     handleToggleFilterDate,
     checkAndStartTutorial, 
-    startTutorial 
+    startTutorial,
+    subscribeToUserFamilies
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -61,7 +62,7 @@ export function renderApp() {
         root.innerHTML = renderLoadingScreen();
         return;
     }
-    
+
     document.querySelector('body > header')?.remove();
     if (state.user) document.body.insertAdjacentHTML('afterbegin', renderHeader());
 
@@ -475,6 +476,25 @@ function attachEventListeners() {
             startTutorial();
         };
     }
+
+    document.querySelectorAll('.accept-request-btn').forEach(b => {
+        b.onclick = e => handleAcceptJoinRequest(e.currentTarget.dataset.notifId);
+    });
+    
+    document.querySelectorAll('.reject-request-btn').forEach(b => {
+        b.onclick = e => handleRejectJoinRequest(e.currentTarget.dataset.notifId);
+    });
+    
+    document.querySelectorAll('.delete-notif-btn').forEach(b => { 
+        b.onclick = e => { 
+            e.stopPropagation(); 
+            handleDeleteNotification(e.currentTarget.dataset.id); 
+        }
+    });
+    
+    document.querySelectorAll('.enter-family-notif-btn').forEach(b => {
+        b.onclick = e => handleEnterFamilyFromNotification(state.notifications.find(n => n.id === e.currentTarget.dataset.notifId));
+    });
 }
 
 let unsubscribeNotifications = null;
@@ -488,12 +508,13 @@ firebase.onAuthStateChanged(auth, async (user) => {
         const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
         state.user = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0], photoURL: user.photoURL, isGoogle: isGoogle };
         
-        state.userFamilies = await fetchUserFamilies();
+        // MUDANÇA AQUI: Em vez de 'await fetchUserFamilies()', iniciamos o listener
+        subscribeToUserFamilies(); 
         
         if (unsubscribeNotifications) unsubscribeNotifications();
         unsubscribeNotifications = subscribeToNotifications();
         
-        // LÓGICA DE CÓDIGO PENDENTE
+        // ... (Resto da lógica de inviteCode e lastFamilyId mantém IGUAL) ...
         const pendingCode = sessionStorage.getItem('pendingInviteCode');
         const lastFamilyId = localStorage.getItem('greenhive_last_family');
         
@@ -502,20 +523,19 @@ firebase.onAuthStateChanged(auth, async (user) => {
             sessionStorage.removeItem('pendingInviteCode'); 
             history.replaceState(null, '', window.location.pathname);
         } else if (lastFamilyId) {
-            const hasAccess = state.userFamilies.some(f => f.id === lastFamilyId);
-            if (hasAccess) {
-                handleSelectFamily(lastFamilyId);
-            } else {
-                localStorage.removeItem('greenhive_last_family');
-                state.isLoading = false;
-                renderApp();
-            }
+            // Pequeno detalhe: como userFamilies agora carrega assíncrono via listener,
+            // pode ser que na primeira execução state.userFamilies esteja vazio.
+            // Mas o handleSelectFamily vai funcionar igual pois ele busca a família pelo ID direto no banco.
+            // A validação "hasAccess" pode falhar momentaneamente, então vamos simplificar:
+            // Tentamos entrar. Se falhar (permissão negada no Firestore), o subscribeToFamilyData vai tratar (forceExit).
+            handleSelectFamily(lastFamilyId);
         } else {
             state.isLoading = false;
             renderApp();
         }
 
     } else {
+        // ... (Logout igual) ...
         if (unsubscribeNotifications) unsubscribeNotifications();
         state.user = null; state.family = null; state.transactions = []; state.userFamilies = []; state.budgets = []; state.debts = []; state.installments = [];
         state.isModalOpen = false; state.modalView = ''; state.isNotificationMenuOpen = false;

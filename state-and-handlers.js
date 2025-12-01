@@ -210,18 +210,17 @@ export function subscribeToFamilyData(familyId) {
     clearAllListeners(); 
 
     const familyRef = doc(db, "familyGroups", familyId);
-    const unsubFamily = onSnapshot(familyRef, async (snapshot) => {
-        if (!snapshot.exists()) {
-            state.isLoading = false; 
-            forceExitFamily("A família que você estava acessando foi excluída.");
-            return;
-        }
+    
+    const unsubFamily = onSnapshot(familyRef, { includeMetadataChanges: true }, async (snapshot) => {
+        // ... (resto da lógica de expulsão e carregamento da família mantida) ...
+        if (!snapshot.exists()) { state.isLoading = false; forceExitFamily("A família que você estava acessando foi excluída."); return; }
         const data = snapshot.data();
-        if (!data.members.includes(state.user.uid)) {
-            state.isLoading = false;
-            forceExitFamily("Você foi removido desta família.");
-            return;
+        const isMember = data.members.includes(state.user.uid);
+        if (!isMember) {
+            if (snapshot.metadata.fromCache) { console.log("Cache desatualizado detectado. Aguardando servidor..."); return; }
+            state.isLoading = false; forceExitFamily("Você foi removido desta família."); return;
         }
+
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
@@ -238,9 +237,6 @@ export function subscribeToFamilyData(familyId) {
         renderApp();
         state.shouldAnimate = false;
         checkAutomatedAlerts();
-        
-        // NOVO: VERIFICA RECORRÊNCIAS (Apenas uma vez ao carregar os dados da família)
-        // Colocamos aqui dentro para garantir que temos acesso ao banco
         checkRecurringTransactions(familyId);
     });
     state.unsubscribers.push(unsubFamily);
@@ -267,14 +263,14 @@ export function subscribeToFamilyData(familyId) {
     const qInst = query(collection(db, "familyGroups", familyId, "installments"));
     state.unsubscribers.push(onSnapshot(qInst, (s) => handleSubCollectionSnapshot(s, 'installments')));
 
+    // CORREÇÃO AQUI: A variável do callback agora chama 'snapshot' (corrigindo a tipagem/nome)
     const qGoals = query(collection(db, "familyGroups", familyId, "goals"));
-    const unsubGoals = onSnapshot(qGoals, (snapshot) => {
-        const g = [];
-        snapshot.forEach(d => g.push({ id: d.id, ...d.data() }));
-        state.goals = g;
+    state.unsubscribers.push(onSnapshot(qGoals, (snapshot) => { 
+        const g = []; 
+        snapshot.forEach(d => g.push({ id: d.id, ...d.data() })); 
+        state.goals = g; 
         renderApp();
-    });
-    state.unsubscribers.push(unsubGoals);
+    }));
 }
 
 // --- HANDLERS ---
@@ -372,6 +368,7 @@ export function handleSwitchFamily() {
 }
 export async function handleLogout() {
     clearAllListeners();
+    if (userFamiliesUnsubscribe) userFamiliesUnsubscribe(); // Para de ouvir a lista de famílias
     localStorage.removeItem('greenhive_last_family');
     await firebase.signOut(auth);
 }
@@ -1177,47 +1174,45 @@ export function closeConfirmation() {
     renderApp();
 }
 
-export async function handleAcceptJoinRequest(notification) {
+export async function handleAcceptJoinRequest(notificationId) {
+    const notification = state.notifications.find(n => n.id === notificationId);
+
+    if (!notification) {
+        console.error("Notificação não encontrada para aceite.");
+        return;
+    }
+
     try {
         const batch = writeBatch(db);
         const familyRef = doc(db, "familyGroups", notification.targetFamilyId);
         
-        // Adiciona membro
+        // 1. Adiciona membro
         batch.update(familyRef, { members: arrayUnion(notification.senderId) });
         
-        // Apaga solicitação
+        // 2. Apaga solicitação
         const notifRef = doc(db, "notifications", notification.id);
         batch.delete(notifRef);
         
-        // Avisa o usuário que foi aceito
+        // 3. Avisa o usuário que foi aceito (CORRIGIDO: Adicionando senderName)
         const newNotifRef = doc(collection(db, "notifications"));
         batch.set(newNotifRef, {
             recipientId: notification.senderId,
             senderId: state.user.uid,
-            targetFamilyId: notification.targetFamilyId,
+            senderName: state.user.name, // <--- ADICIONADO PARA CORRIGIR 'UNDEFINED'
             targetFamilyName: notification.targetFamilyName,
             type: 'request_accepted',
             createdAt: Date.now(),
             read: false
         });
 
-        // Limpa duplicatas
+        // 4. Limpa duplicatas
         const qOthers = query(collection(db, "notifications"), where("senderId", "==", notification.senderId), where("targetFamilyId", "==", notification.targetFamilyId), where("type", "==", "join_request"));
         const otherDocs = await getDocs(qOthers);
         otherDocs.forEach(d => { if (d.id !== notification.id) batch.delete(d.ref); });
 
         await batch.commit();
         
-        // --- NOVO: NOTIFICA A FAMÍLIA ---
-        // Como o estado local ainda não atualizou, usamos os dados que temos
-        // Mas idealmente, chamamos a função auxiliar passando o ID de quem entrou para excluir ele do aviso
-        // Nota: Aqui usamos uma lógica direta pois o state.family pode não estar sincronizado na visão do admin para pegar a lista atualizada instantaneamente.
-        // Vamos notificar usando a lista atual do state (que são os membros ANTES desse novo entrar), o que é perfeito.
-        notifyAllMembers(
-            "Novo Membro! 👋", 
-            `${notification.senderName} acabou de entrar na família. Dê as boas-vindas!`, 
-            state.user.uid // Não avisa o Admin que acabou de clicar no botão
-        );
+        // Remoção da notificação de novo membro foi feita conforme pedido.
 
         showToast(`${notification.senderName} foi adicionado!`, 'success');
     } catch (e) {
@@ -1266,17 +1261,9 @@ export async function handleJoinFamilyFromLink(code) {
         
         await updateDoc(doc(db, "familyGroups", familyId), { members: arrayUnion(state.user.uid) });
         
-        // Carrega a família para ter o state.family preenchido
-        await handleSelectFamily(familyId);
-        
-        // --- NOVO: NOTIFICA A FAMÍLIA ---
-        // Agora que state.family está carregado, podemos avisar os outros
-        notifyAllMembers(
-            "Novo Membro! 👋", 
-            `${state.user.name} entrou na família através do link.`, 
-            state.user.uid // Não avisa a si mesmo
-        );
+        // REMOVIDO: notifyAllMembers
 
+        await handleSelectFamily(familyId);
         showToast(`Bem-vindo à "${familyData.name}"!`, 'success');
         return true;
     } catch (e) {
@@ -1286,24 +1273,33 @@ export async function handleJoinFamilyFromLink(code) {
     }
 }
 
-export async function handleRejectJoinRequest(notification) {
+export async function handleRejectJoinRequest(notificationId) {
+    const notification = state.notifications.find(n => n.id === notificationId);
+    if (!notification) { console.error("Notificação não encontrada."); return; }
+
     try {
-        const batch = firebase.writeBatch(db);
-        const notifRef = firebase.doc(db, "notifications", notification.id);
+        const batch = writeBatch(db);
+        
+        // 1. Apaga solicitação original
+        const notifRef = doc(db, "notifications", notificationId);
         batch.delete(notifRef);
-        const newNotifRef = firebase.doc(firebase.collection(db, "notifications"));
+
+        // 2. Cria notificação de rejeição para o usuário
+        const newNotifRef = doc(collection(db, "notifications"));
         batch.set(newNotifRef, {
-            recipientId: notification.senderId,
-            senderId: state.user.uid,
+            recipientId: notification.senderId, // Quem pediu
+            senderId: state.user.uid,          // Admin que recusou
+            senderName: state.user.name,       // Nome do Admin <--- IMPORTANTE
             targetFamilyName: notification.targetFamilyName,
-            type: 'request_rejected',
+            type: 'request_rejected',          // Tipo correto
             createdAt: Date.now(),
             read: false
         });
+
         await batch.commit();
         showToast("Solicitação recusada.", 'info');
     } catch (e) {
-        console.error(e);
+        console.error("Erro ao recusar:", e);
         showToast("Erro ao recusar.", 'error');
     }
 }
@@ -1572,28 +1568,41 @@ export async function requestNotificationPermission() {
 }
 
 // Função para notificar todos da família (menos quem causou a ação)
-async function notifyAllMembers(title, message, excludeUserId = null) {
-    if (!state.family) return;
+// Função Auxiliar: Notifica membros da família
+// membersList: Opcional. Se não passar, tenta usar o state.family.members
+// excludeIds: Array de IDs que NÃO devem receber a notificação
+async function notifyAllMembers(title, message, excludeUserId = null, customTargetList = null) {
+    // Se passarmos uma lista específica, usa ela. Se não, tenta usar a do estado atual.
+    const targets = customTargetList || (state.family ? state.family.members : []);
     
-    const batch = writeBatch(db);
-    const membersToNotify = state.family.members.filter(uid => uid !== excludeUserId);
+    if (!targets || targets.length === 0) return;
 
-    membersToNotify.forEach(recipientId => {
+    const batch = writeBatch(db);
+    let count = 0;
+
+    targets.forEach(recipientId => {
+        // Não notifica a si mesmo (quem está logado)
+        if (recipientId === state.user.uid) return;
+        
+        // Não notifica quem foi explicitamente excluído (ex: o novato)
+        if (recipientId === excludeUserId) return;
+
         const notifRef = doc(collection(db, "notifications"));
         batch.set(notifRef, {
             recipientId: recipientId,
             senderId: "SYSTEM",
             senderName: "GreenHive",
-            targetFamilyId: state.family.id,
-            type: 'new_member_alert', // Tipo novo
+            targetFamilyId: state.family ? state.family.id : '', 
+            type: 'new_member_alert',
             title: title,
             message: message,
             createdAt: Date.now(),
             read: false
         });
+        count++;
     });
 
-    await batch.commit();
+    if (count > 0) await batch.commit();
 }
 
 // --- EXPORTAÇÃO ---
@@ -1762,4 +1771,31 @@ export function checkAndStartTutorial() {
         // Pequeno delay para garantir que o HTML renderizou
         setTimeout(() => startTutorial(), 1500);
     }
+}
+
+// Variável global para controlar o listener da lista de famílias
+let userFamiliesUnsubscribe = null;
+
+// ... (código anterior) ...
+
+// NOVA FUNÇÃO: Substitui a 'fetchUserFamilies'
+export function subscribeToUserFamilies() {
+    if (!state.user?.uid) return;
+    
+    // Se já tem um listener, limpa antes de criar outro
+    if (userFamiliesUnsubscribe) userFamiliesUnsubscribe();
+
+    const q = query(collection(db, "familyGroups"), where("members", "array-contains", state.user.uid));
+    
+    userFamiliesUnsubscribe = onSnapshot(q, (snapshot) => {
+        const families = [];
+        snapshot.forEach(d => families.push({ id: d.id, ...d.data() }));
+        
+        state.userFamilies = families;
+        
+        // Só atualiza a tela se estivermos na seleção de famílias
+        if (state.currentView === 'onboarding' && !state.isModalOpen) {
+            renderApp();
+        }
+    });
 }
