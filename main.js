@@ -54,18 +54,44 @@ export function showToast(message, type) {
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
 }
 
-export function renderApp() {
-    document.documentElement.className = state.theme;
+export function renderApp(isDataUpdate = false) {
+    // 1. Salva a posição do scroll ANTES de mexer no HTML
+    const currentScrollY = window.scrollY;
 
+    document.documentElement.className = state.theme;
 
     if (state.isLoading) {
         root.innerHTML = renderLoadingScreen();
         return;
     }
 
+    // Lógica de Header (igual)
     document.querySelector('body > header')?.remove();
     if (state.user) document.body.insertAdjacentHTML('afterbegin', renderHeader());
 
+    // --- RENDERIZAÇÃO INTELIGENTE ---
+    
+    // Caso 1: Modal Aberto + Update de Dados (Renderização Parcial)
+    if (isDataUpdate && state.isModalOpen) {
+        const viewContainer = document.getElementById('view-content');
+        if (viewContainer) {
+            let newContent = '';
+            if (state.currentView === 'dashboard') newContent = renderFamilyDashboard();
+            else if (state.currentView === 'records') newContent = renderRecordsPage();
+            else if (state.currentView === 'budget') newContent = renderBudgetPage();
+            else if (state.currentView === 'debts') newContent = renderDebtsPage();
+            else if (state.currentView === 'goals') newContent = renderGoalsPage();
+            
+            viewContainer.innerHTML = newContent;
+        }
+        attachEventListeners();
+        
+        // Restaura o scroll (Crucial mesmo na parcial)
+        window.scrollTo(0, currentScrollY);
+        return; 
+    }
+
+    // Caso 2: Renderização Completa (Navegação ou Carga Inicial)
     let contentHTML = '';
     if (!state.user) contentHTML = renderAuthPage();
     else if (!state.family) contentHTML = renderFamilyOnboardingPage();
@@ -73,7 +99,7 @@ export function renderApp() {
 
     root.innerHTML = contentHTML;
 
-    // Modals
+    // Re-insere Modais
     root.insertAdjacentHTML('beforeend', renderTransactionModal());
     root.insertAdjacentHTML('beforeend', renderBudgetModal());
     root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
@@ -88,13 +114,21 @@ export function renderApp() {
 
     attachEventListeners();
 
-    // --- CORREÇÃO DE UX MOBILE ---
-    // Encontra a aba ativa e rola a barra horizontal até ela ficar no centro
-    const activeTab = document.querySelector(`.nav-tab[data-view="${state.currentView}"]`);
-    if (activeTab) {
-        // 'behavior: auto' faz o salto ser instantâneo (parece que nem moveu)
-        // 'inline: center' garante que a aba fique no meio da tela se possível
-        activeTab.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    // --- GERENCIAMENTO DE SCROLL E ANIMAÇÃO ---
+
+    if (isDataUpdate) {
+        // SE FOR UPDATE DE DADOS:
+        // Restaura o scroll para onde o usuário estava
+        window.scrollTo(0, currentScrollY);
+    } else {
+        // SE FOR NAVEGAÇÃO (Trocou de aba ou entrou agora):
+        // Rola a barra de abas (mobile) para centralizar a aba ativa
+        const activeTab = document.querySelector(`.nav-tab[data-view="${state.currentView}"]`);
+        if (activeTab) {
+            activeTab.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+        }
+        // Opcional: Se quiser que navegação sempre vá para o topo, descomente abaixo
+        // window.scrollTo(0, 0); 
     }
 
     if (state.shouldAnimate) {

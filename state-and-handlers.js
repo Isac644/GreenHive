@@ -160,17 +160,14 @@ export function handleToggleFilterDate(day) {
 export function subscribeToNotifications() {
     if (!state.user) return;
     const q = query(collection(db, "notifications"), where("recipientId", "==", state.user.uid));
-    // Listener global de notificações
     const unsub = onSnapshot(q, (snapshot) => {
         const notifs = [];
         snapshot.forEach(doc => { notifs.push({ id: doc.id, ...doc.data() }); });
         state.notifications = notifs.sort((a, b) => b.createdAt - a.createdAt);
-        renderApp();
+        
+        // ALTERADO: Passa true. Assim se chegar notificação enquanto vc digita, não fecha o modal.
+        renderApp(true);
     });
-    // Adiciona ao array de unsubscribers para limpar no logout
-    // (Obs: Notifications é especial, geralmente queremos manter enquanto logado, 
-    // mas vamos gerenciar junto com o resto por simplicidade ou separar se preferir)
-    // Aqui vamos deixar separado pois é ligado ao User, não à Família.
     return unsub; 
 }
 
@@ -212,15 +209,15 @@ export function subscribeToFamilyData(familyId) {
     const familyRef = doc(db, "familyGroups", familyId);
     
     const unsubFamily = onSnapshot(familyRef, { includeMetadataChanges: true }, async (snapshot) => {
-        // ... (resto da lógica de expulsão e carregamento da família mantida) ...
+        // ... (lógica de erro/expulsão igual) ...
         if (!snapshot.exists()) { state.isLoading = false; forceExitFamily("A família que você estava acessando foi excluída."); return; }
         const data = snapshot.data();
-        const isMember = data.members.includes(state.user.uid);
-        if (!isMember) {
-            if (snapshot.metadata.fromCache) { console.log("Cache desatualizado detectado. Aguardando servidor..."); return; }
+        if (!data.members.includes(state.user.uid)) {
+            if (snapshot.metadata.fromCache) { return; }
             state.isLoading = false; forceExitFamily("Você foi removido desta família."); return;
         }
 
+        // ... (atualização do state igual) ...
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
@@ -234,7 +231,10 @@ export function subscribeToFamilyData(familyId) {
         }
         
         state.isLoading = false;
-        renderApp();
+        
+        // ALTERADO: Passa true para indicar update de dados
+        renderApp(true); 
+        
         state.shouldAnimate = false;
         checkAutomatedAlerts();
         checkRecurringTransactions(familyId);
@@ -246,11 +246,15 @@ export function subscribeToFamilyData(familyId) {
         snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
         if (sortFunc) items.sort(sortFunc);
         state[listKey] = items;
-        renderApp();
+        
+        // ALTERADO: Passa true para indicar update de dados
+        renderApp(true);
+        
         state.shouldAnimate = false;
         checkAutomatedAlerts();
     };
 
+    // Listeners chamando a função auxiliar alterada acima
     const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId));
     state.unsubscribers.push(onSnapshot(qTrans, (s) => handleSubCollectionSnapshot(s, 'transactions', (a, b) => new Date(b.date) - new Date(a.date))));
 
@@ -263,13 +267,14 @@ export function subscribeToFamilyData(familyId) {
     const qInst = query(collection(db, "familyGroups", familyId, "installments"));
     state.unsubscribers.push(onSnapshot(qInst, (s) => handleSubCollectionSnapshot(s, 'installments')));
 
-    // CORREÇÃO AQUI: A variável do callback agora chama 'snapshot' (corrigindo a tipagem/nome)
     const qGoals = query(collection(db, "familyGroups", familyId, "goals"));
     state.unsubscribers.push(onSnapshot(qGoals, (snapshot) => { 
         const g = []; 
         snapshot.forEach(d => g.push({ id: d.id, ...d.data() })); 
         state.goals = g; 
-        renderApp();
+        
+        // ALTERADO: Passa true
+        renderApp(true);
     }));
 }
 
