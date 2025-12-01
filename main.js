@@ -54,12 +54,15 @@ export function showToast(message, type) {
 }
 
 export function renderApp() {
+    // CORREÇÃO: Aplica o tema ANTES de verificar o loading
+    // Assim a tela de loading já pega a classe 'dark' se necessário
+    document.documentElement.className = state.theme;
+
     if (state.isLoading) {
         root.innerHTML = renderLoadingScreen();
         return;
     }
 
-    document.documentElement.className = state.theme;
     document.querySelector('body > header')?.remove();
     if (state.user) document.body.insertAdjacentHTML('afterbegin', renderHeader());
 
@@ -70,7 +73,7 @@ export function renderApp() {
 
     root.innerHTML = contentHTML;
 
-    // Modals (APENAS MODAIS AQUI, NADA DE PÁGINAS)
+    // Modals
     root.insertAdjacentHTML('beforeend', renderTransactionModal());
     root.insertAdjacentHTML('beforeend', renderBudgetModal());
     root.insertAdjacentHTML('beforeend', renderFamilyInfoModal());
@@ -81,19 +84,13 @@ export function renderApp() {
     root.insertAdjacentHTML('beforeend', renderDebtModal());
     root.insertAdjacentHTML('beforeend', renderInstallmentModal());
     root.insertAdjacentHTML('beforeend', renderFilterModal());
-    
-    // CORREÇÃO: Removemos renderGoalsPage() daqui.
-    root.insertAdjacentHTML('beforeend', renderGoalModal()); // Mantém apenas o modal
+    root.insertAdjacentHTML('beforeend', renderGoalModal());
 
     attachEventListeners();
 
     if (state.shouldAnimate) {
         state.shouldAnimate = false;
     }
-
-    // Tenta iniciar o tutorial se for a primeira vez
-    // (A função checkAndStartTutorial já tem as proteções necessárias)
-    checkAndStartTutorial();
 }
 
 function attachEventListeners() {
