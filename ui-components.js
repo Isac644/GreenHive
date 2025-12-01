@@ -263,7 +263,6 @@ export function renderFamilyOnboardingPage() {
 export function renderMainContent() {
     if (!state.family) return '';
     
-    // Estilos das Abas (Pílulas Modernas)
     const activeClass = "bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 shadow-sm ring-1 ring-brand-200 dark:ring-brand-800";
     const inactiveClass = "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/50 transition-colors";
 
@@ -278,31 +277,29 @@ export function renderMainContent() {
         </nav>
     </div>`;
 
-    // Roteamento de Visualização
     let viewContent = '';
     if (state.currentView === 'dashboard') viewContent = renderFamilyDashboard();
     else if (state.currentView === 'records') viewContent = renderRecordsPage();
     else if (state.currentView === 'budget') viewContent = renderBudgetPage();
     else if (state.currentView === 'debts') viewContent = renderDebtsPage();
-    else if (state.currentView === 'goals') viewContent = renderGoalsPage(); // NOVO
+    else if (state.currentView === 'goals') viewContent = renderGoalsPage();
 
-    // Animação condicional (só anima na troca de abas/entrada)
     const animationClass = state.shouldAnimate ? 'content-fade-in' : '';
 
     return `
     <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-            <div>
-                <button id="family-info-button" class="text-3xl font-heading font-bold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition flex items-center gap-2 group">
-                    ${state.family.name}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 group-hover:text-brand-500 transition opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div class="flex flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex-1 min-w-0">
+                <button id="family-info-button" class="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition flex items-center gap-2 group w-full">
+                    <span class="truncate">${state.family.name}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 group-hover:text-brand-500 transition opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">Bem-vindo de volta, ${state.user.name.split(' ')[0]}! 👋</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium truncate">Bem-vindo de volta, ${state.user.name.split(' ')[0]}! 👋</p>
             </div>
             
-            <button id="switch-family-header-button" class="text-sm font-bold text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 bg-white dark:bg-gray-800 hover:bg-brand-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                Trocar Família
+            <button id="switch-family-header-button" class="text-sm font-bold text-gray-600 hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400 bg-white dark:bg-gray-800 hover:bg-brand-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 px-3 sm:px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                <span class="hidden sm:inline">Trocar Família</span>
             </button>
         </div>
 
@@ -315,12 +312,10 @@ export function renderMainContent() {
 }
 
 export function renderFamilyDashboard() {
+    // ... (código inicial de cálculos mantido) ...
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
-    
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
-    
-    // Cálculos (Mantidos)
     const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
     summary.balance = summary.income - summary.expenses;
     const userTransactions = monthlyTransactions.filter(t => t.userId === state.user.uid);
@@ -331,7 +326,6 @@ export function renderFamilyDashboard() {
     const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => { const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === b.category).reduce((sum, t) => sum + t.amount, 0); return acc + spent; }, 0);
     const isAdmin = state.familyAdmins.includes(state.user.uid);
     const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>` : '';
-    
     const cardBase = "bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
     const titleClass = "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
     const valueClass = "font-heading font-bold text-3xl sm:text-4xl tracking-tight mb-3";
@@ -339,131 +333,14 @@ export function renderFamilyDashboard() {
     return `
     <div class="animate-fade-in space-y-8">
         
-        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto lg:mx-0">
+        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-2 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center">
             <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
             <h3 class="text-sm font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
             <button id="next-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            <div class="flex flex-col gap-6 h-full">
-                <div class="flex flex-col gap-4">
-                    <div class="${cardBase} relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div>
-                        <p class="${titleClass}">Saldo da Família</p>
-                        <p class="${valueClass} text-gray-900 dark:text-white">R$ ${summary.balance.toFixed(2)}</p>
-                        <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                            <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div>
-                            <div class="flex flex-col">
-                                <span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span>
-                                <span class="text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'}">R$ ${userSummary.balance.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
-                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.income.toFixed(2)}</p>
-                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400">R$ ${userSummary.income.toFixed(2)}</span></p>
-                        </div>
-                        <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
-                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.expenses.toFixed(2)}</p>
-                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500">R$ ${userSummary.expenses.toFixed(2)}</span></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="${cardBase} flex-1 min-h-[300px] flex flex-col overflow-hidden">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                        Saldo dos Membros
-                    </h3>
-                    
-                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex items-start">
-                        <div class="h-full min-w-full w-max px-2">
-                            <div class="relative h-full w-full" style="min-width: 500px;">
-                                <canvas id="person-spending-chart"></canvas>
-                            </div>
-                        </div>
-                        <div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem dados neste mês</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-6 h-full">
-                
-                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
-                        <div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg">
-                            <span>Meta: <span class="text-gray-600 dark:text-gray-300">R$ ${totalBudget.toFixed(0)}</span></span>
-                        </div>
-                    </div>
-                    
-                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex items-start">
-                        <div class="h-full min-w-full w-max px-2">
-                            <div class="relative h-full w-full" style="min-width: 400px;">
-                                <canvas id="budget-performance-chart"></canvas>
-                            </div>
-                        </div>
-                        <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem orçamentos definidos</div>
-                    </div>
-                </div>
-
-                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
-                    <div class="relative w-full flex-1 min-h-[200px]">
-                        <canvas id="daily-evolution-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="${cardBase}">
-            <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3>
-            <div class="h-72 relative w-full">
-                <canvas id="annual-balance-chart"></canvas>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="${cardBase}">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>
-                    ${manageCategoriesButton} 
-                </div>
-                <div class="h-64 relative w-full">
-                    <canvas id="monthly-expenses-chart"></canvas>
-                    <div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div>
-                </div>
-            </div>
-
-            <div class="${cardBase}">
-                <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3>
-                <div class="h-64 relative w-full">
-                    <canvas id="comparison-chart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20">
-            <div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8">
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div>
-                        <h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3>
-                        <p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p>
-                        <p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        <button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button>
-                        <button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+            <div class="flex flex-col gap-6 h-full"><div class="flex flex-col gap-4"><div class="${cardBase} relative overflow-hidden group"><div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div><p class="${titleClass}">Saldo da Família</p><p class="${valueClass} text-gray-900 dark:text-white">R$ ${summary.balance.toFixed(2)}</p><div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50"><div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div><div class="flex flex-col"><span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span><span class="text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'}">R$ ${userSummary.balance.toFixed(2)}</span></div></div></div><div class="grid grid-cols-2 gap-4"><div class="${cardBase} flex flex-col justify-center"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div><p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.income.toFixed(2)}</p><p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400">R$ ${userSummary.income.toFixed(2)}</span></p></div><div class="${cardBase} flex flex-col justify-center"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div><p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate">R$ ${summary.expenses.toFixed(2)}</p><p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500">R$ ${userSummary.expenses.toFixed(2)}</span></p></div></div></div><div class="${cardBase} flex-1 min-h-[300px] flex flex-col overflow-hidden"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2"><svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>Saldo dos Membros</h3><div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex items-start"><div class="h-full min-w-full w-max px-2"><div class="relative h-full w-full" style="min-width: 500px;"><canvas id="person-spending-chart"></canvas></div></div><div id="person-spending-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem dados neste mês</div></div></div></div><div class="flex flex-col gap-6 h-full"><div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3><div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300">R$ ${totalBudget.toFixed(0)}</span></span></div></div><div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex items-start"><div class="h-full min-w-full w-max px-2"><div class="relative h-full w-full" style="min-width: 400px;"><canvas id="budget-performance-chart"></canvas></div></div><div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem orçamentos definidos</div></div></div><div class="${cardBase} flex-1 min-h-[250px] flex flex-col"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3><div class="relative w-full flex-1 min-h-[200px]"><canvas id="daily-evolution-chart"></canvas></div></div></div></div><div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div><div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div></div><div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p><p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p></div><div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"><button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button><button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button></div></div></div></div>
     </div>`;
 }
 
@@ -474,6 +351,7 @@ export function renderRecordsPage() {
     const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
 
+    // Filtros
     const filtered = state.transactions.filter(t => {
         const tDate = new Date(t.date + 'T12:00:00');
         const isSameMonth = tDate.getMonth() === month && tDate.getFullYear() === year;
@@ -509,12 +387,7 @@ export function renderRecordsPage() {
             const transactionsForDay = groupedByDate[day].map(t => {
                 const isOwner = t.userId === state.user.uid;
                 const canEdit = isAdmin || isOwner;
-                
-                // CORREÇÃO DE SEGURANÇA:
-                // A classe 'transaction-item' (que ativa o clique no main.js) SÓ é adicionada se canEdit for true.
-                // Se for false, o item não será clicável.
                 const itemClass = canEdit ? 'transaction-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800' : 'cursor-default opacity-75';
-                
                 const categoryColor = state.categoryColors[t.category] || '#9ca3af';
                 const categoryIcon = state.categoryIcons[t.category] || '🏷️';
                 const memberName = t.userName ? t.userName.split(' ')[0] : '???';
@@ -527,15 +400,12 @@ export function renderRecordsPage() {
                             <p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${t.description}</p>
                             <div class="flex items-center gap-2 mt-1.5">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${t.category}</span>
-                                <span class="text-xs text-gray-400 flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    ${memberName}
-                                </span>
+                                <span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${memberName}</span>
                             </div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'}">
+                        <p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'} ${getPrivacyClass()}">
                             ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
                         </p>
                     </div>
@@ -546,10 +416,7 @@ export function renderRecordsPage() {
     }
 
     let activeFiltersCount = 0;
-    if (state.filterType !== 'all') activeFiltersCount++;
-    if (state.filterCategory) activeFiltersCount++;
-    if (state.filterMember) activeFiltersCount++;
-    if (state.selectedDate) activeFiltersCount++;
+    if (state.filterType !== 'all') activeFiltersCount++; if (state.filterCategory) activeFiltersCount++; if (state.filterMember) activeFiltersCount++; if (state.selectedDate) activeFiltersCount++;
     const filterBadge = activeFiltersCount > 0 ? `<span class="absolute -top-1 -right-1 bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-bounce">${activeFiltersCount}</span>` : '';
 
     return `
@@ -565,12 +432,6 @@ export function renderRecordsPage() {
                 </div>
 
                 <div class="flex gap-2">
-                    <button id="export-csv-btn" class="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 group" title="Baixar Relatório">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                    </button>
-
                     <button id="open-filter-modal-btn" class="relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         ${filterBadge}
@@ -583,9 +444,16 @@ export function renderRecordsPage() {
                 </div>
             </div>
         </div>
+
         <div id="records-list-wrapper" class="max-w-3xl mx-auto">
             ${transactionsHTML}
         </div>
+
+        <button id="export-csv-btn" class="fixed bottom-6 right-6 z-50 w-14 h-14 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 hover:text-brand-600 dark:hover:text-brand-400 transition-all" title="Baixar Relatório">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+        </button>
     </div>`;
 }
 
