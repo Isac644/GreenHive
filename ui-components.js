@@ -713,57 +713,82 @@ export function renderBudgetPage() {
 
 export function renderDebtsPage() {
     const isAdmin = state.familyAdmins.includes(state.user.uid);
+
+    // Cálculo do Total de Parcelamentos
+    const totalInstallmentsValue = state.installments.reduce((sum, inst) => sum + (inst.totalValue || 0), 0);
     
-    // Define classe de interação SE puder editar
+    // Estilo base dos Cards
     const getCardStyle = (canEdit) => {
         const base = "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all relative overflow-hidden group";
-        return canEdit ? `${base} cursor-pointer hover:shadow-md hover:border-brand-200 dark:hover:border-gray-600 hover:-translate-y-0.5` : base;
+        return canEdit ? `${base} cursor-pointer hover:shadow-md hover:-translate-y-0.5` : base;
     };
 
-    // Dívidas
-    const debtsHTML = state.debts.map(d => {
-        const canEdit = isAdmin || d.userId === state.user.uid;
-        const memberName = state.familyMembers.find(m => m.uid === d.debtorId)?.name.split(' ')[0] || '???';
-        const paid = state.transactions.filter(t => t.linkedDebtId === d.id && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-        const progress = Math.min((paid / d.totalValue) * 100, 100);
+    // --- 1. DÍVIDAS (VERMELHO) ---
+    const debtsHTML = state.debts.map(debt => {
+        const paid = debt.paidInstallments || 0; // Nota: Verifique se seu banco usa paidAmount ou paidInstallments para dívidas simples
+        // Se for dívida simples, geralmente calculamos via transações, mas vou manter sua lógica atual ou a de soma:
+        const realPaid = state.transactions.filter(t => t.linkedDebtId === debt.id).reduce((acc, t) => acc + t.amount, 0);
         
-        let status = 'Pendente'; let statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-        if (paid >= d.totalValue) { status = 'Pago'; statusClass = 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'; }
-        else if (d.dueDate && new Date(d.dueDate) < new Date()) { status = 'Atrasado'; statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'; }
+        const total = debt.totalValue || 0;
+        const percentage = total > 0 ? (realPaid / total) * 100 : 0;
+        const debtorName = state.familyMembers.find(m => m.uid === debt.debtorId)?.name.split(' ')[0] || '???';
+        const isMine = debt.debtorId === state.user.uid;
+        const canEdit = isAdmin || isMine;
+        
+        // Status Badge
+        let status = 'Pendente'; 
+        let statusClass = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
+        
+        if (realPaid >= total) { 
+            status = 'Pago'; 
+            statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'; 
+        } else if (debt.dueDate && new Date(debt.dueDate) < new Date()) { 
+            status = 'Atrasado'; 
+            statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'; 
+        }
 
-        // CORREÇÃO: Adicionada classe 'debt-item' e removido botão de lápis
         return `
-        <div class="${getCardStyle(canEdit)} ${canEdit ? 'debt-item' : ''}" data-debt-id="${d.id}">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Dívida</span>
-                    <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-1">${d.name}</h4>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg">Devedor: ${memberName}</span>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg ${statusClass}">${status}</span>
+        <div class="${getCardStyle(canEdit)} ${canEdit ? 'debt-item hover:border-red-200 dark:hover:border-red-900' : ''}" data-debt-id="${debt.id}">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center text-2xl">
+                        💸
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Dívida</span>
+                        <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-1">${debt.name}</h4>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg">Devedor: ${debtorName}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg ${statusClass}">${status}</span>
+                        </div>
                     </div>
                 </div>
             </div>
+            
             <div class="space-y-2">
                 <div class="flex justify-between text-sm font-bold">
-                    <span class="text-gray-500 dark:text-gray-400">Pago: <span class="text-gray-900 dark:text-white">R$ ${paid.toFixed(2)}</span></span>
-                    <span class="text-gray-400">/ ${d.totalValue.toFixed(2)}</span>
+                    <span class="text-gray-500 dark:text-gray-400">Pago: <span class="text-gray-900 dark:text-white">R$ ${realPaid.toFixed(2)}</span></span>
+                    <span class="text-gray-400">/ ${total.toFixed(2)}</span>
                 </div>
                 <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                    <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+                    <div class="bg-red-500 h-full rounded-full transition-all duration-500" style="width: ${Math.min(percentage, 100)}%"></div>
                 </div>
-                ${d.dueDate ? `<p class="text-xs text-right text-gray-400 font-medium mt-2">Vence: ${new Date(d.dueDate).toLocaleDateString('pt-BR')}</p>` : ''}
+                ${debt.dueDate ? `<p class="text-xs text-right text-gray-400 font-medium mt-2">Vence: ${new Date(debt.dueDate).toLocaleDateString('pt-BR')}</p>` : ''}
             </div>
         </div>`;
-    }).join('') || '<div class="col-span-full py-12 text-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700"><p>Nenhuma dívida cadastrada.</p></div>';
+    }).join('') || `<div class="col-span-full py-12 text-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700"><p>Nenhuma dívida cadastrada.</p></div>`;
 
-    // Parcelamentos
-    const installmentsHTML = state.installments.map(i => {
-        const canEdit = isAdmin || i.userId === state.user.uid;
-        const memberName = state.familyMembers.find(m => m.uid === i.debtorId)?.name.split(' ')[0] || '???';
-        const linkedTrans = state.transactions.filter(t => t.linkedInstallmentId === i.id);
+    // --- 2. PARCELAMENTOS (VERDE/BRAND) ---
+    const installmentsHTML = state.installments.map(inst => {
+        const linkedTrans = state.transactions.filter(t => t.linkedInstallmentId === inst.id);
         const paidCount = linkedTrans.length;
-        
+        const total = inst.totalValue || 0;
+        const percentage = inst.installmentsCount > 0 ? (paidCount / inst.installmentsCount) * 100 : 0;
+        const debtorName = state.familyMembers.find(m => m.uid === inst.debtorId)?.name.split(' ')[0] || '???';
+        const isMine = inst.debtorId === state.user.uid;
+        const canEdit = isAdmin || isMine;
+
+        // Lógica da última parcela paga
         let lastPaidText = "Nenhuma";
         if (paidCount > 0) {
             linkedTrans.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -771,62 +796,81 @@ export function renderDebtsPage() {
             lastPaidText = lastDate.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
         }
 
-        const progress = Math.min((paidCount / i.installmentsCount) * 100, 100);
-
-        // CORREÇÃO: Adicionada classe 'installment-item' e removido botão de lápis
         return `
-        <div class="${getCardStyle(canEdit)} ${canEdit ? 'installment-item' : ''}" data-installment-id="${i.id}">
+        <div class="${getCardStyle(canEdit)} ${canEdit ? 'installment-item hover:border-brand-200 dark:hover:border-brand-900' : ''}" data-installment-id="${inst.id}">
             <div class="mb-4">
-                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Parcelamento</span>
-                <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-1">${i.name}</h4>
-                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg">Devedor: ${memberName}</span>
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-900/20 text-brand-600 flex items-center justify-center text-2xl">
+                            💳
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 block">Parcelamento</span>
+                            <h4 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-1">${inst.name}</h4>
+                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-lg">Devedor: ${debtorName}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
+
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl text-center border border-gray-100 dark:border-gray-700">
                     <p class="text-[10px] font-bold text-gray-400 uppercase">Parcelas</p>
-                    <p class="font-heading font-bold text-lg text-brand-600 dark:text-brand-400">${paidCount}<span class="text-gray-400 text-sm">/${i.installmentsCount}</span></p>
+                    <p class="font-heading font-bold text-lg text-brand-600 dark:text-brand-400">${paidCount}<span class="text-gray-400 text-sm">/${inst.installmentsCount}</span></p>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl text-center border border-gray-100 dark:border-gray-700">
                     <p class="text-[10px] font-bold text-gray-400 uppercase">Valor/Mês</p>
-                    <p class="font-heading font-bold text-lg text-gray-800 dark:text-white">R$ ${i.valuePerInstallment.toFixed(0)}</p>
+                    <p class="font-heading font-bold text-lg text-gray-800 dark:text-white">R$ ${inst.valuePerInstallment.toFixed(0)}</p>
                 </div>
             </div>
+
             <div class="space-y-2">
                 <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div class="bg-purple-500 h-full rounded-full" style="width: ${progress}%"></div>
+                    <div class="bg-brand-500 h-full rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-gray-50 dark:border-gray-700/50 mt-2">
                     <p class="text-[10px] font-bold text-gray-400 uppercase">Última: <span class="text-gray-600 dark:text-gray-300 capitalize">${lastPaidText}</span></p>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase">Vence dia: <span class="text-gray-600 dark:text-gray-300">${i.dueDay}</span></p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase">Vence dia: <span class="text-gray-600 dark:text-gray-300">${inst.dueDay}</span></p>
                 </div>
             </div>
         </div>`;
-    }).join('') || '<div class="col-span-full py-12 text-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700"><p>Nenhum parcelamento.</p></div>';
+    }).join('') || `<div class="col-span-full py-12 text-center text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700"><p>Nenhum parcelamento ativo.</p></div>`;
 
+    // Layout de Grid 2 Colunas
     return `
-    <div class="animate-fade-in pb-24">
-        <div class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+    <div id="debts-page-container" class="pb-32 animate-fade-in max-w-6xl mx-auto">
+        
+        <div class="grid md:grid-cols-2 gap-8">
+            
             <div class="space-y-4">
-                <div class="flex justify-between items-center px-2">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                        <span class="w-2 h-6 bg-blue-500 rounded-full"></span>
+                <div class="flex justify-between items-center px-2 mb-2">
+                    <h3 class="text-xl font-heading font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-red-500 rounded-full"></span>
                         Dívidas
                     </h3>
-                    <button id="add-debt-btn" class="text-sm font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition">+ Adicionar</button>
+                    ${isAdmin ? `<button id="add-debt-btn" class="text-sm font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 px-4 py-2 rounded-xl transition">+ Adicionar</button>` : ''}
                 </div>
-                <div class="grid gap-4">${debtsHTML}</div>
+                <div class="grid gap-4">
+                    ${debtsHTML}
+                </div>
             </div>
 
             <div class="space-y-4">
-                <div class="flex justify-between items-center px-2">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                        <span class="w-2 h-6 bg-purple-500 rounded-full"></span>
-                        Parcelamentos
-                    </h3>
-                    <button id="add-installment-btn" class="text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl transition">+ Adicionar</button>
+                <div class="flex justify-between items-center px-2 mb-2">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-xl font-heading font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                            <span class="w-2 h-6 bg-brand-500 rounded-full"></span>
+                            Parcelamentos
+                        </h3>
+                        ${totalInstallmentsValue > 0 ? `<span class="text-xs font-bold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/30 px-2.5 py-1 rounded-lg border border-brand-100 dark:border-brand-800">Total: R$ ${totalInstallmentsValue.toFixed(2)}</span>` : ''}
+                    </div>
+                    ${isAdmin ? `<button id="add-installment-btn" class="text-sm font-bold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/20 dark:text-brand-400 px-4 py-2 rounded-xl transition">+ Adicionar</button>` : ''}
                 </div>
-                <div class="grid gap-4">${installmentsHTML}</div>
+                <div class="grid gap-4">
+                    ${installmentsHTML}
+                </div>
             </div>
+
         </div>
     </div>`;
 }
