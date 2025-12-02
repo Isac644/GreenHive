@@ -1611,52 +1611,102 @@ async function notifyAllMembers(title, message, excludeUserId = null, customTarg
 }
 
 // --- EXPORTAÇÃO ---
-export function handleExportCSV() {
-    // 1. Verifica se há dados
+// --- EXPORTAÇÃO EXCEL ESTILIZADA (ExcelJS) ---
+export async function handleExportExcel() {
     if (!state.transactions || state.transactions.length === 0) {
         showToast("Não há transações para exportar.", "error");
         return;
     }
 
-    // 2. Cabeçalho do CSV
-    // Importante: 'sep=,' ajuda o Excel a entender a separação em alguns sistemas
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Data,Descrição,Categoria,Tipo,Valor,Quem,Família\n";
+    // 1. Cria o Workbook e a Planilha
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatório GreenHive');
 
-    // 3. Linhas
+    // 2. Define as Colunas
+    worksheet.columns = [
+        { header: 'Data', key: 'date', width: 15 },
+        { header: 'Descrição', key: 'desc', width: 30 },
+        { header: 'Categoria', key: 'cat', width: 20 },
+        { header: 'Tipo', key: 'type', width: 15 },
+        { header: 'Valor (R$)', key: 'amount', width: 18 },
+        { header: 'Quem', key: 'user', width: 15 },
+        { header: 'Família', key: 'family', width: 20 },
+    ];
+
+    // 3. Adiciona os Dados
     state.transactions.forEach(t => {
-        const dateStr = new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR');
-        
-        // Tratamento para evitar quebra se a descrição tiver vírgulas
-        const description = t.description ? `"${t.description.replace(/"/g, '""')}"` : "";
-        
-        // Formatação de moeda (R$ 1.200,50 -> 1200.50 ou mantém com vírgula dependendo da preferência)
-        // Para CSV padrão internacional, ponto é melhor. Para Excel PT-BR, vírgula.
-        // Vamos usar o padrão numérico bruto para facilitar cálculos.
-        const amount = t.amount.toString().replace('.', ','); 
-
-        const type = t.type === 'income' ? 'Receita' : 'Despesa';
-        const user = t.userName || 'Desconhecido';
-        const family = state.family.name;
-
-        const row = [dateStr, description, t.category, type, amount, user, family].join(",");
-        csvContent += row + "\n";
+        worksheet.addRow({
+            date: new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR'),
+            desc: t.description,
+            cat: t.category,
+            type: t.type === 'income' ? 'Receita' : 'Despesa',
+            amount: t.amount, // Passa o número puro para o Excel calcular
+            user: t.userName || 'Desconhecido',
+            family: state.family.name
+        });
     });
 
-    // 4. Download
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    // --- 4. ESTILIZAÇÃO PROFISSIONAL ---
+
+    // Estilo do Cabeçalho (Linha 1)
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 }; // Texto Branco e Negrito
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF10B981' } // Cor Verde Brand (Emerald-500)
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+        };
+    });
+    headerRow.height = 30; // Altura do cabeçalho
+
+    // Estilo das Linhas de Dados
+    worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) { // Pula o cabeçalho
+            
+            // Lógica de cores para o Valor (Coluna 5)
+            const typeCell = row.getCell(4).value; // Coluna Tipo
+            const amountCell = row.getCell(5);     // Coluna Valor
+
+            if (typeCell === 'Receita') {
+                amountCell.font = { color: { argb: 'FF16A34A' } }; // Verde
+            } else {
+                amountCell.font = { color: { argb: 'FFDC2626' } }; // Vermelho
+            }
+            amountCell.numFmt = '"R$" #,##0.00'; // Formato de Moeda no Excel
+
+            // Bordas e Alinhamento para todas as células da linha
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFCBD5E1' } }, // Borda cinza suave
+                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                };
+                // Centraliza Data e Tipo
+                if (cell.col === 1 || cell.col === 4) {
+                    cell.alignment = { horizontal: 'center' };
+                }
+            });
+        }
+    });
+
+    // 5. Gera o Arquivo e Baixa
+    const buffer = await workbook.xlsx.writeBuffer();
     
-    // Nome do arquivo: relatorio_mes_ano.csv
-    const fileName = `greenhive_relatorio_${state.displayedMonth.getMonth()+1}_${state.displayedMonth.getFullYear()}.csv`;
-    link.setAttribute("download", fileName);
+    const hoje = new Date();
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    const fileName = `Relatório GreenHive - ${dia}-${mes}-${ano}.xlsx`;
+
+    saveAs(new Blob([buffer]), fileName); // Usa o FileSaver.js para baixar
     
-    document.body.appendChild(link); // Necessário para Firefox
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast("Relatório baixado com sucesso!", "success");
+    showToast("Relatório estilizado baixado!", "success");
 }
 
 async function checkRecurringTransactions(familyId) {

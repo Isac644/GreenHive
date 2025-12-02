@@ -14,8 +14,7 @@ import {
     handlePromoteMember, handleKickMember, handleDemoteMember, 
     handleConfirmAction, closeConfirmation,
     handleSaveDebt, handleDeleteDebt, handleSaveInstallment, handleDeleteInstallment,
-    handleDeleteFamily, requestNotificationPermission,
-    handleExportCSV, handleSaveGoal, handleDeleteGoal,
+    handleDeleteFamily, requestNotificationPermission, handleSaveGoal, handleDeleteGoal,
     
     // --- AS FUNÇÕES QUE ESTAVAM FALTANDO ---
     handleOpenFilters, 
@@ -27,7 +26,8 @@ import {
     handleToggleFilterDate,
     checkAndStartTutorial, 
     startTutorial,
-    subscribeToUserFamilies
+    subscribeToUserFamilies,
+    handleExportExcel
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -415,12 +415,6 @@ function attachEventListeners() {
         state.modalBudgetType = e.target.value; // Salva a escolha!
         renderApp(); // Agora pode renderizar que o estado está salvo
     };
-
-    const exportBtn = document.getElementById('export-csv-btn');
-    if (exportBtn) {
-        exportBtn.onclick = handleExportCSV;
-    }
-
     // Metas (Goals)
     
     
@@ -529,6 +523,11 @@ function attachEventListeners() {
     document.querySelectorAll('.enter-family-notif-btn').forEach(b => {
         b.onclick = e => handleEnterFamilyFromNotification(state.notifications.find(n => n.id === e.currentTarget.dataset.notifId));
     });
+
+    const exportBtn = document.getElementById('export-csv-btn'); // O ID pode continuar o mesmo
+    if (exportBtn) {
+        exportBtn.onclick = handleExportExcel; // <--- CHAMA A NOVA FUNÇÃO
+    }
 }
 
 let unsubscribeNotifications = null;
