@@ -1434,7 +1434,7 @@ export function renderSettingsModal() {
         currentColor = parts[1];
     }
 
-    const primaryEmojis = ['👤', '🧑‍💼', '👩‍💻', '🦸', '🧕', '🧔', '👶', '👵'];
+    const primaryEmojis = ['👤', '🧑', '👧', '👨', '🧔', '👩' ,'👵', '👴', '👶'];
     const secondaryEmojis = ['🐶', '🐱', '🦊', '🦁', '🐸', '🐵', '🐼', '🐨', '🐯', '🦄', '🐙', '🦉', '🦋', '🐞', '🦖', '👽', '🤖', '👻', '👮', '医生', '👷', '🤴', '👸', '🧝', '🧞', '🧟', '🧛'];
     const generateEmojiOptions = (emojiList) => emojiList.map(e => `<label class="cursor-pointer group"><input type="radio" name="avatarEmoji" value="${e}" class="sr-only peer/emoji" ${e === currentEmoji ? 'checked' : ''}><div class="w-10 h-10 flex items-center justify-center text-xl rounded-xl border-2 border-transparent bg-gray-50 dark:bg-gray-700 peer-checked:border-brand-500 peer-checked:bg-brand-50 dark:peer-checked:bg-brand-900/30 hover:scale-110 transition shadow-sm">${e}</div></label>`).join('');
     const primaryOptionsHTML = generateEmojiOptions(primaryEmojis);

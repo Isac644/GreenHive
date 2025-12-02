@@ -209,52 +209,59 @@ export function subscribeToFamilyData(familyId) {
     const familyRef = doc(db, "familyGroups", familyId);
     
     const unsubFamily = onSnapshot(familyRef, { includeMetadataChanges: true }, async (snapshot) => {
-        // ... (lógica de erro/expulsão igual) ...
-        if (!snapshot.exists()) { state.isLoading = false; forceExitFamily("A família que você estava acessando foi excluída."); return; }
+        if (!snapshot.exists()) {
+            state.isLoading = false; 
+            forceExitFamily("A família que você estava acessando foi excluída.");
+            return;
+        }
+        
         const data = snapshot.data();
-        if (!data.members.includes(state.user.uid)) {
-            if (snapshot.metadata.fromCache) { return; }
-            state.isLoading = false; forceExitFamily("Você foi removido desta família."); return;
+        
+        // PROTEÇÃO CONTRA 'members' UNDEFINED
+        const membersList = data.members || []; 
+        const isMember = membersList.includes(state.user.uid);
+
+        if (!isMember) {
+            if (snapshot.metadata.fromCache) {
+                console.log("Cache desatualizado detectado. Aguardando servidor...");
+                return; 
+            }
+            state.isLoading = false;
+            forceExitFamily("Você foi removido desta família.");
+            return;
         }
 
-        // ... (atualização do state igual) ...
         state.family = { id: familyId, ...data };
         state.userCategories = data.userCategories || { expense: [], income: [] };
         state.categoryColors = data.categoryColors || {};
         state.categoryIcons = data.categoryIcons || {}; 
         state.familyAdmins = data.admins || [];
 
-        if (state.familyMembers.length !== data.members.length) {
-            const memberPromises = data.members.map(uid => getDoc(doc(db, "users", uid)));
+        if (state.familyMembers.length !== membersList.length) {
+            const memberPromises = membersList.map(uid => getDoc(doc(db, "users", uid)));
             const memberDocs = await Promise.all(memberPromises);
             state.familyMembers = memberDocs.map(d => ({ uid: d.id, ...d.data() }));
         }
         
         state.isLoading = false;
-        
-        // ALTERADO: Passa true para indicar update de dados
-        renderApp(true); 
-        
+        renderApp();
         state.shouldAnimate = false;
         checkAutomatedAlerts();
         checkRecurringTransactions(familyId);
     });
     state.unsubscribers.push(unsubFamily);
 
+    // ... (Resto dos listeners de transações, budgets, etc. mantidos iguais) ...
     const handleSubCollectionSnapshot = (snapshot, listKey, sortFunc) => {
         const items = [];
         snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
         if (sortFunc) items.sort(sortFunc);
         state[listKey] = items;
-        
-        // ALTERADO: Passa true para indicar update de dados
-        renderApp(true);
-        
+        renderApp();
         state.shouldAnimate = false;
         checkAutomatedAlerts();
     };
 
-    // Listeners chamando a função auxiliar alterada acima
     const qTrans = query(collection(db, "transactions"), where("familyGroupId", "==", familyId));
     state.unsubscribers.push(onSnapshot(qTrans, (s) => handleSubCollectionSnapshot(s, 'transactions', (a, b) => new Date(b.date) - new Date(a.date))));
 
@@ -272,9 +279,7 @@ export function subscribeToFamilyData(familyId) {
         const g = []; 
         snapshot.forEach(d => g.push({ id: d.id, ...d.data() })); 
         state.goals = g; 
-        
-        // ALTERADO: Passa true
-        renderApp(true);
+        renderApp();
     }));
 }
 
@@ -1194,16 +1199,17 @@ export async function handleAcceptJoinRequest(notificationId) {
         // 1. Adiciona membro
         batch.update(familyRef, { members: arrayUnion(notification.senderId) });
         
-        // 2. Apaga solicitação
+        // 2. Apaga solicitação original
         const notifRef = doc(db, "notifications", notification.id);
         batch.delete(notifRef);
         
-        // 3. Avisa o usuário que foi aceito (CORRIGIDO: Adicionando senderName)
+        // 3. Avisa o usuário que foi aceito (CORRIGIDO: Incluindo targetFamilyId)
         const newNotifRef = doc(collection(db, "notifications"));
         batch.set(newNotifRef, {
             recipientId: notification.senderId,
             senderId: state.user.uid,
-            senderName: state.user.name, // <--- ADICIONADO PARA CORRIGIR 'UNDEFINED'
+            senderName: state.user.name,
+            targetFamilyId: notification.targetFamilyId, // <--- ESSA LINHA FALTAVA!
             targetFamilyName: notification.targetFamilyName,
             type: 'request_accepted',
             createdAt: Date.now(),
@@ -1216,8 +1222,6 @@ export async function handleAcceptJoinRequest(notificationId) {
         otherDocs.forEach(d => { if (d.id !== notification.id) batch.delete(d.ref); });
 
         await batch.commit();
-        
-        // Remoção da notificação de novo membro foi feita conforme pedido.
 
         showToast(`${notification.senderName} foi adicionado!`, 'success');
     } catch (e) {
@@ -1234,15 +1238,24 @@ export async function handleDeleteNotification(notificationId) {
     }
 }
 export async function handleEnterFamilyFromNotification(notification) {
+    // Proteção contra dados incompletos
+    if (!notification || !notification.targetFamilyId) {
+        console.log(notification + " " + notification.targetFamilyId)
+        showToast("Erro: Convite inválido ou família não encontrada.", 'error');
+        // Opcional: Deletar a notificação bugada automaticamente
+        if (notification?.id) handleDeleteNotification(notification.id);
+        return;
+    }
+
     try {
         await handleSelectFamily(notification.targetFamilyId);
-        await firebase.deleteDoc(firebase.doc(db, "notifications", notification.id));
+        await deleteDoc(doc(db, "notifications", notification.id));
         state.isNotificationMenuOpen = false;
         renderApp();
         showToast(`Bem-vindo à família ${notification.targetFamilyName}!`, 'success');
     } catch (e) {
         console.error(e);
-        showToast("Erro ao acessar a família. Ela pode ter sido excluída.", 'error');
+        showToast("Erro ao acessar a família.", 'error');
     }
 }
 
