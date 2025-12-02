@@ -440,6 +440,7 @@ export function renderFamilyDashboard() {
     { income: 0, expenses: 0 }
   );
   summary.balance = summary.income - summary.expenses;
+
   const userTransactions = monthlyTransactions.filter(
     (t) => t.userId === state.user.uid
   );
@@ -452,6 +453,7 @@ export function renderFamilyDashboard() {
     { income: 0, expenses: 0 }
   );
   userSummary.balance = userSummary.income - userSummary.expenses;
+
   const activeExpenseBudgets = state.budgets.filter(
     (b) =>
       b.type === "expense" &&
@@ -459,19 +461,15 @@ export function renderFamilyDashboard() {
       (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth)
   );
   const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
-  const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => {
-    const spent = monthlyTransactions
-      .filter((t) => t.type === "expense" && t.category === b.category)
-      .reduce((sum, t) => sum + t.amount, 0);
-    return acc + spent;
-  }, 0);
+
   const isAdmin = state.familyAdmins.includes(state.user.uid);
   const manageCategoriesButton = isAdmin
     ? `<button id="manage-categories-button" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>`
     : "";
 
+  // ESTILO ORIGINAL "SOFT UI" (Espaçoso e Arredondado)
   const cardBase =
-    "bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
+    "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
   const titleClass =
     "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
   const valueClass =
@@ -480,9 +478,9 @@ export function renderFamilyDashboard() {
   return `
     <div class="animate-fade-in space-y-8">
         
-        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto lg:mx-0">
+        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-2 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-md mx-auto">
             <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-            <h3 class="text-sm font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
+            <h3 class="text-base font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
             <button id="next-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
 
@@ -491,15 +489,13 @@ export function renderFamilyDashboard() {
             <div class="flex flex-col gap-6 h-full">
                 <div class="flex flex-col gap-4">
                     <div class="${cardBase} relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
-                        </div>
-                        
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${
+                          Icons.Wallet
+                        }</div>
                         <p class="${titleClass}">Saldo da Família</p>
                         <p class="${valueClass} text-gray-900 dark:text-white ${
     typeof getPrivacyClass === "function" ? getPrivacyClass() : ""
   }">R$ ${summary.balance.toFixed(2)}</p>
-                        
                         <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
                             <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div>
                             <div class="flex flex-col">
@@ -545,13 +541,13 @@ export function renderFamilyDashboard() {
                     </div>
                 </div>
 
-                <div class="${cardBase} flex-1 min-h-[300px] flex flex-col overflow-hidden">
+                <div class="${cardBase} flex-1 min-h-[320px] flex flex-col overflow-hidden">
                     <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Saldo dos Membros
                     </h3>
                     
-                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
+                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex justify-start md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 500px;">
                                 <canvas id="person-spending-chart"></canvas>
@@ -563,16 +559,18 @@ export function renderFamilyDashboard() {
             </div>
 
             <div class="flex flex-col gap-6 h-full">
+                
                 <div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
-                        <div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ${
+                        <div class="flex gap-2 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ${
                           typeof getPrivacyClass === "function"
                             ? getPrivacyClass()
                             : ""
                         }">R$ ${totalBudget.toFixed(0)}</span></span></div>
                     </div>
-                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
+                    
+                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex justify-start md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 400px;">
                                 <canvas id="budget-performance-chart"></canvas>
@@ -581,7 +579,13 @@ export function renderFamilyDashboard() {
                         <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem orçamentos definidos</div>
                     </div>
                 </div>
-                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3><div class="relative w-full flex-1 min-h-[200px]"><canvas id="daily-evolution-chart"></canvas></div></div>
+
+                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col">
+                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
+                    <div class="relative w-full flex-1 min-h-[200px]">
+                        <canvas id="daily-evolution-chart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -592,7 +596,7 @@ export function renderFamilyDashboard() {
             <div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div>
         </div>
 
-        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${
+        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${
           state.family.code
         }</p><p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p></div><div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"><button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${
     Icons.Copy
@@ -609,8 +613,8 @@ export function renderRecordsPage() {
     month: "long",
   });
 
-  // Filtros de Transação
   const filtered = state.transactions.filter((t) => {
+    if (!t || !t.date) return false;
     const tDate = new Date(t.date + "T12:00:00");
     const isSameMonth =
       tDate.getMonth() === month && tDate.getFullYear() === year;
@@ -648,26 +652,30 @@ export function renderRecordsPage() {
       .map((day) => {
         const transactionsForDay = groupedByDate[day]
           .map((t) => {
+            if (!t) return "";
             const isOwner = t.userId === state.user.uid;
             const canEdit = isAdmin || isOwner;
+
             const itemClass = canEdit
               ? "transaction-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800"
               : "cursor-default opacity-75";
+
             const categoryColor = state.categoryColors[t.category] || "#9ca3af";
             const categoryIcon = state.categoryIcons[t.category] || "🏷️";
             const memberName = t.userName ? t.userName.split(" ")[0] : "???";
 
+            // Estilo Original (p-4 rounded-2xl)
             return `
-                <li class="${itemClass} bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-2xl shadow-sm transition-all duration-200 mb-2 sm:mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${
+                <li class="${itemClass} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${
               t.id
             }">
-                    <div class="flex items-center gap-3 sm:gap-4">
-                        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div>
                         <div>
-                            <p class="font-heading font-bold text-gray-900 dark:text-white text-sm sm:text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate max-w-[150px] sm:max-w-xs">${
+                            <p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate max-w-[200px]">${
                               t.description
                             }</p>
-                            <div class="flex items-center gap-2 mt-0.5 sm:mt-1.5">
+                            <div class="flex items-center gap-2 mt-1.5">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${
                                   t.category
                                 }</span>
@@ -679,11 +687,13 @@ export function renderRecordsPage() {
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-heading font-bold text-base sm:text-lg ${
+                        <p class="font-heading font-bold text-lg ${
                           t.type === "income"
                             ? "text-brand-600 dark:text-brand-400"
                             : "text-red-500 dark:text-red-400"
-                        } ${getPrivacyClass()}">
+                        } ${
+              typeof getPrivacyClass === "function" ? getPrivacyClass() : ""
+            }">
                             ${
                               t.type === "income" ? "+" : "-"
                             } R$ ${t.amount.toFixed(2)}
@@ -692,7 +702,16 @@ export function renderRecordsPage() {
                 </li>`;
           })
           .join("");
-        return `<div class="mb-8 animate-fade-in-up"><div class="flex items-center gap-3 mb-4 ml-1"><h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4><span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span><div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div></div><ul class="space-y-1">${transactionsForDay}</ul></div>`;
+
+        return `
+            <div class="mb-8 animate-fade-in-up">
+                <div class="flex items-center gap-3 mb-4 ml-1">
+                    <h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4>
+                    <span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span>
+                    <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div>
+                </div>
+                <ul class="space-y-1">${transactionsForDay}</ul>
+            </div>`;
       })
       .join("");
   }
@@ -710,36 +729,28 @@ export function renderRecordsPage() {
   return `
     <div id="records-page-container" class="pb-32">
         
-        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl py-3 sm:py-4 border-b border-gray-200/50 dark:border-gray-800 mb-6 sm:mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-3 max-w-3xl mx-auto">
+        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl py-4 border-b border-gray-200/50 dark:border-gray-800 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
+            <div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
                 
-                <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
                     <button id="prev-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
                     <span class="font-heading font-bold capitalize text-sm md:text-base px-3 w-36 text-center text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</span>
                     <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
 
-                <div class="flex gap-2 w-full md:w-auto">
-                    
-                    <button id="export-csv-btn" class="w-1/4 md:w-auto p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 group flex justify-center items-center" title="Baixar Relatório">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                    </button>
-
-                    <button id="filter-funnel-btn" class="w-1/4 md:w-auto relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 flex justify-center items-center">
+                <div class="flex gap-2">
+                    <button id="open-filter-modal-btn" class="relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         ${filterBadge}
                     </button>
                     
-                    <button id="open-modal-button" class="w-1/2 md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95 flex-grow">
+                    <button id="open-modal-button" class="flex items-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                        <span class="inline">Novo</span>
+                        <span class="hidden sm:inline">Novo</span>
                     </button>
                 </div>
             </div>
         </div>
-        
         <div id="records-list-wrapper" class="max-w-3xl mx-auto">
             ${transactionsHTML}
         </div>
