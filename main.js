@@ -27,11 +27,14 @@ import {
     checkAndStartTutorial, 
     startTutorial,
     subscribeToUserFamilies,
-    handleExportExcel
+    handleExportExcel,
+    handleOpenExportModal,
+    handleExportCSV,
+    handleExportPDF
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
-    renderDebtsPage, renderDebtModal, renderInstallmentModal, renderLoadingScreen, renderFilterModal, renderGoalsPage, renderGoalModal
+    renderDebtsPage, renderDebtModal, renderInstallmentModal, renderLoadingScreen, renderFilterModal, renderGoalsPage, renderGoalModal, renderExportModal
 } from "./ui-components.js";
 
 const root = document.getElementById('root');
@@ -82,6 +85,7 @@ export function renderApp(isDataUpdate = false) {
             else if (state.currentView === 'debts') newContent = renderDebtsPage();
             else if (state.currentView === 'goals') newContent = renderGoalsPage();
             
+            
             viewContainer.innerHTML = newContent;
         }
         attachEventListeners();
@@ -111,6 +115,7 @@ export function renderApp(isDataUpdate = false) {
     root.insertAdjacentHTML('beforeend', renderInstallmentModal());
     root.insertAdjacentHTML('beforeend', renderFilterModal());
     root.insertAdjacentHTML('beforeend', renderGoalModal());
+    root.insertAdjacentHTML('beforeend', renderExportModal());
 
     attachEventListeners();
 
@@ -528,6 +533,34 @@ function attachEventListeners() {
     if (exportBtn) {
         exportBtn.onclick = handleExportExcel; // <--- CHAMA A NOVA FUNÇÃO
     }
+
+    // ... (dentro de attachEventListeners) ...
+
+    // BOTÃO FLUTUANTE (Agora abre o modal em vez de baixar direto)
+    const fabExportBtn = document.getElementById('export-csv-btn'); // O ID no HTML ainda é esse
+    if (fabExportBtn) {
+        fabExportBtn.onclick = handleOpenExportModal;
+    }
+
+    // --- BOTÕES DENTRO DO MODAL DE EXPORTAÇÃO ---
+    
+    const btnExcel = document.getElementById('download-excel-btn');
+    if (btnExcel) btnExcel.onclick = () => {
+        handleExportExcel();
+        // O fechamento do modal já pode estar dentro da função handle, ou você força aqui:
+        state.isModalOpen = false; renderApp();
+    };
+
+    const btnPdf = document.getElementById('download-pdf-btn');
+    if (btnPdf) btnPdf.onclick = () => {
+        handleExportPDF();
+        state.isModalOpen = false; renderApp();
+    };
+
+    const btnCsv = document.getElementById('download-csv-btn');
+    if (btnCsv) btnCsv.onclick = handleExportCSV; // A função handleExportCSV já fecha o modal
+
+    // ...
 }
 
 let unsubscribeNotifications = null;

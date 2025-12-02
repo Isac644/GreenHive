@@ -1834,3 +1834,59 @@ export function renderCharts() {
     };
     return destroyAllCharts;
 }
+
+export function renderExportModal() {
+    if (!state.isModalOpen || state.modalView !== 'export') return '';
+
+    const buttonClass = "w-full flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-brand-500 dark:hover:border-brand-500 bg-white dark:bg-gray-800 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all group cursor-pointer shadow-sm";
+    const textClass = "font-heading font-bold text-gray-800 dark:text-gray-100 text-lg group-hover:text-brand-600 dark:group-hover:text-brand-400";
+    const subTextClass = "text-xs text-gray-400 dark:text-gray-500 font-medium";
+    const iconBgClass = "w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110";
+
+    const contentHTML = `
+        <div class="space-y-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Escolha o formato para baixar o relatório deste mês:</p>
+
+            <button id="download-excel-btn" class="${buttonClass}">
+                <div class="flex items-center gap-4">
+                    <div class="${iconBgClass} bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                        📊
+                    </div>
+                    <div class="text-left">
+                        <p class="${textClass}">Excel (.xlsx)</p>
+                        <p class="${subTextClass}">Formatado com cores e filtros</p>
+                    </div>
+                </div>
+                <svg class="w-6 h-6 text-gray-300 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <button id="download-pdf-btn" class="${buttonClass}">
+                <div class="flex items-center gap-4">
+                    <div class="${iconBgClass} bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        📄
+                    </div>
+                    <div class="text-left">
+                        <p class="${textClass}">PDF Documento</p>
+                        <p class="${subTextClass}">Pronto para impressão</p>
+                    </div>
+                </div>
+                <svg class="w-6 h-6 text-gray-300 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <button id="download-csv-btn" class="${buttonClass}">
+                <div class="flex items-center gap-4">
+                    <div class="${iconBgClass} bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                        📝
+                    </div>
+                    <div class="text-left">
+                        <p class="${textClass}">CSV (Simples)</p>
+                        <p class="${subTextClass}">Texto puro separado por vírgula</p>
+                    </div>
+                </div>
+                <svg class="w-6 h-6 text-gray-300 group-hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+    `;
+
+    return ModalBase('Exportar Relatório', contentHTML);
+}

@@ -1709,6 +1709,106 @@ export async function handleExportExcel() {
     showToast("Relatório estilizado baixado!", "success");
 }
 
+// --- EXPORTAÇÃO PDF (jsPDF) ---
+export function handleExportPDF() {
+    if (!state.transactions || state.transactions.length === 0) {
+        showToast("Não há transações para exportar.", "error");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // 1. Cabeçalho do Documento
+    // Retângulo Verde (Fundo do Header)
+    doc.setFillColor(16, 185, 129); // Cor Emerald-500 (#10b981)
+    doc.rect(0, 0, 210, 40, 'F'); // Largura A4 é 210mm
+
+    // Título e Subtítulo
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("GreenHive", 14, 20);
+    
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Relatório Financeiro - ${state.family.name}`, 14, 30);
+
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${hoje}`, 150, 30);
+
+    // 2. Preparar Dados da Tabela
+    const tableColumn = ["Data", "Descrição", "Categoria", "Quem", "Valor"];
+    const tableRows = [];
+
+    state.transactions.forEach(t => {
+        const dateStr = new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR');
+        const typeSymbol = t.type === 'income' ? '+' : '-';
+        const amountStr = `R$ ${t.amount.toFixed(2)}`;
+        
+        // Adiciona linha (note que guardamos o tipo 'raw' para colorir depois)
+        const rowData = [
+            dateStr,
+            t.description,
+            t.category,
+            t.userName || 'N/A',
+            typeSymbol + ' ' + amountStr
+        ];
+        // Hack: Anexamos o tipo original ao array para usar no hook de estilo
+        rowData.rawType = t.type; 
+        
+        tableRows.push(rowData);
+    });
+
+    // 3. Gerar a Tabela (AutoTable)
+    doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 50, // Começa abaixo do header verde
+        theme: 'grid',
+        styles: {
+            font: "helvetica",
+            fontSize: 10,
+            cellPadding: 3,
+        },
+        headStyles: {
+            fillColor: [16, 185, 129], // Verde Emerald
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+            fillColor: [240, 253, 244] // Verde bem clarinho (zebra)
+        },
+        // Hook para colorir o valor (Coluna 4 = Índice 4)
+        didParseCell: function (data) {
+            if (data.section === 'body' && data.column.index === 4) {
+                // Recupera o tipo da linha atual
+                const originalType = tableRows[data.row.index].rawType;
+                if (originalType === 'income') {
+                    data.cell.styles.textColor = [22, 163, 74]; // Verde Escuro
+                } else {
+                    data.cell.styles.textColor = [220, 38, 38]; // Vermelho
+                }
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.halign = 'right'; // Alinha números à direita
+            }
+        }
+    });
+
+    // 4. Rodapé e Download
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pageCount}`, 105, 290, null, null, "center");
+    }
+
+    doc.save(`GreenHive_Relatorio_${hoje.replace(/\//g, '-')}.pdf`);
+    showToast("PDF gerado com sucesso!", "success");
+}
+
 async function checkRecurringTransactions(familyId) {
     try {
         const recurringRef = collection(db, "familyGroups", familyId, "recurring");
@@ -1853,4 +1953,50 @@ export function subscribeToUserFamilies() {
             renderApp();
         }
     });
+}
+
+export function handleOpenExportModal() {
+    state.isModalOpen = true;
+    state.modalView = 'export';
+    state.shouldAnimate = false; // Abre sem piscar o fundo
+    renderApp();
+}
+
+export function handleExportCSV() {
+    if (!state.transactions || state.transactions.length === 0) {
+        showToast("Não há transações para exportar.", "error");
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // BOM para Excel ler acentos corretamente
+    csvContent += "\uFEFF"; 
+    csvContent += "Data,Descrição,Categoria,Tipo,Valor,Quem,Família\n";
+
+    state.transactions.forEach(t => {
+        const dateStr = new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR');
+        const description = t.description ? `"${t.description.replace(/"/g, '""')}"` : "";
+        const amount = t.amount.toString().replace('.', ','); 
+        const type = t.type === 'income' ? 'Receita' : 'Despesa';
+        const user = t.userName || 'Desconhecido';
+        const family = state.family.name;
+
+        const row = [dateStr, description, t.category, type, amount, user, family].join(",");
+        csvContent += row + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const fileName = `greenhive_relatorio_${state.displayedMonth.getMonth()+1}_${state.displayedMonth.getFullYear()}.csv`;
+    link.setAttribute("download", fileName);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    state.isModalOpen = false; // Fecha o modal após clicar
+    renderApp();
+    showToast("Relatório CSV baixado!", "success");
 }
