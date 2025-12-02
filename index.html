@@ -135,12 +135,102 @@
     .toast.error { background-color: #ef4444; }
     .toast.info { background-color: #3b82f6; }
 
-    /* Driver.js */
-    .driver-popover { background-color: #fff; color: #1e293b; border-radius: 1.5rem; padding: 1.5rem; font-family: 'Inter', sans-serif; z-index: 10000 !important; }
-    .dark .driver-popover { background-color: #1f2937 !important; color: #f3f4f6 !important; border: 1px solid #374151 !important; }
-    .driver-popover-title { font-family: 'Outfit', sans-serif; font-weight: 700; color: #10b981; }
-    .driver-popover-next-btn { background-color: #10b981 !important; color: white !important; border-radius: 0.75rem !important; text-shadow: none !important; }
-    .driver-popover-prev-btn { border-radius: 0.75rem !important; color: #64748b !important; }
+    /* --- DRIVER.JS (TUTORIAL) - FIX DE CAMADAS --- */
+        
+        /* 1. A Camada Escura (Overlay) */
+        .driver-overlay {
+            background-color: rgba(0, 0, 0, 0.8) !important; /* Escuro e opaco */
+            z-index: 99999 !important; /* Fica acima de tudo no site */
+        }
+
+        /* 2. O Elemento sendo destacado (Botão/Card) */
+        .driver-active-element {
+            z-index: 100000 !important; /* Fica acima da camada escura */
+            position: relative !important; /* Necessário para o z-index funcionar */
+            background-color: white !important; /* Garante fundo se for transparente */
+        }
+        /* Ajuste para dark mode no elemento */
+        .dark .driver-active-element {
+            background-color: #1f2937 !important; /* Gray-800 */
+        }
+
+        /* 3. A Caixa de Diálogo (Popover) - NO TOPO DE TUDO */
+        .driver-popover {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            border-radius: 1.5rem !important;
+            padding: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            font-family: 'Outfit', sans-serif !important;
+            border: 2px solid #10b981 !important;
+            
+            /* O CORRETIVO: Z-Index maior que o overlay e o elemento */
+            z-index: 100001 !important; 
+        }
+
+        /* Modo Escuro do Balão */
+        .dark .driver-popover {
+            background-color: #1f2937 !important;
+            color: #f3f4f6 !important;
+            border-color: #34d399 !important;
+        }
+
+        /* Tipografia */
+        .driver-popover-title {
+            font-size: 1.25rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 0.5rem !important;
+            color: #10b981 !important;
+        }
+        .dark .driver-popover-title {
+            color: #34d399 !important;
+        }
+
+        .driver-popover-description {
+            font-size: 0.95rem !important;
+            line-height: 1.6 !important;
+            color: #475569 !important;
+            margin-bottom: 1.5rem !important;
+        }
+        .dark .driver-popover-description {
+            color: #cbd5e1 !important;
+        }
+
+        /* Botões */
+        .driver-popover-footer {
+            margin-top: 0 !important;
+            display: flex !important;
+            gap: 10px !important;
+            justify-content: flex-end !important;
+        }
+
+        .driver-popover-next-btn {
+            background-color: #10b981 !important;
+            color: white !important;
+            border-radius: 0.75rem !important;
+            font-weight: 700 !important;
+            text-shadow: none !important;
+            border: none !important;
+            padding: 0.6rem 1.2rem !important;
+        }
+        
+        .driver-popover-prev-btn {
+            background-color: #f1f5f9 !important;
+            color: #64748b !important;
+            border-radius: 0.75rem !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 0.6rem 1.2rem !important;
+        }
+
+        .dark .driver-popover-prev-btn {
+            background-color: transparent !important;
+            color: #9ca3af !important;
+            border-color: #4b5563 !important;
+        }
+        
+        .driver-popover-close-btn {
+            color: #94a3b8 !important;
+        }   
 </style>
 
     <link rel="manifest" href="manifest.json">

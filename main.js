@@ -25,12 +25,12 @@ import {
     handleToggleFilterType, 
     handleToggleFilterDate,
     checkAndStartTutorial, 
-    startTutorial,
     subscribeToUserFamilies,
     handleExportExcel,
     handleOpenExportModal,
     handleExportCSV,
-    handleExportPDF
+    handleExportPDF,
+    startCurrentTutorial 
 } from "./state-and-handlers.js";
 import {
     renderHeader, renderAuthPage, renderFamilyOnboardingPage, renderMainContent, renderTransactionModal, renderBudgetModal, renderFamilyInfoModal, renderCharts as renderChartsUI, renderManageCategoriesModal, renderEditCategoryModal, renderSettingsModal, renderConfirmationModal,
@@ -139,6 +139,8 @@ export function renderApp(isDataUpdate = false) {
     if (state.shouldAnimate) {
         state.shouldAnimate = false;
     }
+
+    checkAndStartTutorial();
 }
 
 function attachEventListeners() {
@@ -501,15 +503,6 @@ function attachEventListeners() {
         };
     }
 
-    // Botão de Tutorial no Menu
-    const tutorialBtn = document.getElementById('start-tutorial-btn');
-    if (tutorialBtn) {
-        tutorialBtn.onclick = () => {
-            document.getElementById('user-menu')?.classList.add('hidden');
-            startTutorial();
-        };
-    }
-
     document.querySelectorAll('.accept-request-btn').forEach(b => {
         b.onclick = e => handleAcceptJoinRequest(e.currentTarget.dataset.notifId);
     });
@@ -560,7 +553,13 @@ function attachEventListeners() {
     const btnCsv = document.getElementById('download-csv-btn');
     if (btnCsv) btnCsv.onclick = handleExportCSV; // A função handleExportCSV já fecha o modal
 
-    // ...
+    const tutorialBtn = document.getElementById('start-tutorial-btn');
+    if (tutorialBtn) {
+        tutorialBtn.onclick = () => {
+            document.getElementById('user-menu')?.classList.add('hidden');
+            startCurrentTutorial(); // <--- Mudei de startTutorial() para startCurrentTutorial()
+        };
+    }
 }
 
 let unsubscribeNotifications = null;

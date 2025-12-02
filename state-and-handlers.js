@@ -1906,54 +1906,100 @@ async function checkRecurringTransactions(familyId) {
     }
 }
 
-export function startTutorial() {
-    if (!window.driver) return;
+// --- SISTEMA DE TUTORIAL INTELIGENTE (Substitui startTutorial) ---
 
-    const driver = window.driver.js.driver;
-
+// 1. Roteiro do Dashboard (Quando já tem família)
+function runDashboardTutorial(driver) {
     const tour = driver({
         showProgress: true,
-        // Animação suave
         animate: true,
-        // Permite clicar fora para fechar (opcional, mas bom pra UX)
         allowClose: true,
-        
-        // Textos dos botões
         nextBtnText: 'Próximo →',
         prevBtnText: '← Voltar',
-        doneBtnText: 'Vamos lá! 🚀',
-        
-        // Passos
+        doneBtnText: 'Entendi! 🚀',
         steps: [
-            { element: '#family-info-button', popover: { title: 'Sua Família 🏡', description: 'Aqui você gerencia os membros e pega o código de convite.' } },
-            { element: '.nav-tab[data-view="dashboard"]', popover: { title: 'Dashboard 📊', description: 'Visão geral do saldo, receitas e despesas em tempo real.' } },
-            { element: '.nav-tab[data-view="records"]', popover: { title: 'Registros 📝', description: 'Adicione suas transações diárias aqui. Use filtros para encontrar gastos antigos.' } },
-            { element: '.nav-tab[data-view="budget"]', popover: { title: 'Orçamentos 💰', description: 'Defina limites (teto) para não gastar demais em cada categoria.' } },
-            { element: '.nav-tab[data-view="debts"]', popover: { title: 'Dívidas 💳', description: 'Gerencie empréstimos e parcelamentos de cartão de crédito.' } },
-            { element: '.nav-tab[data-view="goals"]', popover: { title: 'Metas 🚀', description: 'Crie cofrinhos para guardar dinheiro para seus sonhos.' } },
-            { element: '#user-menu-button', popover: { title: 'Seu Perfil 👤', description: 'Mude seu avatar, senha e acesse este tutorial novamente por aqui.' } },
+            { element: '#family-info-button', popover: { title: 'Sua Família 🏡', description: 'Clique aqui para ver o código de convite, gerenciar membros e configurações da família.' } },
+            { element: '.nav-tab[data-view="dashboard"]', popover: { title: 'Dashboard 📊', description: 'Visão geral do saldo, receitas e despesas do mês atual.' } },
+            { element: '.nav-tab[data-view="records"]', popover: { title: 'Registros 📝', description: 'Adicione e filtre todas as receitas e despesas aqui.' } },
+            { element: '.nav-tab[data-view="budget"]', popover: { title: 'Orçamentos 💰', description: 'Defina limites de gastos para cada categoria.' } },
+            { element: '.nav-tab[data-view="debts"]', popover: { title: 'Dívidas e Parcelas 💳', description: 'Controle empréstimos e compras parceladas no cartão.' } },
+            { element: '.nav-tab[data-view="goals"]', popover: { title: 'Metas 🚀', description: 'Crie cofrinhos para guardar dinheiro para sonhos futuros.' } },
+            { element: '#user-menu-button', popover: { title: 'Seu Perfil 👤', description: 'Acesse suas configurações ou refaça este tutorial aqui.' } },
         ],
-
-        // O QUE FAZER AO TERMINAR OU FECHAR
         onDestroyStarted: () => {
-            // Se o tour for destruído (clicou em Done ou Close), salvamos que foi visto.
-            // O driver.js v1.x não tem callback específico para o botão Done separado do Close na config padrão facilmente,
-            // mas o onDestroyStarted roda em ambos os casos, o que é o que queremos.
-            localStorage.setItem('greenhive_tutorial_seen', 'true');
-            tour.destroy(); // Garante que ele suma da tela
+            localStorage.setItem('greenhive_dashboard_tutorial_seen', 'true');
+            driver.destroy();
         }
     });
-
     tour.drive();
 }
 
-// Função que verifica se deve rodar o tutorial automaticamente
-export function checkAndStartTutorial() {
-    // Só roda se estiver no Dashboard e a chave não existir no localStorage
-    if (state.currentView === 'dashboard' && !localStorage.getItem('greenhive_tutorial_seen')) {
-        // Pequeno delay para garantir que o HTML renderizou
-        setTimeout(() => startTutorial(), 1500);
+// 2. Roteiro de Onboarding (Tela de Seleção/Criar)
+function runOnboardingTutorial(driver) {
+    const tour = driver({
+        showProgress: true,
+        animate: true,
+        allowClose: true,
+        nextBtnText: 'Próximo →',
+        prevBtnText: '← Voltar',
+        doneBtnText: 'Começar!',
+        steps: [
+            { 
+                element: '#create-family-card', 
+                popover: { 
+                    title: 'Criar Nova Família ✨', 
+                    description: 'Comece aqui se você quer criar um novo grupo financeiro do zero e convidar pessoas.' 
+                } 
+            },
+            { 
+                element: '#join-family-card', 
+                popover: { 
+                    title: 'Entrar em uma Família 🔑', 
+                    description: 'Se alguém já te mandou um código, cole ele aqui para entrar no grupo existente.' 
+                } 
+            },
+            { 
+                element: '#user-menu-button', 
+                popover: { 
+                    title: 'Sua Conta 👤', 
+                    description: 'Aqui você pode sair da conta ou alterar seu perfil.' 
+                } 
+            }
+        ],
+        onDestroyStarted: () => {
+            localStorage.setItem('greenhive_onboarding_tutorial_seen', 'true');
+            driver.destroy();
+        }
+    });
+    tour.drive();
+}
+
+// 3. Função Gerente (É essa que você exporta e chama no botão)
+export function startCurrentTutorial() {
+    if (!window.driver) return;
+    const driverObj = window.driver.js.driver;
+
+    // Decide qual roteiro rodar baseado na tela atual
+    if (state.currentView === 'dashboard') {
+        runDashboardTutorial(driverObj);
+    } else if (state.currentView === 'onboarding') {
+        runOnboardingTutorial(driverObj);
     }
+}
+
+// 4. Verificação Automática (Chamada no renderApp)
+export function checkAndStartTutorial() {
+    // Pequeno delay para garantir que o HTML renderizou
+    setTimeout(() => {
+        if (!window.driver) return;
+        const driverObj = window.driver.js.driver;
+
+        if (state.currentView === 'dashboard' && !localStorage.getItem('greenhive_dashboard_tutorial_seen')) {
+            runDashboardTutorial(driverObj);
+        } else if (state.currentView === 'onboarding' && !localStorage.getItem('greenhive_onboarding_tutorial_seen')) {
+            runOnboardingTutorial(driverObj);
+        }
+    }, 1500);
 }
 
 // Variável global para controlar o listener da lista de famílias

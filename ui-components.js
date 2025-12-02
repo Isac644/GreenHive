@@ -314,10 +314,11 @@ export function renderMainContent() {
 }
 
 export function renderFamilyDashboard() {
-    // ... (Cálculos mantidos, copie a parte inicial da função anterior) ...
     const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
     const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    
     const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    
     const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
     summary.balance = summary.income - summary.expenses;
     const userTransactions = monthlyTransactions.filter(t => t.userId === state.user.uid);
@@ -327,57 +328,63 @@ export function renderFamilyDashboard() {
     const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
     const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => { const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === b.category).reduce((sum, t) => sum + t.amount, 0); return acc + spent; }, 0);
     const isAdmin = state.familyAdmins.includes(state.user.uid);
-    const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1.5 text-[10px] sm:text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>` : '';
+    const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>` : '';
     
-    // Estilos Compactos Mobile / Normais Desktop
-    const cardBase = "bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
-    const titleClass = "text-[10px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 sm:mb-2";
-    const valueClass = "font-heading font-bold text-2xl sm:text-3xl md:text-4xl tracking-tight mb-2 sm:mb-3";
+    const cardBase = "bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
+    const titleClass = "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
+    const valueClass = "font-heading font-bold text-3xl sm:text-4xl tracking-tight mb-3";
 
     return `
-    <div class="animate-fade-in space-y-4 sm:space-y-8">
+    <div class="animate-fade-in space-y-8">
         
-        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center">
-            <button id="prev-month-chart-button" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-sm mx-auto lg:mx-0">
+            <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
             <h3 class="text-sm font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
-            <button id="next-month-chart-button" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+            <button id="next-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-            <div class="flex flex-col gap-4 sm:gap-6 h-full">
-                <div class="flex flex-col gap-3 sm:gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div class="flex flex-col gap-6 h-full">
+                <div class="flex flex-col gap-4">
                     <div class="${cardBase} relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div>
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                        </div>
+                        
                         <p class="${titleClass}">Saldo da Família</p>
-                        <p class="${valueClass} text-gray-900 dark:text-white ${getPrivacyClass()}">R$ ${summary.balance.toFixed(2)}</p>
-                        <div class="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                            <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-sm sm:text-lg">🫵</div>
+                        <p class="${valueClass} text-gray-900 dark:text-white ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${summary.balance.toFixed(2)}</p>
+                        
+                        <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                            <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div>
                             <div class="flex flex-col">
                                 <span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span>
-                                <span class="text-xs sm:text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'} ${getPrivacyClass()}">R$ ${userSummary.balance.toFixed(2)}</span>
+                                <span class="text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'} ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${userSummary.balance.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 sm:gap-4">
+
+                    <div class="grid grid-cols-2 gap-4">
                         <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2"><div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
-                            <p class="${valueClass} text-gray-800 dark:text-gray-100 truncate ${getPrivacyClass()}">R$ ${summary.income.toFixed(2)}</p>
-                            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Você: <span class="text-brand-600 dark:text-brand-400 ${getPrivacyClass()}">R$ ${userSummary.income.toFixed(2)}</span></p>
+                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
+                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${summary.income.toFixed(2)}</p>
+                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400 ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${userSummary.income.toFixed(2)}</span></p>
                         </div>
                         <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2"><div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
-                            <p class="${valueClass} text-gray-800 dark:text-gray-100 truncate ${getPrivacyClass()}">R$ ${summary.expenses.toFixed(2)}</p>
-                            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Você: <span class="text-red-500 ${getPrivacyClass()}">R$ ${userSummary.expenses.toFixed(2)}</span></p>
+                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
+                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${summary.expenses.toFixed(2)}</p>
+                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500 ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${userSummary.expenses.toFixed(2)}</span></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="${cardBase} flex-1 min-h-[250px] sm:min-h-[300px] flex flex-col overflow-hidden">
-                    <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <div class="${cardBase} flex-1 min-h-[300px] flex flex-col overflow-hidden">
+                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Saldo dos Membros
                     </h3>
-                    <div class="relative w-full flex-1 min-h-[200px] sm:min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
+                    
+                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 500px;">
                                 <canvas id="person-spending-chart"></canvas>
@@ -388,13 +395,13 @@ export function renderFamilyDashboard() {
                 </div>
             </div>
 
-            <div class="flex flex-col gap-4 sm:gap-6 h-full">
-                <div class="${cardBase} flex-1 min-h-[220px] sm:min-h-[250px] flex flex-col overflow-hidden">
+            <div class="flex flex-col gap-6 h-full">
+                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
-                        <div class="flex gap-2 text-[10px] sm:text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-2 py-1 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ${getPrivacyClass()}">R$ ${totalBudget.toFixed(0)}</span></span></div>
+                        <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
+                        <div class="flex gap-3 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ${typeof getPrivacyClass === 'function' ? getPrivacyClass() : ''}">R$ ${totalBudget.toFixed(0)}</span></span></div>
                     </div>
-                    <div class="relative w-full flex-1 min-h-[180px] sm:min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
+                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 400px;">
                                 <canvas id="budget-performance-chart"></canvas>
@@ -403,37 +410,18 @@ export function renderFamilyDashboard() {
                         <div id="budget-performance-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden left-0 sticky">Sem orçamentos definidos</div>
                     </div>
                 </div>
-
-                <div class="${cardBase} flex-1 min-h-[220px] sm:min-h-[250px] flex flex-col">
-                    <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
-                    <div class="relative w-full flex-1 min-h-[180px] sm:min-h-[200px]">
-                        <canvas id="daily-evolution-chart"></canvas>
-                    </div>
-                </div>
+                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3><div class="relative w-full flex-1 min-h-[200px]"><canvas id="daily-evolution-chart"></canvas></div></div>
             </div>
         </div>
 
-        <div class="${cardBase}"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-64 sm:h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div>
+        <div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-             <div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-56 sm:h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div>
-             <div class="${cardBase}"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-56 sm:h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div>
+            <div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div>
         </div>
-        
-        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-2xl sm:rounded-[2rem] shadow-lg shadow-brand-500/20">
-            <div class="bg-white dark:bg-gray-900 rounded-[0.9rem] sm:rounded-[1.8rem] p-5 sm:p-8">
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-                    <div class="text-center sm:text-left">
-                        <h3 class="text-[10px] sm:text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1 sm:mb-2">Convite da Família</h3>
-                        <p class="text-2xl sm:text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p>
-                    </div>
-                    <div class="flex gap-3 w-full sm:w-auto">
-                        <button class="copy-code-btn flex-1 sm:flex-none px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button>
-                        <button id="share-link-button" class="flex-1 sm:flex-none px-4 py-3 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-6 sm:p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p><p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p></div><div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"><button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button><button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button></div></div></div></div>
     </div>`;
 }
 
