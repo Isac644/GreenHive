@@ -180,16 +180,6 @@ export function renderHeader() {
     ? `<div class="fixed left-4 right-4 top-20 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-4 sm:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-fade-in origin-top-right ring-1 ring-black/5"><div class="bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center"><span class="font-heading font-bold text-gray-700 dark:text-gray-200 text-sm">Notificações</span><button id="enable-push-btn" class="text-[10px] font-bold text-brand-600 hover:underline" title="Ativar avisos no celular/PC">Ativar Alertas</button></div><div class="max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar">${notificationsListHTML}</div></div>`
     : "";
 
-  const showTutorialBtn = state.family && state.currentView === "dashboard";
-  const tutorialButtonHTML = showTutorialBtn
-    ? `
-        <button id="start-tutorial-btn" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            Ajuda / Tutorial
-        </button>
-        <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>`
-    : "";
-
   return `<header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200/50 dark:border-gray-800 transition-colors duration-300"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex justify-between items-center h-20"><div class="flex items-center gap-3 hover:opacity-80 transition cursor-default">${GreenHiveLogoSVG(
     "48"
   )}</div><div class="flex items-center gap-2 sm:gap-4"><div class="relative"><button id="notification-button" class="relative p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all active:scale-95 focus:outline-none">${
@@ -200,7 +190,7 @@ export function renderHeader() {
     state.user.name
   }</p><p class="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">${
     state.user.email
-  }</p></div><button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button><div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>${tutorialButtonHTML}<button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button></div></div></div></div></div></header>`;
+  }</p></div><button id="open-settings-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-brand-600 dark:hover:text-brand-400 flex items-center gap-3 transition-colors">Configurações</button><div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div><button id="logout-button" class="w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mb-1 flex items-center gap-3">Sair da Conta</button></div></div></div></div></div></header>`;
 }
 
 // --- 3. TELAS DE AUTENTICAÇÃO E ENTRADA ---

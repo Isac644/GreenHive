@@ -54,13 +54,11 @@ import {
   handleToggleFilterCategory,
   handleToggleFilterType,
   handleToggleFilterDate,
-  checkAndStartTutorial,
   subscribeToUserFamilies,
   handleExportExcel,
   handleOpenExportModal,
   handleExportCSV,
   handleExportPDF,
-  startCurrentTutorial,
 } from "./state-and-handlers.js";
 import {
   renderHeader,
@@ -184,8 +182,6 @@ export function renderApp(isDataUpdate = false) {
   if (state.shouldAnimate) {
     state.shouldAnimate = false;
   }
-
-  checkAndStartTutorial();
 }
 
 function attachEventListeners() {
@@ -932,14 +928,6 @@ function attachEventListeners() {
 
   const btnCsv = document.getElementById("download-csv-btn");
   if (btnCsv) btnCsv.onclick = handleExportCSV;
-
-  const tutorialBtn = document.getElementById("start-tutorial-btn");
-  if (tutorialBtn) {
-    tutorialBtn.onclick = () => {
-      document.getElementById("user-menu")?.classList.add("hidden");
-      startCurrentTutorial();
-    };
-  }
 }
 
 let unsubscribeNotifications = null;
