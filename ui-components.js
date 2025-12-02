@@ -45,6 +45,8 @@ export function renderLoadingScreen() {
 }
 */
 
+const getPrivacyClass = () => state.isPrivacyMode ? 'privacy-blur' : '';
+
 export function renderHeader() {
     if (!state.user) return '';
     const hasUnread = state.notifications && state.notifications.some(n => !n.read);
@@ -290,7 +292,7 @@ export function renderMainContent() {
     <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-row justify-between items-center mb-8 gap-4">
             <div class="flex-1 min-w-0">
-                <button id="family-info-button" class="text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition flex items-center gap-2 group w-full">
+                <button id="family-info-button" class="text-left text-2xl sm:text-3xl font-heading font-bold text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition flex items-center gap-2 group w-full">
                     <span class="truncate">${state.family.name}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 group-hover:text-brand-500 transition opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
@@ -448,12 +450,6 @@ export function renderRecordsPage() {
         <div id="records-list-wrapper" class="max-w-3xl mx-auto">
             ${transactionsHTML}
         </div>
-
-        <button id="export-csv-btn" class="fixed bottom-6 right-6 z-50 w-14 h-14 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 hover:text-brand-600 dark:hover:text-brand-400 transition-all" title="Baixar Relatório">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-        </button>
     </div>`;
 }
 

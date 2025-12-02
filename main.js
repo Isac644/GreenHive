@@ -94,7 +94,7 @@ export function renderApp(isDataUpdate = false) {
     // Caso 2: Renderização Completa (Navegação ou Carga Inicial)
     let contentHTML = '';
     if (!state.user) contentHTML = renderAuthPage();
-    else if (!state.family) contentHTML = renderFamilyOnboardingPage();
+    else if (!state.family) contentHTML = renderFamilyOnboardingPage(); 
     else contentHTML = renderMainContent();
 
     root.innerHTML = contentHTML;
