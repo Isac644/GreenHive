@@ -1,7 +1,5 @@
 import { state, CATEGORIES, PALETTE_COLORS } from "./state-and-handlers.js";
 
-const getPrivacyClass = () => (state.isPrivacyMode ? "privacy-blur" : "");
-
 // --- 1. ÍCONES E LOGOTIPO ---
 
 const GreenHiveLogoSVG = (height) => `
@@ -409,135 +407,70 @@ export function renderMainContent() {
 }
 
 export function renderFamilyDashboard() {
-  const month = state.displayedMonth.getMonth();
-  const year = state.displayedMonth.getFullYear();
-  const monthName = state.displayedMonth.toLocaleString("pt-BR", {
-    month: "long",
-  });
+    // ... (Cálculos mantidos, copie a parte inicial da função anterior) ...
+    const month = state.displayedMonth.getMonth(); const year = state.displayedMonth.getFullYear();
+    const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
+    const monthlyTransactions = state.transactions.filter(t => new Date(t.date + 'T12:00:00').getMonth() === month && new Date(t.date + 'T12:00:00').getFullYear() === year);
+    const summary = monthlyTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
+    summary.balance = summary.income - summary.expenses;
+    const userTransactions = monthlyTransactions.filter(t => t.userId === state.user.uid);
+    const userSummary = userTransactions.reduce((acc, t) => { if (t.type === 'income') acc.income += t.amount; else acc.expenses += t.amount; return acc; }, { income: 0, expenses: 0 });
+    userSummary.balance = userSummary.income - userSummary.expenses;
+    const activeExpenseBudgets = state.budgets.filter(b => b.type === 'expense' && new Date(b.appliesFrom) <= state.displayedMonth && (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth));
+    const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
+    const totalSpentInBudgets = activeExpenseBudgets.reduce((acc, b) => { const spent = monthlyTransactions.filter(t => t.type === 'expense' && t.category === b.category).reduce((sum, t) => sum + t.amount, 0); return acc + spent; }, 0);
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
+    const manageCategoriesButton = isAdmin ? `<button id="manage-categories-button" class="px-3 py-1.5 text-[10px] sm:text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>` : '';
+    
+    // Estilos Compactos Mobile / Normais Desktop
+    const cardBase = "bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
+    const titleClass = "text-[10px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 sm:mb-2";
+    const valueClass = "font-heading font-bold text-2xl sm:text-3xl md:text-4xl tracking-tight mb-2 sm:mb-3";
 
-  const monthlyTransactions = state.transactions.filter(
-    (t) =>
-      new Date(t.date + "T12:00:00").getMonth() === month &&
-      new Date(t.date + "T12:00:00").getFullYear() === year
-  );
-
-  const summary = monthlyTransactions.reduce(
-    (acc, t) => {
-      if (t.type === "income") acc.income += t.amount;
-      else acc.expenses += t.amount;
-      return acc;
-    },
-    { income: 0, expenses: 0 }
-  );
-  summary.balance = summary.income - summary.expenses;
-
-  const userTransactions = monthlyTransactions.filter(
-    (t) => t.userId === state.user.uid
-  );
-  const userSummary = userTransactions.reduce(
-    (acc, t) => {
-      if (t.type === "income") acc.income += t.amount;
-      else acc.expenses += t.amount;
-      return acc;
-    },
-    { income: 0, expenses: 0 }
-  );
-  userSummary.balance = userSummary.income - userSummary.expenses;
-
-  const activeExpenseBudgets = state.budgets.filter(
-    (b) =>
-      b.type === "expense" &&
-      new Date(b.appliesFrom) <= state.displayedMonth &&
-      (!b.appliesTo || new Date(b.appliesTo) >= state.displayedMonth)
-  );
-  const totalBudget = activeExpenseBudgets.reduce((sum, b) => sum + b.value, 0);
-
-  const isAdmin = state.familyAdmins.includes(state.user.uid);
-  const manageCategoriesButton = isAdmin
-    ? `<button id="manage-categories-button" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition">Gerenciar</button>`
-    : "";
-
-  // ESTILO ORIGINAL "SOFT UI" (Espaçoso e Arredondado)
-  const cardBase =
-    "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow border border-gray-100/50 dark:border-gray-700/50";
-  const titleClass =
-    "text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2";
-  const valueClass =
-    "font-heading font-bold text-3xl sm:text-4xl tracking-tight mb-3";
-
-  return `
-    <div class="animate-fade-in space-y-8">
+    return `
+    <div class="animate-fade-in space-y-4 sm:space-y-8">
         
-        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-2 rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center max-w-md mx-auto">
-            <button id="prev-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-            <h3 class="text-base font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
-            <button id="next-month-chart-button" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        <div class="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200/60 dark:border-gray-700 flex justify-between items-center">
+            <button id="prev-month-chart-button" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+            <h3 class="text-sm font-heading font-bold capitalize text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</h3>
+            <button id="next-month-chart-button" class="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition"><svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            <div class="flex flex-col gap-6 h-full">
-                <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+            <div class="flex flex-col gap-4 sm:gap-6 h-full">
+                <div class="flex flex-col gap-3 sm:gap-4">
                     <div class="${cardBase} relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${
-                          Icons.Wallet
-                        }</div>
+                        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">${Icons.Wallet}</div>
                         <p class="${titleClass}">Saldo da Família</p>
-                        <p class="${valueClass} text-gray-900 dark:text-white ${
-    typeof getPrivacyClass === "function" ? getPrivacyClass() : ""
-  }">R$ ${summary.balance.toFixed(2)}</p>
-                        <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                            <div class="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-lg">🫵</div>
+                        <p class="${valueClass} text-gray-900 dark:text-white ">R$ ${summary.balance.toFixed(2)}</p>
+                        <div class="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                            <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center text-sm sm:text-lg">🫵</div>
                             <div class="flex flex-col">
                                 <span class="text-[10px] font-bold text-gray-400 uppercase">Seu Saldo</span>
-                                <span class="text-sm font-bold ${
-                                  userSummary.balance >= 0
-                                    ? "text-brand-600 dark:text-brand-400"
-                                    : "text-red-500"
-                                } ${
-    typeof getPrivacyClass === "function" ? getPrivacyClass() : ""
-  }">R$ ${userSummary.balance.toFixed(2)}</span>
+                                <span class="text-xs sm:text-sm font-bold ${userSummary.balance >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-red-500'} ">R$ ${userSummary.balance.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-3 sm:gap-4">
                         <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
-                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate ${
-                              typeof getPrivacyClass === "function"
-                                ? getPrivacyClass()
-                                : ""
-                            }">R$ ${summary.income.toFixed(2)}</p>
-                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-brand-600 dark:text-brand-400 ${
-                              typeof getPrivacyClass === "function"
-                                ? getPrivacyClass()
-                                : ""
-                            }">R$ ${userSummary.income.toFixed(2)}</span></p>
+                            <div class="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2"><div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-brand-500"></div><p class="${titleClass} !mb-0">Receita</p></div>
+                            <p class="${valueClass} text-gray-800 dark:text-gray-100 truncate ">R$ ${summary.income.toFixed(2)}</p>
+                            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Você: <span class="text-brand-600 dark:text-brand-400 ">R$ ${userSummary.income.toFixed(2)}</span></p>
                         </div>
                         <div class="${cardBase} flex flex-col justify-center">
-                            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
-                            <p class="font-heading font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-100 truncate ${
-                              typeof getPrivacyClass === "function"
-                                ? getPrivacyClass()
-                                : ""
-                            }">R$ ${summary.expenses.toFixed(2)}</p>
-                            <p class="text-xs text-gray-400 mt-1 font-medium">Você: <span class="text-red-500 ${
-                              typeof getPrivacyClass === "function"
-                                ? getPrivacyClass()
-                                : ""
-                            }">R$ ${userSummary.expenses.toFixed(2)}</span></p>
+                            <div class="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2"><div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500"></div><p class="${titleClass} !mb-0">Despesa</p></div>
+                            <p class="${valueClass} text-gray-800 dark:text-gray-100 truncate ">R$ ${summary.expenses.toFixed(2)}</p>
+                            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Você: <span class="text-red-500 ">R$ ${userSummary.expenses.toFixed(2)}</span></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="${cardBase} flex-1 min-h-[320px] flex flex-col overflow-hidden">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <div class="${cardBase} flex-1 min-h-[250px] sm:min-h-[300px] flex flex-col overflow-hidden">
+                    <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4 sm:mb-6 flex items-center gap-2">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Saldo dos Membros
                     </h3>
-                    
-                    <div class="relative w-full flex-1 min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex justify-start md:justify-center items-start">
+                    <div class="relative w-full flex-1 min-h-[200px] sm:min-h-[250px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 500px;">
                                 <canvas id="person-spending-chart"></canvas>
@@ -548,19 +481,13 @@ export function renderFamilyDashboard() {
                 </div>
             </div>
 
-            <div class="flex flex-col gap-6 h-full">
-                
-                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col overflow-hidden">
+            <div class="flex flex-col gap-4 sm:gap-6 h-full">
+                <div class="${cardBase} flex-1 min-h-[220px] sm:min-h-[250px] flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
-                        <div class="flex gap-2 text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ${
-                          typeof getPrivacyClass === "function"
-                            ? getPrivacyClass()
-                            : ""
-                        }">R$ ${totalBudget.toFixed(0)}</span></span></div>
+                        <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Orçamento</h3>
+                        <div class="flex gap-2 text-[10px] sm:text-xs font-bold text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 px-2 py-1 rounded-lg"><span>Meta: <span class="text-gray-600 dark:text-gray-300 ">R$ ${totalBudget.toFixed(0)}</span></span></div>
                     </div>
-                    
-                    <div class="relative w-full flex-1 min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex justify-start md:justify-center items-start">
+                    <div class="relative w-full flex-1 min-h-[180px] sm:min-h-[200px] overflow-x-auto custom-scrollbar pb-2 flex md:justify-center items-start">
                         <div class="h-full min-w-full w-max px-2 flex justify-center">
                             <div class="relative h-full w-full" style="min-width: 400px;">
                                 <canvas id="budget-performance-chart"></canvas>
@@ -570,65 +497,71 @@ export function renderFamilyDashboard() {
                     </div>
                 </div>
 
-                <div class="${cardBase} flex-1 min-h-[250px] flex flex-col">
-                    <h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
-                    <div class="relative w-full flex-1 min-h-[200px]">
+                <div class="${cardBase} flex-1 min-h-[220px] sm:min-h-[250px] flex flex-col">
+                    <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-4">Evolução Diária</h3>
+                    <div class="relative w-full flex-1 min-h-[180px] sm:min-h-[200px]">
                         <canvas id="daily-evolution-chart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div>
+        <div class="${cardBase}"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Balanço Anual (${year})</h3><div class="h-64 sm:h-72 relative w-full"><canvas id="annual-balance-chart"></canvas></div></div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div>
-            <div class="${cardBase}"><h3 class="text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+             <div class="${cardBase}"><div class="flex justify-between items-center mb-6"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100">Por Categoria</h3>${manageCategoriesButton}</div><div class="h-56 sm:h-64 relative w-full"><canvas id="monthly-expenses-chart"></canvas><div id="monthly-expenses-chart-no-data" class="absolute inset-0 flex items-center justify-center text-center text-gray-500 text-sm hidden">Sem dados</div></div></div>
+             <div class="${cardBase}"><h3 class="text-base sm:text-lg font-heading font-bold text-gray-800 dark:text-gray-100 mb-6">Comparativo Mês Anterior</h3><div class="h-56 sm:h-64 relative w-full"><canvas id="comparison-chart"></canvas></div></div>
         </div>
-
-        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-[2rem] shadow-lg shadow-brand-500/20"><div class="bg-white dark:bg-gray-900 rounded-[1.8rem] p-8"><div class="flex flex-col sm:flex-row items-center justify-between gap-6"><div><h3 class="text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-2">Convite da Família</h3><p class="text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${
-          state.family.code
-        }</p><p class="text-sm text-gray-400 mt-1">Compartilhe este código para adicionar membros.</p></div><div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"><button class="copy-code-btn flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${
-    Icons.Copy
-  } Copiar</button><button id="share-link-button" class="flex-1 sm:flex-none px-6 py-3.5 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar Link</button></div></div></div></div>
+        
+        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-1 rounded-2xl sm:rounded-[2rem] shadow-lg shadow-brand-500/20">
+            <div class="bg-white dark:bg-gray-900 rounded-[0.9rem] sm:rounded-[1.8rem] p-5 sm:p-8">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+                    <div class="text-center sm:text-left">
+                        <h3 class="text-[10px] sm:text-xs font-bold text-brand-600 dark:text-brand-400 uppercase tracking-widest mb-1 sm:mb-2">Convite da Família</h3>
+                        <p class="text-2xl sm:text-4xl font-mono font-bold text-gray-900 dark:text-white tracking-widest">${state.family.code}</p>
+                    </div>
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <button class="copy-code-btn flex-1 sm:flex-none px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2">${Icons.Copy} Copiar</button>
+                        <button id="share-link-button" class="flex-1 sm:flex-none px-4 py-3 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2">Compartilhar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>`;
 }
+
 
 // --- 5. PÁGINAS INTERNAS (REGISTROS, ORÇAMENTO, DÍVIDAS) ---
 
 export function renderRecordsPage() {
-  const month = state.displayedMonth.getMonth();
-  const year = state.displayedMonth.getFullYear();
-  const monthName = state.displayedMonth.toLocaleString("pt-BR", {
-    month: "long",
-  });
+    const month = state.displayedMonth.getMonth();
+    const year = state.displayedMonth.getFullYear();
+    const monthName = state.displayedMonth.toLocaleString('pt-BR', { month: 'long' });
 
-  const filtered = state.transactions.filter((t) => {
-    if (!t || !t.date) return false;
-    const tDate = new Date(t.date + "T12:00:00");
-    const isSameMonth =
-      tDate.getMonth() === month && tDate.getFullYear() === year;
-    if (!isSameMonth) return false;
-    if (state.selectedDate && tDate.getDate() !== state.selectedDate)
-      return false;
-    if (state.filterType !== "all" && t.type !== state.filterType) return false;
-    if (state.filterCategory && t.category !== state.filterCategory)
-      return false;
-    if (state.filterMember && t.userId !== state.filterMember) return false;
-    return true;
-  });
+    // Filtros
+    const filtered = state.transactions.filter(t => {
+        if (!t || !t.date) return false;
+        const tDate = new Date(t.date + 'T12:00:00');
+        const isSameMonth = tDate.getMonth() === month && tDate.getFullYear() === year;
+        if (!isSameMonth) return false;
+        if (state.selectedDate && tDate.getDate() !== state.selectedDate) return false;
+        if (state.filterType !== 'all' && t.type !== state.filterType) return false;
+        if (state.filterCategory && t.category !== state.filterCategory) return false;
+        if (state.filterMember && t.userId !== state.filterMember) return false;
+        return true;
+    });
 
-  const groupedByDate = filtered.reduce((acc, t) => {
-    const day = new Date(t.date + "T12:00:00").getDate();
-    if (!acc[day]) acc[day] = [];
-    acc[day].push(t);
-    return acc;
-  }, {});
+    const groupedByDate = filtered.reduce((acc, t) => {
+        const day = new Date(t.date + 'T12:00:00').getDate();
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(t);
+        return acc;
+    }, {});
+    
+    const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
+    const isAdmin = state.familyAdmins.includes(state.user.uid);
 
-  const sortedDays = Object.keys(groupedByDate).sort((a, b) => b - a);
-  const isAdmin = state.familyAdmins.includes(state.user.uid);
-
-  let transactionsHTML = `
+    let transactionsHTML = `
         <div class="flex flex-col items-center justify-center py-20 text-gray-400 animate-fade-in">
             <div class="w-24 h-24 bg-gray-50 dark:bg-gray-800/50 rounded-full flex items-center justify-center mb-6 border border-gray-100 dark:border-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
@@ -636,107 +569,72 @@ export function renderRecordsPage() {
             <p class="font-medium text-lg">Nenhuma transação encontrada.</p>
             <p class="text-sm mt-1 opacity-70">Tente mudar os filtros ou adicionar um novo registro.</p>
         </div>`;
-
-  if (sortedDays.length > 0) {
-    transactionsHTML = sortedDays
-      .map((day) => {
-        const transactionsForDay = groupedByDate[day]
-          .map((t) => {
-            if (!t) return "";
-            const isOwner = t.userId === state.user.uid;
-            const canEdit = isAdmin || isOwner;
-
-            const itemClass = canEdit
-              ? "transaction-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800"
-              : "cursor-default opacity-75";
-
-            const categoryColor = state.categoryColors[t.category] || "#9ca3af";
-            const categoryIcon = state.categoryIcons[t.category] || "🏷️";
-            const memberName = t.userName ? t.userName.split(" ")[0] : "???";
-
-            // Estilo Original (p-4 rounded-2xl)
-            return `
-                <li class="${itemClass} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${
-              t.id
-            }">
+    
+    if (sortedDays.length > 0) {
+        transactionsHTML = sortedDays.map(day => {
+            const transactionsForDay = groupedByDate[day].map(t => {
+                const isOwner = t.userId === state.user.uid;
+                const canEdit = isAdmin || isOwner;
+                const itemClass = canEdit ? 'transaction-item cursor-pointer hover:scale-[1.01] hover:shadow-md hover:border-brand-200 dark:hover:border-brand-800' : 'cursor-default opacity-75';
+                const categoryColor = state.categoryColors[t.category] || '#9ca3af';
+                const categoryIcon = state.categoryIcons[t.category] || '🏷️';
+                const memberName = t.userName ? t.userName.split(' ')[0] : '???';
+                
+                return `
+                <li class="${itemClass} bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm transition-all duration-200 mb-3 border border-gray-100 dark:border-gray-700 flex justify-between items-center group" data-transaction-id="${t.id}">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ring-1 ring-black/5" style="background-color: ${categoryColor}20; color: ${categoryColor}">${categoryIcon}</div>
                         <div>
-                            <p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate max-w-[200px]">${
-                              t.description
-                            }</p>
+                            <p class="font-heading font-bold text-gray-900 dark:text-white text-base leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate max-w-[180px] sm:max-w-xs">${t.description}</p>
                             <div class="flex items-center gap-2 mt-1.5">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${
-                                  t.category
-                                }</span>
-                                <span class="text-xs text-gray-400 flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    ${memberName}
-                                </span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 py-0.5 rounded-md">${t.category}</span>
+                                <span class="text-xs text-gray-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${memberName}</span>
                             </div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-heading font-bold text-lg ${
-                          t.type === "income"
-                            ? "text-brand-600 dark:text-brand-400"
-                            : "text-red-500 dark:text-red-400"
-                        } ${
-              typeof getPrivacyClass === "function" ? getPrivacyClass() : ""
-            }">
-                            ${
-                              t.type === "income" ? "+" : "-"
-                            } R$ ${t.amount.toFixed(2)}
+                        <p class="font-heading font-bold text-lg ${t.type === 'income' ? 'text-brand-600 dark:text-brand-400' : 'text-red-500 dark:text-red-400'}">
+                            ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
                         </p>
                     </div>
                 </li>`;
-          })
-          .join("");
+            }).join('');
+            return `<div class="mb-8 animate-fade-in-up"><div class="flex items-center gap-3 mb-4 ml-1"><h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4><span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span><div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div></div><ul class="space-y-1">${transactionsForDay}</ul></div>`;
+        }).join('');
+    }
 
-        return `
-            <div class="mb-8 animate-fade-in-up">
-                <div class="flex items-center gap-3 mb-4 ml-1">
-                    <h4 class="text-2xl font-heading font-bold text-gray-800 dark:text-white">${day}</h4>
-                    <span class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pt-1.5">${monthName}</span>
-                    <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div>
-                </div>
-                <ul class="space-y-1">${transactionsForDay}</ul>
-            </div>`;
-      })
-      .join("");
-  }
+    let activeFiltersCount = 0;
+    if (state.filterType !== 'all') activeFiltersCount++; if (state.filterCategory) activeFiltersCount++; if (state.filterMember) activeFiltersCount++; if (state.selectedDate) activeFiltersCount++;
+    const filterBadge = activeFiltersCount > 0 ? `<span class="absolute -top-1 -right-1 bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-bounce">${activeFiltersCount}</span>` : '';
 
-  let activeFiltersCount = 0;
-  if (state.filterType !== "all") activeFiltersCount++;
-  if (state.filterCategory) activeFiltersCount++;
-  if (state.filterMember) activeFiltersCount++;
-  if (state.selectedDate) activeFiltersCount++;
-  const filterBadge =
-    activeFiltersCount > 0
-      ? `<span class="absolute -top-1 -right-1 bg-brand-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-bounce">${activeFiltersCount}</span>`
-      : "";
-
-  return `
+    return `
     <div id="records-page-container" class="pb-32">
         
-        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl py-4 border-b border-gray-200/50 dark:border-gray-800 mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
-            <div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
+        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl py-3 sm:py-4 border-b border-gray-200/50 dark:border-gray-800 mb-6 sm:mb-8 -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-3xl transition-all shadow-sm">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-3 max-w-3xl mx-auto">
                 
-                <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center bg-gray-100/80 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 w-full md:w-auto justify-between md:justify-start">
                     <button id="prev-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
                     <span class="font-heading font-bold capitalize text-sm md:text-base px-3 w-36 text-center text-gray-800 dark:text-gray-100 select-none">${monthName} ${year}</span>
                     <button id="next-month-button" class="p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-500 hover:shadow-sm transition"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
 
-                <div class="flex gap-2">
-                    <button id="open-filter-modal-btn" class="relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300">
+                <div class="flex gap-2 w-full md:w-auto">
+                    
+                    <button id="export-csv-btn" class="w-1/4 md:w-auto p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 group flex justify-center items-center" title="Baixar Relatório">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+
+                    <button id="filter-funnel-btn" class="w-1/4 md:w-auto relative p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm hover:border-gray-300 flex justify-center items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         ${filterBadge}
                     </button>
                     
-                    <button id="open-modal-button" class="flex items-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95">
+                    <button id="open-modal-button" class="w-1/2 md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-brand-600 text-white font-heading font-bold rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-500/30 transition transform active:scale-95 flex-grow">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                        <span class="hidden sm:inline">Novo</span>
+                        <span class="inline">Novo</span>
                     </button>
                 </div>
             </div>
@@ -746,6 +644,7 @@ export function renderRecordsPage() {
         </div>
     </div>`;
 }
+
 
 export function renderBudgetPage() {
   const month = state.displayedMonth.getMonth();

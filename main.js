@@ -708,21 +708,6 @@ function attachEventListeners() {
     destroyChartsCallback = null;
   }
 
-  // Filtros
-
-  const openFilterBtn = document.getElementById("open-filter-modal-btn");
-  if (openFilterBtn) {
-    openFilterBtn.onclick = () => {
-      handleOpenFilters(); // Agora ele vai encontrar a função!
-    };
-  }
-
-  const clearFilterBtn = document.getElementById("clear-filters-btn");
-  if (clearFilterBtn) clearFilterBtn.onclick = handleClearFilters;
-
-  const applyFilterBtn = document.getElementById("apply-filters-btn");
-  if (applyFilterBtn) applyFilterBtn.onclick = handleApplyFilters;
-
   // Toggles
   document.querySelectorAll(".filter-type-btn").forEach((btn) => {
     btn.onclick = (e) => handleToggleFilterType(e.currentTarget.dataset.type);
@@ -928,6 +913,39 @@ function attachEventListeners() {
 
   const btnCsv = document.getElementById("download-csv-btn");
   if (btnCsv) btnCsv.onclick = handleExportCSV;
+
+  // --- FILTROS ---
+
+    // 1. Botão de Abrir o Modal de Filtros (Ícone de funil)
+    const openFilterBtn = document.getElementById('filter-funnel-btn');
+    if (openFilterBtn) {
+        openFilterBtn.onclick = handleOpenFilters;
+    }
+
+    // 2. Botão "Limpar Filtros" (Dentro do modal)
+    const clearFilterBtn = document.getElementById('clear-filters-btn');
+    if (clearFilterBtn) clearFilterBtn.onclick = handleClearFilters;
+
+    // 3. Botão "Ver Resultados" (Aplicar) (Dentro do modal)
+    const applyFilterBtn = document.getElementById('apply-filters-btn');
+    if (applyFilterBtn) applyFilterBtn.onclick = handleApplyFilters;
+
+    // 4. Botões de Seleção (Toggles dentro do modal)
+    document.querySelectorAll('.filter-type-btn').forEach(btn => {
+        btn.onclick = (e) => handleToggleFilterType(e.currentTarget.dataset.type);
+    });
+
+    document.querySelectorAll('.filter-category-btn').forEach(btn => {
+        btn.onclick = (e) => handleToggleFilterCategory(e.currentTarget.dataset.category);
+    });
+
+    document.querySelectorAll('.filter-member-btn').forEach(btn => {
+        btn.onclick = (e) => handleToggleFilterMember(e.currentTarget.dataset.uid);
+    });
+
+    document.querySelectorAll('.calendar-day-filter').forEach(btn => {
+        btn.onclick = (e) => handleToggleFilterDate(parseInt(e.currentTarget.dataset.day));
+    });
 }
 
 let unsubscribeNotifications = null;
