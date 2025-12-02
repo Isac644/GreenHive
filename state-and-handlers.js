@@ -696,10 +696,25 @@ export async function handleSignup(event) {
 
 export async function handleGoogleLogin() {
     try {
+        // CONFIGURAÇÃO: Força o Google a mostrar a tela de seleção de contas
+        googleProvider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
         const result = await firebase.signInWithPopup(auth, googleProvider);
         const user = result.user;
-        await setDoc(doc(db, "users", user.uid), { name: user.displayName, email: user.email, photoURL: user.photoURL }, { merge: true });
-    } catch (error) { showToast("Erro no login com Google.", 'error'); }
+        
+        // Salva/Atualiza usuário no Firestore
+        await setDoc(doc(db, "users", user.uid), { 
+            name: user.displayName, 
+            email: user.email, 
+            photoURL: user.photoURL 
+        }, { merge: true });
+
+    } catch (error) { 
+        console.error("Erro Google:", error);
+        showToast("Erro no login com Google.", 'error'); 
+    }
 }
 
 export async function handleCreateFamily(event) {
